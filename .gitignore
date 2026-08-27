@@ -1,0 +1,35 @@
+# Terraform
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Go
+vendor/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Env / secrets
+.env
+.env.*
+*.pem

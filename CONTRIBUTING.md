@@ -1,0 +1,47 @@
+# Working conventions
+
+This is a solo portfolio project, but it follows real conventions on purpose — the point is to
+practice them, not to move fast and skip them.
+
+## ADRs first
+
+Every nontrivial choice gets a short ADR (`/adr`, using `0000-template.md`) written *before*
+asking Claude Code to implement it, not after. This is the main defense against "can't explain
+why the Terraform is shaped this way" under questioning.
+
+## Practices that run across every phase
+
+- **Deliberate failure exercises** — at the end of each phase, break something on purpose (kill
+  a pod mid-deploy, revoke a Floci-emulated IAM permission, corrupt a model artifact before
+  promotion) and write a one-paragraph postmortem: what broke, blast radius, how it was caught,
+  what changed as a result.
+- **DORA metrics on the pipeline itself** — instrument GitHub Actions to track deployment
+  frequency, lead time for changes, change failure rate, and MTTR for this project's own
+  pipeline, starting in Phase 2.
+- **Threat model** — a short STRIDE-style pass on the pipeline and infra, done early in Phase 1.
+- **One piece of external validation** — by the end, either a small upstream contribution to
+  Floci, or a short public write-up of one specific hard problem hit along the way.
+
+## Cost guardrail
+
+AWS Budgets + a billing alarm are set up before anything ever touches real AWS. Real-AWS runs
+are milestone validations only (per ADR-0002/0003): spun up briefly, torn down immediately after.
+
+## Definition of done, per phase
+
+Each phase is independently demoable on its own (README + short recording/GIF) — "phase N of 3
+(or 4), complete" rather than perpetually unfinished.
+
+## Claude Code workflow
+
+This repo vendors Matt Pocock's engineering/productivity skills under `.claude/skills` (see
+README attribution). Useful entry points for this project:
+
+- `/grill-with-docs` or `/grill-me` to think through a phase or ADR before writing it down.
+- `/to-spec` / `/to-tickets` to turn an ADR or phase plan into scoped, implementable slices.
+- `/implement` / `/tdd` to build a slice with red-green-refactor discipline.
+- `/code-review` before merging.
+- `/ask-matt` if unsure which skill fits.
+
+Run `/setup-matt-pocock-skills` once to configure issue-tracker preference (this project uses
+GitHub Issues) and triage labels.
