@@ -59,9 +59,12 @@ starts once Floci is set up.
 | `/platform` | Platform-layer docs/tooling (ephemeral env lifecycle, service catalog stretch) |
 | `.github/workflows` | CI/CD workflow definitions |
 | `.claude/skills` | Vendored Matt Pocock engineering/productivity skills for Claude Code |
-| `CLAUDE.md` | Per-repo config for those skills (issue tracker, triage labels, domain docs) |
+| `CLAUDE.md` | Per-repo config for those skills, plus the documentation-practice convention |
 | `docs/agents` | Config files `CLAUDE.md` points to — issue tracker, triage labels, domain docs layout |
 | `CONTEXT.md` | This project's own domain glossary (not `/app`'s — that's upstream) |
+| `docs/journal` | Dated, one-per-step narrative log of what happened and why |
+| `docs/milestones.md` | Phase-by-phase progress against the "independently demoable" bar |
+| `docs/postmortems` | Write-ups from each phase's deliberate failure exercise |
 
 ## Architecture Decision Records
 

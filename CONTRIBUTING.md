@@ -9,6 +9,17 @@ Every nontrivial choice gets a short ADR (`/adr`, using `0000-template.md`) writ
 asking Claude Code to implement it, not after. This is the main defense against "can't explain
 why the Terraform is shaped this way" under questioning.
 
+## Documentation practice
+
+Decisions, steps, and milestones all get documented as they happen, not reconstructed later —
+see `CLAUDE.md`'s "Documentation practice" section for the standing convention Claude Code
+follows every session:
+
+- Decisions → `/adr` (as above)
+- Steps → `docs/journal/`, one dated file per session/step
+- Milestones → `docs/milestones.md`, checked off as phases progress
+- Deliberate failure exercises → `docs/postmortems/`
+
 ## Practices that run across every phase
 
 - **Deliberate failure exercises** — at the end of each phase, break something on purpose (kill
