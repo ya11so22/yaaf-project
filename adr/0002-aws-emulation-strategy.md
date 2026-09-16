@@ -18,11 +18,14 @@ AWS behavior gaps.
    - Pros: zero cost, fast (Floci starts in ~24ms, ~13 MiB idle memory), CI-friendly as a
      GitHub Actions service container, MIT-licensed, drop-in AWS SDK/CLI/Terraform
      compatibility on port 4566.
-   - Cons: Floci's EKS support specifically is "mock + k3s" under an EKS-shaped API — good for
-     proving the platform workflow (Terraform applying, Actions orchestrating, IAM/networking
-     concepts) but not a substitute for real EKS-specific nuance (IRSA behavior, real
-     networking edge cases). Compatibility is validated against tested SDK calls, not full
-     behavioral parity with AWS.
+   - Cons: Floci's EKS support runs a real `k3s` cluster with a live Kubernetes API server
+     behind an EKS-shaped control-plane API — genuine k8s API behavior, not a shallow mock, so
+     it's good for proving the platform workflow (Terraform applying, Actions orchestrating,
+     IAM/networking concepts) and for ordinary `kubectl`/manifest work. It's still not a
+     substitute for real EKS-specific nuance (IRSA behavior, real VPC networking edge cases,
+     managed node group quirks) — the fidelity gap is narrower than a mock would leave, but not
+     zero. Compatibility is validated against tested SDK calls, not full behavioral parity with
+     AWS.
 3. **Hybrid: Floci for daily dev loop + all CI, real AWS for periodic milestone validation.**
    - Pros: gets the speed/cost benefits of #2 for 95% of the work, while still proving the same
      Terraform + Actions pipeline against genuine AWS before calling a phase "done." Real-AWS
