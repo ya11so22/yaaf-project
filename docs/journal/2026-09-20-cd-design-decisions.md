@@ -23,3 +23,10 @@ Documentation only; `scripts/check` and the CI gates run on the PR.
 ## Next
 
 Spike Floci-on-a-runner, then content-hash tags in `build.yml`, then the `deploy/` overlays.
+
+## Addendum: local and free first
+
+The owner restated that the project stays free, with local simulation preferred until real AWS is
+absolutely necessary, and that the job-search timeline is not a factor. ADR-0012 defers the real-AWS
+milestone, budget alarm and negative trust test; Phase 1 now ends locally. The questions I had
+asked about an AWS account and a milestone smoke check were dropped as premature.
