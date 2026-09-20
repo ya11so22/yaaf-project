@@ -40,11 +40,20 @@ Findings (Floci behaviour worth remembering, and interview-relevant fidelity gap
   IAM user + access key was created in Floci (`aws iam create-user` / `create-access-key`) and
   exported for `aws eks get-token`. That user was created by hand, not by OpenTofu, and lives
   only in the disposable emulator. Keys are not recorded in the repo.
-- **The k3s version doesn't follow the requested one.** The module asks for Kubernetes `1.31`
-  (and `describe-cluster` reports 1.31), but the node runs k3s `v1.34.1`.
+- **The k3s version doesn't follow the requested one — fixed by pinning.** The module asked for
+  Kubernetes `1.31` and `describe-cluster` reported 1.31, but the node ran k3s `v1.34.1`.
+  Floci does no version mapping: it launches `FLOCI_SERVICES_EKS_DEFAULT_IMAGE` (default
+  `rancher/k3s:latest`) and echoes the requested version back as metadata. Fix: the module now
+  defaults to `1.36` (the newest EKS version at the time) and `infra/environments/floci/compose.yaml`
+  pins `rancher/k3s:v1.36.4-k3s1`. After destroy, recreating Floci and re-applying, `kubectl
+  version` reports server `v1.36.4+k3s1`, matching the API. Floci is now run via that compose
+  file (with `floci-ui`), which also gives the UI a service name instead of a hard-coded IP.
 - **The node group is not emulated as N nodes.** Desired size 2 still yields a single k3s node
   (named by container ID, role `control-plane`); `list-nodegroups` does report
   `yaaf-floci-default`.
+- Recreating Floci wipes its IAM, so the kubectl IAM user/key must be recreated each time. Watch
+  for a trailing `` when reading the secret in Git Bash: it made the key look valid to `sts`
+  but fail the EKS webhook's stricter signature check (`Unauthorized`).
 - On Git Bash for Windows, `docker exec ... /etc/...` paths get rewritten; set
   `MSYS_NO_PATHCONV=1`.
 
