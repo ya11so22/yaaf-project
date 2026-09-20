@@ -41,3 +41,30 @@ module "eks" {
     Environment = "floci"
   }
 }
+
+module "ecr" {
+  source = "../../modules/ecr"
+
+  name_prefix = var.project
+  repositories = [
+    "adservice",
+    "cartservice",
+    "checkoutservice",
+    "currencyservice",
+    "emailservice",
+    "frontend",
+    "loadgenerator",
+    "paymentservice",
+    "productcatalogservice",
+    "recommendationservice",
+    "shippingservice",
+    "shoppingassistantservice",
+  ]
+
+  force_delete = true
+
+  tags = {
+    Project     = var.project
+    Environment = "floci"
+  }
+}

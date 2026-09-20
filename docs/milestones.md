@@ -11,7 +11,8 @@ Updated as work lands — see `docs/journal/` for the narrative behind each chec
       Floci (2026-09-16 module, applied 2026-09-20)
 - [x] EKS-equivalent cluster module `modules/eks-cluster` (ADR-0003) — written, `tofu validate`/`plan`
       clean, applied against Floci and `kubectl` verified (2026-09-20)
-- [ ] ECR-equivalent registry module
+- [x] ECR-equivalent registry module `modules/ecr` — written, `tofu validate`/`plan` clean
+      (2026-09-20), pending `tofu apply` against Floci
 - [ ] IAM module
 - [ ] GitHub Actions: build + push each of the 11 `/app` services on change only (path-filtered)
 - [ ] GitHub Actions: `tofu plan` on PR against Floci, plan output posted as a PR comment
