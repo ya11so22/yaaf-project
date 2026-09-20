@@ -15,11 +15,9 @@ docker run -d --name floci `
 ```
 
 Confirmed with a health check and an actual AWS CLI smoke test against it (S3 bucket create +
-list). Along the way, clarified a question about the user's existing `kind` cluster (running via
-Docker Desktop): it's unrelated to Floci's EKS emulation. Floci provisions and owns its own
-`k3s` cluster internally when Terraform/CLI calls hit the EKS API — it doesn't attach to a
-cluster you already have. No migration or change needed; the `kind` cluster stays independent
-and unused by this project's Floci-based workflow.
+list). Along the way, clarified that Floci's EKS emulation provisions and owns its own `k3s`
+cluster internally when Terraform/CLI calls hit the EKS API — it doesn't attach to any cluster
+already on the machine.
 
 ## Why
 

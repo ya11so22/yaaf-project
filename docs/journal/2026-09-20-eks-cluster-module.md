@@ -28,8 +28,8 @@ attachments, cluster, node group). The user then ran `tofu apply` and it came ba
 ### kubectl reachability
 
 Verified `kubectl` reaches the Floci-backed cluster from the host, using a throwaway kubeconfig
-(`aws eks update-kubeconfig --kubeconfig <scratch file>`) so the user's existing `kind` context
-was never touched. `kubectl get nodes` shows one `Ready` control-plane node; `kube-system` has
+(`aws eks update-kubeconfig --kubeconfig <scratch file>`) so the user's existing default kubectl context
+was never touched (its default context is `rancher-desktop`). `kubectl get nodes` shows one `Ready` control-plane node; `kube-system` has
 coredns, local-path-provisioner and metrics-server running; `kubectl auth whoami` returns
 `floci:aws-iam` in `system:masters`.
 
