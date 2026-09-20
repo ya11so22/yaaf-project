@@ -46,8 +46,10 @@ docs; it was not run.
 - Each check was proven to fail on a planted fault: a misformatted `.tf` file, a fake GitHub token in
   a staged file, and a workflow with a bad expression. `--ci` with `tofu` removed from `PATH` fails
   instead of skipping. The hook script runs the same checks.
-- Not yet verified: the `check` workflow on a runner. This PR touches no app or infra code, so it
-  is also the first real test that `build` and `infra` skip cleanly and still report their gates.
+- On the runner (PR #2): `check` passed in 12s. Because that PR touched no app or infra code, it was
+  also the first real test of the skip path: `build` and `infra` ran only `changes`, skipped their
+  image, `plan` and `smoke` jobs, and both gates still reported pass. This confirms why the gate
+  jobs always run rather than the workflows using path filters.
 
 ## Next
 
