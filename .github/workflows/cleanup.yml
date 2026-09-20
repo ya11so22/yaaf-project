@@ -1,8 +1,9 @@
 name: cleanup
 
 # GHCR has no lifecycle policy (unlike the ECR module), so keep only the newest 10 versions of
-# each service image (ADR-0007). Run it by hand first with workflow_dispatch after the first
-# images exist: the package-name format for nested GHCR names is unverified until then.
+# each service image (ADR-0007). Verified 2026-09-20 by a manual run: the package-name format
+# `yaaf-project/<service>` is accepted and the built-in token may manage the packages. Deletion
+# itself is untested until a package exceeds 10 versions.
 on:
   schedule:
     - cron: "17 3 * * 0"
@@ -42,3 +43,6 @@ jobs:
           package-name: yaaf-project/${{ matrix.service }}
           package-type: container
           min-versions-to-keep: 10
+          # The action deletes only 1 old version per run by default, which would let retention fall
+          # behind; allow it to prune everything beyond the newest 10 in one pass.
+          num-old-versions-to-delete: 100
