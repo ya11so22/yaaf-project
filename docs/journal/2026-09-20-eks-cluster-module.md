@@ -22,10 +22,32 @@ ADR-0003 already covers the EKS-over-Fargate decision; nothing new needed an ADR
 
 `tofu fmt -recursive`, `tofu validate` ("configuration is valid"), and `tofu plan` against the
 live Floci instance: `Plan: 8 to add, 0 to change, 0 to destroy` (2 IAM roles, 4 policy
-attachments, cluster, node group). Not yet applied — `tofu apply` is left to the user.
+attachments, cluster, node group). The user then ran `tofu apply` and it came back clean;
+`tofu plan` afterwards shows no drift.
+
+### kubectl reachability
+
+Verified `kubectl` reaches the Floci-backed cluster from the host, using a throwaway kubeconfig
+(`aws eks update-kubeconfig --kubeconfig <scratch file>`) so the user's existing `kind` context
+was never touched. `kubectl get nodes` shows one `Ready` control-plane node; `kube-system` has
+coredns, local-path-provisioner and metrics-server running; `kubectl auth whoami` returns
+`floci:aws-iam` in `system:masters`.
+
+Findings (Floci behaviour worth remembering, and interview-relevant fidelity gaps per ADR-0002):
+
+- **Auth rejects the `test`/`test` keys.** Floci's IAM-auth webhook deliberately refuses the
+  public dummy credential pairs for EKS tokens, so `kubectl` returned `Unauthorized` until a real
+  IAM user + access key was created in Floci (`aws iam create-user` / `create-access-key`) and
+  exported for `aws eks get-token`. That user was created by hand, not by OpenTofu, and lives
+  only in the disposable emulator. Keys are not recorded in the repo.
+- **The k3s version doesn't follow the requested one.** The module asks for Kubernetes `1.31`
+  (and `describe-cluster` reports 1.31), but the node runs k3s `v1.34.1`.
+- **The node group is not emulated as N nodes.** Desired size 2 still yields a single k3s node
+  (named by container ID, role `control-plane`); `list-nodegroups` does report
+  `yaaf-floci-default`.
+- On Git Bash for Windows, `docker exec ... /etc/...` paths get rewritten; set
+  `MSYS_NO_PATHCONV=1`.
 
 ## Next
 
-- User runs `tofu apply` in `infra/environments/floci`; watch for Floci gaps in node group
-  support (k3s-backed) and record any as findings.
 - Then the ECR-equivalent registry module, then IAM.
