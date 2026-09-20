@@ -1,2 +1,4 @@
 # Shell scripts run on Linux runners and must keep LF endings.
 *.sh text eol=lf
+scripts/check text eol=lf
+.githooks/* text eol=lf

@@ -113,6 +113,7 @@ budget alarm and the real-AWS milestone.
 - [ADR-0006: GitHub Actions federates into AWS via OIDC with three least-privilege roles](adr/0006-github-oidc-role-design.md)
 - [ADR-0007: Split CI into build and infra pipelines; images live on GHCR; Floci only validates infra](adr/0007-ci-split-ghcr-and-floci-scope.md)
 - [ADR-0008: Phases end in a running app; named environments; push-based CD; team model](adr/0008-phase-reslice-cd-and-team-model.md)
+- [ADR-0009: A shared local pre-gate, with CI as the source of truth](adr/0009-local-pre-gate.md)
 
 New decisions use [`adr/0000-template.md`](adr/0000-template.md), written *before* asking Claude
 Code to implement.
