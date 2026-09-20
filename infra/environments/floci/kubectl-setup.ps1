@@ -1,5 +1,6 @@
-# Points kubectl at the Floci-backed EKS cluster. Safe to re-run; needed again after Floci is
-# recreated because Floci's IAM (and so this key) does not survive that.
+# Points kubectl at the Floci-backed EKS cluster. Safe to re-run (it rotates the key). With
+# persistent storage (compose.yaml) the key survives restarts, so this is normally a one-off;
+# re-run it only if Floci's data volume is wiped.
 #
 # Floci's EKS auth webhook rejects the public test/test key pair, so this creates a real IAM
 # user + key in Floci, stores it in an AWS CLI profile named "floci", and merges a kubeconfig

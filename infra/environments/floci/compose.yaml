@@ -8,7 +8,9 @@ services:
       - "4566:4566"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - floci-data:/app/data
     environment:
+      FLOCI_STORAGE_MODE: persistent
       # Floci does no version mapping: the k3s image it launches is this tag, whatever
       # kubernetes_version the module requests. Keep in step with modules/eks-cluster.
       FLOCI_SERVICES_EKS_DEFAULT_IMAGE: rancher/k3s:v1.36.4-k3s1
@@ -38,6 +40,9 @@ services:
       - floci
     networks:
       - floci-net
+
+volumes:
+  floci-data:
 
 networks:
   floci-net:

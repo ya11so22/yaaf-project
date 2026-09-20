@@ -45,8 +45,10 @@ tofu apply
 
 ## Using kubectl against the Floci cluster
 
-Floci's EKS auth rejects the public `test`/`test` keys, and Floci forgets its IAM whenever it is
-recreated. After each `tofu apply` on a fresh Floci, run:
+Floci's EKS auth rejects the public `test`/`test` keys, and only accepts a key that exists in
+its IAM (made-up keys fail too). `compose.yaml` runs Floci with `FLOCI_STORAGE_MODE=persistent`
+on a named volume, so IAM survives `docker compose restart`/`down`/`up`. Run this once (and
+again only if the `floci_floci-data` volume is deleted):
 
 ```powershell
 cd infra/environments/floci

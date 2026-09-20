@@ -51,8 +51,10 @@ Findings (Floci behaviour worth remembering, and interview-relevant fidelity gap
 - **The node group is not emulated as N nodes.** Desired size 2 still yields a single k3s node
   (named by container ID, role `control-plane`); `list-nodegroups` does report
   `yaaf-floci-default`.
-- Recreating Floci wipes its IAM, so the kubectl IAM user/key must be recreated each time. Watch
-  for a trailing `` when reading the secret in Git Bash: it made the key look valid to `sts`
+- In Floci's default in-memory mode, recreating it wipes its IAM, so the kubectl IAM user/key had to be recreated each time. Made-up keys are rejected too: the key must exist in Floci's IAM, and `create-access-key` can't take a chosen ID. Fix: `FLOCI_STORAGE_MODE=persistent` on a named volume in `compose.yaml`. Tested: an IAM user + key (and an S3 bucket) survive both `docker compose restart` and `down`/`up`. Not yet tested: whether EC2/EKS resources persist, i.e. whether the OpenTofu state stays valid across a Floci restart. Persistence is a local-dev choice only; CI would still get a fresh Floci.
+- Watch
+  for a trailing `
+` when reading the secret in Git Bash: it made the key look valid to `sts`
   but fail the EKS webhook's stricter signature check (`Unauthorized`).
 - On Git Bash for Windows, `docker exec ... /etc/...` paths get rewritten; set
   `MSYS_NO_PATHCONV=1`.
