@@ -1,30 +1,27 @@
 name: build
 
-# Builds and pushes only the app services whose folder changed. Images go to the throwaway
-# Floci registry started in each job (ADR-0002); real ECR is only used at the AWS milestone.
+# Builds, scans and pushes only the app services whose folder changed (ADR-0007).
+# Images go to ghcr.io/<owner>/<repo>/<service>:<sha>. Same-repo PRs and main push; PRs from
+# forks build only, since they get no write token.
+#
+# No workflow-level path filter on purpose: the `build` job below is the required check, and a
+# path-filtered workflow would never report it on PRs that touch no service.
 on:
   pull_request:
-    paths:
-      - "app/src/**"
-      - ".github/workflows/build.yml"
-      - ".github/scripts/changed-services.sh"
   push:
     branches: [main]
-    paths:
-      - "app/src/**"
-      - ".github/workflows/build.yml"
-      - ".github/scripts/changed-services.sh"
 
 permissions:
   contents: read
 
 concurrency:
-  group: build-${{ github.ref }}
-  cancel-in-progress: true
+  group: build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       matrix: ${{ steps.detect.outputs.matrix }}
       any: ${{ steps.detect.outputs.any }}
@@ -32,6 +29,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+
+      - name: Test the change detection
+        run: .github/scripts/changed-services.test.sh
 
       - id: detect
         env:
@@ -42,59 +42,97 @@ jobs:
           if [ "$matrix" = "[]" ]; then echo "any=false" >> "$GITHUB_OUTPUT"; else echo "any=true" >> "$GITHUB_OUTPUT"; fi
           echo "Services to build: $matrix"
 
-  build:
+  image:
     needs: changes
     if: needs.changes.outputs.any == 'true'
     runs-on: ubuntu-latest
-    name: build (${{ matrix.service }})
+    timeout-minutes: 30
+    name: image (${{ matrix.service }})
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
     strategy:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.changes.outputs.matrix) }}
     env:
-      AWS_ACCESS_KEY_ID: test
-      AWS_SECRET_ACCESS_KEY: test
-      AWS_DEFAULT_REGION: us-east-1
-      AWS_ENDPOINT_URL: http://localhost:4566
+      IMAGE: ghcr.io/${{ github.repository }}/${{ matrix.service }}
+      # Tag by the PR head commit so the tag matches what the author sees in the PR.
+      SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+      - id: mode
+        env:
+          EVENT: ${{ github.event_name }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ "$EVENT" != "pull_request" ] || [ "$HEAD_REPO" = "$REPO" ]; then
+            echo "push=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "push=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - if: steps.mode.outputs.push == 'true'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
-          tofu_version: 1.12.6
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Same compose file used locally, so Floci's config has one source of truth.
-      - name: Start Floci
-        run: |
-          docker compose -f infra/environments/floci/compose.yaml up -d floci
-          for _ in $(seq 1 30); do
-            curl -sf http://localhost:4566/_floci/health >/dev/null && exit 0
-            sleep 2
-          done
-          echo "Floci did not become healthy" && docker compose -f infra/environments/floci/compose.yaml logs floci
-          exit 1
+      # Built once and loaded locally so the same image is scanned, then pushed.
+      # provenance is off so a push creates one manifest, not an extra untagged attestation
+      # that the cleanup job would have to reason about.
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ matrix.context }}
+          platforms: linux/amd64
+          load: true
+          push: false
+          provenance: false
+          tags: ${{ env.IMAGE }}:${{ env.SHA }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ env.SHA }}
+            org.opencontainers.image.title=${{ matrix.service }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
-      # -target is deliberate: only the registry is needed here, and it is the real module
-      # (immutable tags, scanning) rather than a hand-made repository.
-      - name: Create the registry with OpenTofu
-        working-directory: infra/environments/floci
-        run: |
-          tofu init -input=false
-          tofu apply -input=false -auto-approve -target=module.ecr
+      # Report-only (ADR-0007): findings go to the Security tab and never fail the build.
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE }}:${{ env.SHA }}
+          format: sarif
+          output: trivy.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "0"
 
-      - name: Build
-        env:
-          SERVICE: ${{ matrix.service }}
-          CONTEXT: ${{ matrix.context }}
-        run: |
-          repo="$(tofu -chdir=infra/environments/floci output -json ecr_repository_urls | jq -r --arg s "$SERVICE" '.[$s]')"
-          echo "REPO=$repo" >> "$GITHUB_ENV"
-          docker build -t "$repo:$GITHUB_SHA" "$CONTEXT"
+      - if: steps.mode.outputs.push == 'true' && !cancelled()
+        uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
+        with:
+          sarif_file: trivy.sarif
+          category: trivy-${{ matrix.service }}
 
-      - name: Push and verify
-        env:
-          SERVICE: ${{ matrix.service }}
+      - if: steps.mode.outputs.push == 'true'
+        run: docker push "$IMAGE:$SHA"
+
+  # The single required check. Runs even when no service changed or a job failed, and fails
+  # unless everything it depends on succeeded or was legitimately skipped.
+  build:
+    needs: [changes, image]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - env:
+          CHANGES: ${{ needs.changes.result }}
+          IMAGE_RESULT: ${{ needs.image.result }}
         run: |
-          aws ecr get-login-password | docker login --username AWS --password-stdin localhost:4566
-          docker push "$REPO:$GITHUB_SHA"
-          aws ecr list-images --repository-name "yaaf/$SERVICE" --query 'imageIds[].imageTag' --output text | grep -q "$GITHUB_SHA"
+          echo "changes=$CHANGES image=$IMAGE_RESULT"
+          [ "$CHANGES" = "success" ] || exit 1
+          [ "$IMAGE_RESULT" = "success" ] || [ "$IMAGE_RESULT" = "skipped" ] || exit 1

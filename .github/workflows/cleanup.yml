@@ -1,0 +1,44 @@
+name: cleanup
+
+# GHCR has no lifecycle policy (unlike the ECR module), so keep only the newest 10 versions of
+# each service image (ADR-0007). Run it by hand first with workflow_dispatch after the first
+# images exist: the package-name format for nested GHCR names is unverified until then.
+on:
+  schedule:
+    - cron: "17 3 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  services:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.list.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # An empty base makes the script list every service that has a Dockerfile.
+      - id: list
+        run: echo "matrix=$(.github/scripts/changed-services.sh '' HEAD)" >> "$GITHUB_OUTPUT"
+
+  prune:
+    needs: services
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.services.outputs.matrix) }}
+    name: prune (${{ matrix.service }})
+    steps:
+      - uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5.0.0
+        with:
+          package-name: yaaf-project/${{ matrix.service }}
+          package-type: container
+          min-versions-to-keep: 10

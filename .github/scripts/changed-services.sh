@@ -18,19 +18,22 @@ context_for() {
 all_services() {
   for dir in app/src/*/; do
     svc="$(basename "$dir")"
-    [ -n "$(context_for "$svc")" ] && echo "$svc"
+    if [ -n "$(context_for "$svc")" ]; then echo "$svc"; fi
   done
 }
 
 if [ -z "$base" ] || [[ "$base" =~ ^0+$ ]] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
   services="$(all_services)"
 else
-  changed="$(git diff --name-only "$base" "$head")"
+  # Diff from the merge-base so changes that landed on the base branch after this one
+  # forked are not counted as ours.
+  fork_point="$(git merge-base "$base" "$head" 2>/dev/null || echo "$base")"
+  changed="$(git diff --name-only "$fork_point" "$head")"
   if echo "$changed" | grep -qE '^\.github/(workflows/build\.yml|scripts/changed-services\.sh)$'; then
     services="$(all_services)"
   else
     services="$(echo "$changed" | sed -n 's#^app/src/\([^/]*\)/.*#\1#p' | sort -u | while read -r svc; do
-      [ -n "$(context_for "$svc")" ] && echo "$svc"
+      if [ -n "$(context_for "$svc")" ]; then echo "$svc"; fi
     done)"
   fi
 fi

@@ -16,11 +16,22 @@ Updated as work lands — see `docs/journal/` for the narrative behind each chec
 - [x] IAM module `modules/github-oidc` (ADR-0006) — written, `tofu validate`/`plan` clean
       (2026-09-20), pending `tofu apply` against Floci; trust conditions can only be proven on
       real AWS
-- [x] GitHub Actions: build + push each `/app` service on change only (path-filtered) —
-      `build.yml` written and linted, dry-run locally (2026-09-20), pending its first real run on
-      GitHub (12 services, not 11; see the ECR journal entry)
-- [ ] GitHub Actions: `tofu plan` on PR against Floci, plan output posted as a PR comment
-- [ ] GitHub Actions: `tofu apply` on merge
+- [x] GitHub Actions: path-filtered per-service image builds to GHCR, with cache, Trivy
+      (report-only) and an always-running `build` gate — `build.yml` written, linted, change
+      detection unit-tested (2026-09-21); pending its first run on GitHub (ADR-0007)
+- [x] GitHub Actions: `infra.yml` — `fmt`/`validate`/`plan` without Floci, sticky plan comment
+      on PRs, Floci smoke test (apply, no-diff re-plan, destroy), `infra` gate — written and
+      linted (2026-09-21); pending its first run on GitHub
+- [ ] Re-run the Floci smoke test on merge to `main`; the real apply becomes a manual,
+      environment-gated dispatch for `aws-milestone`, added when that environment exists
+      (replaces "`tofu apply` on merge": applying to a throwaway Floci discards the result)
+- [ ] Weekly GHCR cleanup (`cleanup.yml`) — written; verify the package-name format with a
+      manual dispatch once images exist
+- [ ] Repository made public (email in history rewritten to the GitHub noreply address first),
+      Actions settings applied (approval for outside collaborators, SHA pinning enforced)
+- [ ] First PR into `main`: `build` and `infra` checks green, 12 images on GHCR
+- [ ] Branch protection on `main` (PR-only, `build` + `infra` required, no force-push), then the
+      12 GHCR packages made public by hand
 - [ ] AWS Budgets + billing alarm (before anything ever touches real AWS)
 - [ ] OIDC federation to AWS wired up in GitHub Actions
 - [ ] **Milestone:** one real, temporary AWS EKS deploy validating the pipeline end-to-end, then

@@ -1,6 +1,6 @@
 # ADR-0002: Floci-first local AWS emulation, with periodic real-AWS validation milestones
 
-**Status:** accepted
+**Status:** accepted (amended by [ADR-0007](0007-ci-split-ghcr-and-floci-scope.md): CI uses Floci for infrastructure validation only, not for image builds)
 **Date:** 2026-08-22
 
 ## Context

@@ -77,6 +77,7 @@ checklist and `docs/journal/` for the narrative.
 - [ADR-0004: Split Terraform state/execution strategy — local for Floci, HCP Terraform for the AWS milestone environment](adr/0004-tfstate-backend-strategy.md)
 - [ADR-0005: OpenTofu over Terraform as the IaC CLI](adr/0005-opentofu-over-terraform.md)
 - [ADR-0006: GitHub Actions federates into AWS via OIDC with three least-privilege roles](adr/0006-github-oidc-role-design.md)
+- [ADR-0007: Split CI into build and infra pipelines; images live on GHCR; Floci only validates infra](adr/0007-ci-split-ghcr-and-floci-scope.md)
 
 New decisions use [`adr/0000-template.md`](adr/0000-template.md), written *before* asking Claude
 Code to implement.
