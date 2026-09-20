@@ -1,6 +1,6 @@
 # ADR-0010: Position for the US DevOps, platform and AI-infrastructure market; reorder the phases
 
-**Status:** accepted (amends [ADR-0008](0008-phase-reslice-cd-and-team-model.md) on phases 2 to 4)
+**Status:** accepted (amends [ADR-0008](0008-phase-reslice-cd-and-team-model.md) on phases 2 to 4; Phase 1's real-AWS deploy deferred by [ADR-0012](0012-local-first-real-aws-deferred.md))
 **Date:** 2026-09-20
 
 ## Context
@@ -86,7 +86,7 @@ monitoring and rollback.
   demonstrate autoscaling and latency alerts, a short GPU run at the milestone is the fallback.
 - Revisit after Phase 2: re-check current US postings for what they ask of 2-4 year candidates, and
   cut or reorder Phases 3 and 4 accordingly.
-- Still undecided, and blocking the CD work: how a deploy identifies the current image per service
+- Settled afterwards in [ADR-0011](0011-cd-image-identity-scope-and-state.md). It was undecided, and blocking the CD work: how a deploy identifies the current image per service
   under path-filtered builds (content-hash tags, a moving tag, or building everything), what gets
   deployed (the 11 base services, without the load generator), and how the milestone holds state
-  (local state in one atomic job). To be settled in the CD design.
+  (local state in one atomic job). 

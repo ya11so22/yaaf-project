@@ -51,33 +51,39 @@ infrastructure.
 
 ### Continuous delivery (ADR-0008, ADR-0010)
 
-Design decisions still open and blocking this work (recommendations are in ADR-0010's consequences):
-how a deploy identifies the current image per service under path-filtered builds (content-hash tags
-recommended), what gets deployed (the 11 base services, without the load generator), and how the
-milestone holds state (local state in one atomic job, with a saved and encrypted plan).
+Design settled in [ADR-0011](../adr/0011-cd-image-identity-scope-and-state.md): content-hash image
+tags, the 11 base services without the load generator, and a milestone that holds local state in one
+atomic job with a saved, encrypted plan. Real AWS is deferred by [ADR-0012](../adr/0012-local-first-real-aws-deferred.md). Implementation has not started.
 
+- [ ] Spike: a throwaway Floci with EKS starts, and a deploy completes, on a GitHub-hosted runner
+      (unproven; ADR-0008 assumes it, and the dev deploy depends on it)
+- [ ] `build.yml` computes and publishes a content-hash tag per service, hash inputs including
+      shared build files (amends ADR-0007's SHA tags)
 - [ ] `deploy/dev` and `deploy/milestone` kustomize overlays on the app's `app/kustomize` base,
       images pinned by digest
 - [ ] `deploy.yml`, dev: on merge to `main`, start a throwaway Floci in the runner, apply the
       infra, deploy the overlay, wait for the rollout, smoke check the frontend
 - [ ] Rollback: redeploy the previous digest, exercised in a drill
-- [ ] `deploy.yml`, milestone: manual dispatch behind a GitHub Environment approval, using the
-      `tofu-apply` role via OIDC and a digest input, with teardown afterwards; plan saved, approved,
-      then that saved plan applied
-- [ ] Promotion documented and exercised: the digest proven in dev is the one deployed to milestone
+- [ ] Promotion documented: the digest proven in dev is the one a later milestone deploy would use
+      (the milestone `deploy.yml` itself is deferred with real AWS, ADR-0012)
 
-### Real AWS and safety
+### Phase 1 close-out (local, free; ADR-0012)
 
-- [ ] AWS Budgets + billing alarm, before anything touches real AWS
-- [ ] `environments/aws-milestone` built (backend decision resolved, see the follow-up below) and
-      OIDC federation working from Actions
-- [ ] **Milestone:** one real, temporary AWS EKS deploy of the same manifests through the
-      pipeline, including a negative test that a foreign repository cannot assume the roles;
-      then torn down, with evidence kept (logs, screenshots, teardown, a cost note)
 - [ ] Threat model (STRIDE-style pass on pipeline and infra)
 - [ ] A simple failure exercise for Phase 1 (a bad digest, recovered by rollback) and a short
       postmortem
-- [ ] Phase 1 demo: README + short recording/GIF
+- [ ] Phase 1 demo: README + short recording/GIF, from a local or runner-hosted cluster
+
+### Real AWS (deferred, optional; ADR-0012)
+
+Not started, and not before local options are exhausted. Free and local first.
+
+- [ ] AWS Budgets + billing alarm, before anything touches real AWS
+- [ ] `environments/aws-milestone` built (local state, ADR-0011) and OIDC federation working from
+      Actions
+- [ ] One real, temporary AWS EKS deploy of the same manifests through the pipeline, with a negative
+      test that a foreign repository cannot assume the roles; then torn down, with evidence kept
+      (logs, screenshots, teardown, a cost note)
 
 ## Phase 2 — Operate it (reliability and platform)
 
@@ -132,6 +138,6 @@ is its own demonstrable platform-engineering skill, distinct from pointing at a 
 
 ADR-0004 picked HCP Terraform for `environments/aws-milestone`, but HCP Terraform's remote
 execution only runs HashiCorp's own Terraform binary, not OpenTofu (see
-[ADR-0005](../adr/0005-opentofu-over-terraform.md)). Since `environments/aws-milestone` is not
-built yet, pick an OpenTofu-compatible backend when that environment is built, rather than
-deciding speculatively now.
+[ADR-0005](../adr/0005-opentofu-over-terraform.md)). Resolved for the milestone by
+[ADR-0011](../adr/0011-cd-image-identity-scope-and-state.md): local state inside one atomic
+job. A remote backend remains only as the Phase 2 stretch above.

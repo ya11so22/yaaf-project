@@ -1,6 +1,6 @@
 # ADR-0008: Phases end in a running app; named environments; push-based CD; team model
 
-**Status:** accepted (phases 2 to 4 amended by [ADR-0010](0010-us-market-positioning-and-ai-phases.md))
+**Status:** accepted (phases 2 to 4 amended by [ADR-0010](0010-us-market-positioning-and-ai-phases.md); real-AWS milestone deferred by [ADR-0012](0012-local-first-real-aws-deferred.md))
 **Date:** 2026-09-20
 
 ## Context

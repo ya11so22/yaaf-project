@@ -29,8 +29,8 @@ the interesting work is the platform layer built around it:
   developed against [Floci](https://github.com/floci-io/floci) (a free, MIT-licensed local AWS
   emulator) and validated on real AWS at milestone checkpoints.
 - GitHub Actions: path-filtered per-service image builds to GHCR, an infrastructure pipeline
-  (plan on PR, an apply-from-scratch smoke test), and CD that promotes one image digest from a
-  throwaway `dev` environment to a real-AWS `milestone` environment. OIDC federation, so there
+  (plan on PR, an apply-from-scratch smoke test), and CD that deploys one image digest to a
+  throwaway `dev` environment (Floci with EKS), with a real-AWS `milestone` deferred until needed. OIDC federation, so there
   are no long-lived AWS credentials.
 - A platform engineering layer: one reusable "golden path" workflow, GitOps with per-PR
   environments, policy-as-code, DORA metrics, and access management for the team.
@@ -62,7 +62,7 @@ Each phase ends with a running app, from commit to deployment, and is demoable o
 
 | Phase | Ends with | State |
 |---|---|---|
-| 1. Commit to running app | IaC, CI, and minimal CD: images built, deployed to `dev`, promoted to one real-AWS `milestone` deploy | In progress: modules and pipelines are written; CD, first GitHub run, and the real-AWS milestone are open |
+| 1. Commit to running app | IaC, CI, and minimal CD: images built and deployed to `dev` (Floci with EKS, free), with rollback | In progress: modules and pipelines are done and green; CD is open. Real AWS is deferred until local options are exhausted ([ADR-0012](adr/0012-local-first-real-aws-deferred.md)) |
 | 2. Operate it | Observability, SLOs and alerts, an incident drill and postmortem, GitOps with PR environments, policy-as-code, golden-path workflow, DORA metrics, team access model | Not started |
 | 3. AI serving | LLM/model serving on the platform: eval-gated promotion, canary and rollback, latency and cost metrics | Not started |
 | 4. MLOps | A real recommendation model: train/eval on PR, registry, metrics-gated promotion, drift monitoring | Not started |
@@ -84,7 +84,7 @@ and the 12 service images are public on GHCR. Floci runs locally with persistent
 modules are applied and verified against it: `kubectl` reaches the cluster and images push and
 pull. The `build`, `infra` and `check` workflows have run and passed on GitHub; the weekly
 `cleanup` workflow has not run yet. Nothing is deployed to the cluster yet. Still to do, in order:
-CD (deploy overlays and a deploy workflow), then the budget alarm and the real-AWS milestone.
+CD (a Floci-on-a-runner spike, content-hash tags, deploy overlays and a deploy workflow), then the Phase 1 close-out. Real AWS comes later, and only when local options are exhausted.
 
 ## Repository layout
 
@@ -120,6 +120,7 @@ CD (deploy overlays and a deploy workflow), then the budget alarm and the real-A
 - [ADR-0009: A shared local pre-gate, with CI as the source of truth](adr/0009-local-pre-gate.md)
 - [ADR-0010: Position for the US DevOps, platform and AI-infrastructure market; reorder the phases](adr/0010-us-market-positioning-and-ai-phases.md)
 - [ADR-0011: CD design: image identity, deploy scope and milestone state](adr/0011-cd-image-identity-scope-and-state.md)
+- [ADR-0012: Local and free first; real AWS deferred](adr/0012-local-first-real-aws-deferred.md)
 
 New decisions use [`adr/0000-template.md`](adr/0000-template.md), written *before* asking Claude
 Code to implement.
