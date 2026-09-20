@@ -1,7 +1,7 @@
 # Home Platform Engineering Project
 
 A personal, portfolio-scoped project for building demonstrable depth in GitHub Actions,
-AWS infrastructure-as-code, platform engineering, and MLOps — areas not exercised at my
+AWS infrastructure-as-code, platform engineering, and AI infrastructure — areas not exercised at my
 day job (Jenkins/OpenShift, on-prem, regulated banking).
 
 ## Attribution
@@ -34,12 +34,16 @@ the interesting work is the platform layer built around it:
   are no long-lived AWS credentials.
 - A platform engineering layer: one reusable "golden path" workflow, GitOps with per-PR
   environments, policy-as-code, DORA metrics, and access management for the team.
-- MLOps on `app/src/recommendationservice` (the one Python service): PR-triggered train/eval,
-  metrics-gated promotion on merge, versioned model artifacts.
+- Operating it: observability with SLOs and alerts, and an incident drill with a written
+  postmortem.
+- AI serving on the platform: an open-weight model server with eval-gated promotion, canary and
+  rollback, and latency and cost metrics; then classic MLOps on a real recommendation model.
 - Optional stretch: distributed tracing (OpenTelemetry) across all five languages.
 
-Every decision is an ADR written before the work, every step a journal entry, every milestone a
-checkbox. See "How this compares to live infrastructure" below for what is deliberately not here.
+The pitch: a regulated-grade delivery, operations and AI-serving platform on AWS and EKS
+([ADR-0010](adr/0010-us-market-positioning-and-ai-phases.md)). Every decision is an ADR written
+before the work, every step a journal entry, every milestone a checkbox. See "How this compares
+to live infrastructure" below for what is deliberately not here.
 
 ## How the team works (simulated)
 
@@ -59,9 +63,9 @@ Each phase ends with a running app, from commit to deployment, and is demoable o
 | Phase | Ends with | State |
 |---|---|---|
 | 1. Commit to running app | IaC, CI, and minimal CD: images built, deployed to `dev`, promoted to one real-AWS `milestone` deploy | In progress: modules and pipelines are written; CD, first GitHub run, and the real-AWS milestone are open |
-| 2. Platform layer | Golden-path workflow, GitOps with PR environments, policy-as-code, DORA metrics, team access model | Not started |
-| 3. MLOps | Train/eval on PR, metrics-gated promotion of `recommendationservice` | Not started |
-| 4. Tracing (optional) | OpenTelemetry across all five languages | Not started |
+| 2. Operate it | Observability, SLOs and alerts, an incident drill and postmortem, GitOps with PR environments, policy-as-code, golden-path workflow, DORA metrics, team access model | Not started |
+| 3. AI serving | LLM/model serving on the platform: eval-gated promotion, canary and rollback, latency and cost metrics | Not started |
+| 4. MLOps | A real recommendation model: train/eval on PR, registry, metrics-gated promotion, drift monitoring | Not started |
 
 Checklist: [`docs/milestones.md`](docs/milestones.md). Narrative: [`docs/journal/`](docs/journal/).
 
@@ -114,6 +118,7 @@ CD (deploy overlays and a deploy workflow), then the budget alarm and the real-A
 - [ADR-0007: Split CI into build and infra pipelines; images live on GHCR; Floci only validates infra](adr/0007-ci-split-ghcr-and-floci-scope.md)
 - [ADR-0008: Phases end in a running app; named environments; push-based CD; team model](adr/0008-phase-reslice-cd-and-team-model.md)
 - [ADR-0009: A shared local pre-gate, with CI as the source of truth](adr/0009-local-pre-gate.md)
+- [ADR-0010: Position for the US DevOps, platform and AI-infrastructure market; reorder the phases](adr/0010-us-market-positioning-and-ai-phases.md)
 
 New decisions use [`adr/0000-template.md`](adr/0000-template.md), written *before* asking Claude
 Code to implement.

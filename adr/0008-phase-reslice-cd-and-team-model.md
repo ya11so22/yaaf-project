@@ -1,6 +1,6 @@
 # ADR-0008: Phases end in a running app; named environments; push-based CD; team model
 
-**Status:** accepted
+**Status:** accepted (phases 2 to 4 amended by [ADR-0010](0010-us-market-positioning-and-ai-phases.md))
 **Date:** 2026-09-20
 
 ## Context
