@@ -16,7 +16,9 @@ Updated as work lands — see `docs/journal/` for the narrative behind each chec
 - [x] IAM module `modules/github-oidc` (ADR-0006) — written, `tofu validate`/`plan` clean
       (2026-09-20), pending `tofu apply` against Floci; trust conditions can only be proven on
       real AWS
-- [ ] GitHub Actions: build + push each of the 11 `/app` services on change only (path-filtered)
+- [x] GitHub Actions: build + push each `/app` service on change only (path-filtered) —
+      `build.yml` written and linted, dry-run locally (2026-09-20), pending its first real run on
+      GitHub (12 services, not 11; see the ECR journal entry)
 - [ ] GitHub Actions: `tofu plan` on PR against Floci, plan output posted as a PR comment
 - [ ] GitHub Actions: `tofu apply` on merge
 - [ ] AWS Budgets + billing alarm (before anything ever touches real AWS)

@@ -1,0 +1,100 @@
+name: build
+
+# Builds and pushes only the app services whose folder changed. Images go to the throwaway
+# Floci registry started in each job (ADR-0002); real ECR is only used at the AWS milestone.
+on:
+  pull_request:
+    paths:
+      - "app/src/**"
+      - ".github/workflows/build.yml"
+      - ".github/scripts/changed-services.sh"
+  push:
+    branches: [main]
+    paths:
+      - "app/src/**"
+      - ".github/workflows/build.yml"
+      - ".github/scripts/changed-services.sh"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.detect.outputs.matrix }}
+      any: ${{ steps.detect.outputs.any }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - id: detect
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          matrix="$(.github/scripts/changed-services.sh "$BASE" "$GITHUB_SHA")"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          if [ "$matrix" = "[]" ]; then echo "any=false" >> "$GITHUB_OUTPUT"; else echo "any=true" >> "$GITHUB_OUTPUT"; fi
+          echo "Services to build: $matrix"
+
+  build:
+    needs: changes
+    if: needs.changes.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    name: build (${{ matrix.service }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.changes.outputs.matrix) }}
+    env:
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ENDPOINT_URL: http://localhost:4566
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: 1.12.6
+
+      # Same compose file used locally, so Floci's config has one source of truth.
+      - name: Start Floci
+        run: |
+          docker compose -f infra/environments/floci/compose.yaml up -d floci
+          for _ in $(seq 1 30); do
+            curl -sf http://localhost:4566/_floci/health >/dev/null && exit 0
+            sleep 2
+          done
+          echo "Floci did not become healthy" && docker compose -f infra/environments/floci/compose.yaml logs floci
+          exit 1
+
+      # -target is deliberate: only the registry is needed here, and it is the real module
+      # (immutable tags, scanning) rather than a hand-made repository.
+      - name: Create the registry with OpenTofu
+        working-directory: infra/environments/floci
+        run: |
+          tofu init -input=false
+          tofu apply -input=false -auto-approve -target=module.ecr
+
+      - name: Build
+        env:
+          SERVICE: ${{ matrix.service }}
+          CONTEXT: ${{ matrix.context }}
+        run: |
+          repo="$(tofu -chdir=infra/environments/floci output -json ecr_repository_urls | jq -r --arg s "$SERVICE" '.[$s]')"
+          echo "REPO=$repo" >> "$GITHUB_ENV"
+          docker build -t "$repo:$GITHUB_SHA" "$CONTEXT"
+
+      - name: Push and verify
+        env:
+          SERVICE: ${{ matrix.service }}
+        run: |
+          aws ecr get-login-password | docker login --username AWS --password-stdin localhost:4566
+          docker push "$REPO:$GITHUB_SHA"
+          aws ecr list-images --repository-name "yaaf/$SERVICE" --query 'imageIds[].imageTag' --output text | grep -q "$GITHUB_SHA"
