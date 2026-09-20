@@ -1,4 +1,4 @@
-# 2026-09-21: CI redesign — GHCR for images, Floci only for infra validation
+# 2026-09-20: CI redesign — GHCR for images, Floci only for infra validation
 
 **Phase:** Phase 1 — AWS IaC + GitHub Actions foundation
 **Related ADRs:** [ADR-0007](../../adr/0007-ci-split-ghcr-and-floci-scope.md), amends [ADR-0002](../../adr/0002-aws-emulation-strategy.md)

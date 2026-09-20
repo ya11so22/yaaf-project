@@ -1,7 +1,7 @@
 # ADR-0007: Split CI into build and infra pipelines; images live on GHCR; Floci only validates infra
 
 **Status:** accepted (amends ADR-0002)
-**Date:** 2026-09-21
+**Date:** 2026-09-20
 
 ## Context
 

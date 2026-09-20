@@ -25,30 +25,61 @@ day job (Jenkins/OpenShift, on-prem, regulated banking).
 Not a coding exercise. The target app is deliberately someone else's real, complex system;
 the interesting work is the platform layer built around it:
 
-- OpenTofu IaC for a VPC / EKS-equivalent cluster / ECR-equivalent registry / IAM, developed
-  locally against [Floci](https://github.com/floci-io/floci) (a free, MIT-licensed local AWS
-  emulator), validated against real AWS at milestone checkpoints.
-- GitHub Actions: path-filtered per-service builds, `tofu plan`/`apply` gated by PR/merge,
-  OIDC federation to AWS (no long-lived credentials).
-- A platform engineering layer: one reusable "golden path" workflow instead of 11 near-identical
-  pipelines, policy-as-code guardrails (OPA/`conftest`), ephemeral PR environments.
+- OpenTofu IaC for a VPC, an EKS-equivalent cluster, an ECR-equivalent registry and IAM,
+  developed against [Floci](https://github.com/floci-io/floci) (a free, MIT-licensed local AWS
+  emulator) and validated on real AWS at milestone checkpoints.
+- GitHub Actions: path-filtered per-service image builds to GHCR, an infrastructure pipeline
+  (plan on PR, an apply-from-scratch smoke test), and CD that promotes one image digest from a
+  throwaway `dev` environment to a real-AWS `milestone` environment. OIDC federation, so there
+  are no long-lived AWS credentials.
+- A platform engineering layer: one reusable "golden path" workflow, GitOps with per-PR
+  environments, policy-as-code, DORA metrics, and access management for the team.
 - MLOps on `app/src/recommendationservice` (the one Python service): PR-triggered train/eval,
   metrics-gated promotion on merge, versioned model artifacts.
 - Optional stretch: distributed tracing (OpenTelemetry) across all five languages.
 
-Full phased roadmap, cost guardrails, and the practices that run across every phase (ADRs,
-deliberate failure exercises, DORA metrics on the pipeline itself, a threat model, and a goal of
-one piece of external validation) are documented in the ADRs below and will be expanded as each
-phase starts.
+Every decision is an ADR written before the work, every step a journal entry, every milestone a
+checkbox. See "How this compares to live infrastructure" below for what is deliberately not here.
+
+## How the team works (simulated)
+
+- **App team:** a handful of Claude agents. They change `app/src`, open PRs, and pick up work
+  from GitHub Issues labelled `ready-for-agent`. Their PRs are the realistic trigger for the
+  pipelines, and the reason environments and access management matter.
+- **Platform (DevOps):** me. I own the infrastructure, pipelines, policy and environments, and am
+  the code owner for everything outside `app/src` (`.github/CODEOWNERS`).
+- **What is simulated:** the roles. One GitHub identity does everything through Phase 1, so
+  required reviews and permission boundaries cannot be enforced or demonstrated yet; a bot
+  identity and per-team cluster access arrive in Phase 2 ([ADR-0008](adr/0008-phase-reslice-cd-and-team-model.md)).
+
+## Phases
+
+Each phase ends with a running app, from commit to deployment, and is demoable on its own.
+
+| Phase | Ends with | State |
+|---|---|---|
+| 1. Commit to running app | IaC, CI, and minimal CD: images built, deployed to `dev`, promoted to one real-AWS `milestone` deploy | In progress: modules and pipelines are written; CD, first GitHub run, and the real-AWS milestone are open |
+| 2. Platform layer | Golden-path workflow, GitOps with PR environments, policy-as-code, DORA metrics, team access model | Not started |
+| 3. MLOps | Train/eval on PR, metrics-gated promotion of `recommendationservice` | Not started |
+| 4. Tracing (optional) | OpenTelemetry across all five languages | Not started |
+
+Checklist: [`docs/milestones.md`](docs/milestones.md). Narrative: [`docs/journal/`](docs/journal/).
+
+## How this compares to live infrastructure
+
+The project mirrors how infrastructure is built and changed (IaC, CI gates, least-privilege
+identity, decision records) well, and how it is run (deploy, observe, operate) only partly. Some
+gaps are deliberate (no permanent production, no public traffic); the rest are scheduled. The
+scorecard, with reasons, is in [`docs/live-infra-gap-analysis.md`](docs/live-infra-gap-analysis.md).
 
 ## Status
 
-Phase 1 is in progress. Floci runs locally (`infra/environments/floci/compose.yaml`) and the
-OpenTofu modules for the VPC, an EKS-equivalent cluster and an ECR-equivalent registry are
-applied and verified against it (`kubectl` reaches the cluster; images push and pull). The
-GitHub OIDC/IAM module is written and planned. Still to do: the GitHub Actions pipelines,
-budgets/billing alarm, and the real-AWS validation milestone. See `docs/milestones.md` for the
-checklist and `docs/journal/` for the narrative.
+Floci runs locally with persistent storage (`infra/environments/floci/compose.yaml`). The VPC,
+EKS-equivalent, ECR-equivalent and GitHub OIDC modules are applied and verified against it:
+`kubectl` reaches the cluster and images push and pull. The build, infra and cleanup workflows
+are written, linted and partly exercised locally, but **none has run on GitHub yet**, and nothing
+is deployed to the cluster yet. Still to do, in order: make the repository public and land the
+work on `main`, prove the pipelines, add CD, then the budget alarm and the real-AWS milestone.
 
 ## Repository layout
 
@@ -56,17 +87,19 @@ checklist and `docs/journal/` for the narrative.
 |---|---|
 | `/app` | Vendored Online Boutique (Google's code — see Attribution) |
 | `/adr` | Architecture Decision Records — written before implementation, not after |
-| `/infra` | OpenTofu modules (VPC, cluster, registry, IAM) — Phase 1 |
+| `/infra` | OpenTofu modules (VPC, cluster, registry, IAM) and the `floci` / `aws-milestone` environments: Phase 1 |
+| `/deploy` | Kustomize overlays for `dev` and `milestone`, images pinned by digest (Phase 1, not yet created) |
 | `/pipelines` | Reusable/callable GitHub Actions workflows — Phase 2 golden path |
 | `/policy` | Policy-as-code (OPA/`conftest`) — Phase 2 |
 | `/platform` | Platform-layer docs/tooling (ephemeral env lifecycle, service catalog stretch) |
-| `.github/workflows` | CI/CD workflow definitions |
+| `.github/workflows` | CI/CD workflows (`build`, `infra`, `cleanup`) and `.github/scripts` (change detection and its tests) |
 | `.claude/skills` | Vendored Matt Pocock engineering/productivity skills for Claude Code |
 | `CLAUDE.md` | Per-repo config for those skills, plus the documentation-practice convention |
 | `docs/agents` | Config files `CLAUDE.md` points to — issue tracker, triage labels, domain docs layout |
 | `CONTEXT.md` | This project's own domain glossary (not `/app`'s — that's upstream) |
 | `docs/journal` | Dated, one-per-step narrative log of what happened and why |
 | `docs/milestones.md` | Phase-by-phase progress against the "independently demoable" bar |
+| `docs/live-infra-gap-analysis.md` | Honest comparison with live infrastructure: what is built, deliberate, scheduled, or unproven |
 | `docs/postmortems` | Write-ups from each phase's deliberate failure exercise |
 
 ## Architecture Decision Records
@@ -78,6 +111,7 @@ checklist and `docs/journal/` for the narrative.
 - [ADR-0005: OpenTofu over Terraform as the IaC CLI](adr/0005-opentofu-over-terraform.md)
 - [ADR-0006: GitHub Actions federates into AWS via OIDC with three least-privilege roles](adr/0006-github-oidc-role-design.md)
 - [ADR-0007: Split CI into build and infra pipelines; images live on GHCR; Floci only validates infra](adr/0007-ci-split-ghcr-and-floci-scope.md)
+- [ADR-0008: Phases end in a running app; named environments; push-based CD; team model](adr/0008-phase-reslice-cd-and-team-model.md)
 
 New decisions use [`adr/0000-template.md`](adr/0000-template.md), written *before* asking Claude
 Code to implement.

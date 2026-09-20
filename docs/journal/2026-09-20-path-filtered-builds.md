@@ -1,6 +1,6 @@
 # 2026-09-20: Path-filtered per-service builds (build.yml)
 
-> **Superseded 2026-09-21 by [ADR-0007](../../adr/0007-ci-split-ghcr-and-floci-scope.md):** the
+> **Superseded 2026-09-20 by [ADR-0007](../../adr/0007-ci-split-ghcr-and-floci-scope.md):** the
 > per-job Floci/`tofu` registry described here was replaced by GHCR. The change-detection
 > script survives.
 

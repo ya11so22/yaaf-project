@@ -1,7 +1,27 @@
 # Working conventions
 
-This is a solo portfolio project, but it follows real conventions on purpose — the point is to
-practice them, not to move fast and skip them.
+This is a portfolio project that behaves like a small team on purpose: the point is to practice
+real conventions, not to move fast and skip them. The team is simulated: a handful of Claude
+agents are the app team, and I am the DevOps engineer who owns the platform.
+
+## Working model
+
+| Role | Who | Owns | Changes |
+|---|---|---|---|
+| App team | Claude agents | `app/src/**` | Open PRs; the pipeline builds, scans and pushes images |
+| Platform (DevOps) | Project owner | Everything else: `infra/`, `.github/`, `deploy/`, `adr/`, `policy/`, `platform/`, `pipelines/` | Open PRs; the plan comment and smoke test run, then review |
+
+- **Intake:** GitHub Issues. `ready-for-agent` marks work an app-team agent can pick up without
+  further specification; `ready-for-human` is platform work. Labels are defined in
+  `docs/agents/triage-labels.md`.
+- **App change:** branch, PR touching `app/src` only, green `build` check, merge. Agents do not edit
+  workflows, infrastructure or policy.
+- **Infra or pipeline change:** branch, PR, plan comment on the PR, green `infra` check, code-owner
+  review, merge. Applying to real AWS is a manual, approval-gated dispatch, never automatic.
+- **Ownership:** `.github/CODEOWNERS` records who owns what.
+- **Limit:** one GitHub identity does everything until Phase 2, so required reviews cannot be
+  enforced yet. Until then, ownership is a convention the docs and CODEOWNERS state, not a control
+  ([ADR-0008](adr/0008-phase-reslice-cd-and-team-model.md)).
 
 ## ADRs first
 
