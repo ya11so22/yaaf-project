@@ -1,0 +1,102 @@
+name: spike-floci-deploy
+
+# Spike (milestones.md, ADR-0008/0012): can a throwaway Floci with EKS start on a GitHub-hosted
+# runner, be reached with kubectl, and roll out one of our GHCR images? Answers the question the
+# dev deploy in CD depends on. Not a required check; removed or folded into deploy.yml afterwards.
+on:
+  pull_request:
+    paths:
+      - .github/workflows/spike-floci-deploy.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  ENV_DIR: infra/environments/floci
+  COMPOSE_FILE: infra/environments/floci/compose.yaml
+  CLUSTER: yaaf-floci
+  AWS_REGION: us-east-1
+  AWS_DEFAULT_REGION: us-east-1
+
+jobs:
+  spike:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: 1.12.6
+          tofu_wrapper: false
+
+      - name: Start Floci
+        run: |
+          docker compose up -d floci
+          for _ in $(seq 1 30); do
+            curl -sf http://localhost:4566/_floci/health >/dev/null && exit 0
+            sleep 2
+          done
+          echo "Floci did not become healthy"; exit 1
+
+      - name: Apply the environment
+        working-directory: ${{ env.ENV_DIR }}
+        run: |
+          tofu init -input=false
+          time tofu apply -input=false -auto-approve
+
+      # Floci's EKS auth rejects test/test, so mint a real IAM key in Floci (see kubectl-setup.ps1).
+      - name: Point kubectl at the cluster
+        env:
+          AWS_ENDPOINT_URL: http://localhost:4566
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+        run: |
+          aws iam create-user --user-name kubectl-ci >/dev/null
+          read -r AK SK < <(aws iam create-access-key --user-name kubectl-ci \
+            --query 'AccessKey.[AccessKeyId,SecretAccessKey]' --output text)
+          echo "::add-mask::$SK"
+          {
+            echo "AWS_ENDPOINT_URL=http://localhost:4566"
+            echo "AWS_ACCESS_KEY_ID=$AK"
+            echo "AWS_SECRET_ACCESS_KEY=$SK"
+          } >> "$GITHUB_ENV"
+          AWS_ACCESS_KEY_ID=$AK AWS_SECRET_ACCESS_KEY=$SK aws eks update-kubeconfig --name "$CLUSTER"
+
+      - name: Wait for a Ready node
+        run: |
+          kubectl get nodes
+          kubectl wait --for=condition=Ready node --all --timeout=300s
+          kubectl get nodes -o wide
+
+      - name: Roll out one of our GHCR images
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=$(gh api "/users/ya11so22/packages/container/yaaf-project%2Fcurrencyservice/versions" \
+            --jq '[.[] | .metadata.container.tags[]] | first')
+          IMAGE="ghcr.io/ya11so22/yaaf-project/currencyservice:$TAG"
+          echo "image: $IMAGE"
+          kubectl create deployment currency --image="$IMAGE"
+          kubectl rollout status deployment/currency --timeout=300s
+          kubectl get pods -o wide
+
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          kubectl get nodes,pods -A -o wide || true
+          kubectl describe pods || true
+          docker ps -a
+          docker compose logs floci | tail -100
+
+      - name: Destroy
+        if: always()
+        working-directory: ${{ env.ENV_DIR }}
+        run: tofu destroy -input=false -auto-approve
+
+      # COMPOSE_FILE is relative to the repo root, so this step runs there.
+      - name: Stop Floci
+        if: always()
+        run: docker compose down -v
