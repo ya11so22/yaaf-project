@@ -49,14 +49,21 @@ infrastructure.
       identity exists (Phase 2)
 - [x] The 12 GHCR packages made public by hand; verified with anonymous pulls (2026-09-20)
 
-### Continuous delivery (ADR-0008)
+### Continuous delivery (ADR-0008, ADR-0010)
+
+Design decisions still open and blocking this work (recommendations are in ADR-0010's consequences):
+how a deploy identifies the current image per service under path-filtered builds (content-hash tags
+recommended), what gets deployed (the 11 base services, without the load generator), and how the
+milestone holds state (local state in one atomic job, with a saved and encrypted plan).
 
 - [ ] `deploy/dev` and `deploy/milestone` kustomize overlays on the app's `app/kustomize` base,
       images pinned by digest
 - [ ] `deploy.yml`, dev: on merge to `main`, start a throwaway Floci in the runner, apply the
       infra, deploy the overlay, wait for the rollout, smoke check the frontend
+- [ ] Rollback: redeploy the previous digest, exercised in a drill
 - [ ] `deploy.yml`, milestone: manual dispatch behind a GitHub Environment approval, using the
-      `tofu-apply` role via OIDC and a digest input, with teardown afterwards
+      `tofu-apply` role via OIDC and a digest input, with teardown afterwards; plan saved, approved,
+      then that saved plan applied
 - [ ] Promotion documented and exercised: the digest proven in dev is the one deployed to milestone
 
 ### Real AWS and safety
@@ -66,33 +73,47 @@ infrastructure.
       OIDC federation working from Actions
 - [ ] **Milestone:** one real, temporary AWS EKS deploy of the same manifests through the
       pipeline, including a negative test that a foreign repository cannot assume the roles;
-      then torn down
+      then torn down, with evidence kept (logs, screenshots, teardown, a cost note)
 - [ ] Threat model (STRIDE-style pass on pipeline and infra)
-- [ ] Failure exercise + postmortem for Phase 1
+- [ ] A simple failure exercise for Phase 1 (a bad digest, recovered by rollback) and a short
+      postmortem
 - [ ] Phase 1 demo: README + short recording/GIF
 
-## Phase 2 — Platform engineering layer
+## Phase 2 — Operate it (reliability and platform)
 
-Not started. Scope (ADR-0008):
+Not started. Scope (ADR-0010):
 
-- [ ] Golden-path reusable workflow (`workflow_call`) extracted from `build.yml`, with per-service
-      configuration
+- [ ] Observability: a metrics stack and dashboards for the deployed app
+- [ ] SLOs and alerts on them, and an incident drill with a written postmortem
+- [ ] DORA metrics from the pipeline
 - [ ] GitOps (Argo CD) in a persistent cluster, with per-PR environments (a namespace per PR,
       torn down on close)
-- [ ] Policy-as-code: `conftest` on plans (for example, no wildcard OIDC `sub`) and manifests
-- [ ] Minimal observability (metrics stack and one alert) and DORA metrics from the pipeline
+- [ ] Policy-as-code: `conftest` on plans (for example, no wildcard OIDC `sub`) and manifests, and
+      an IaC security scan
+- [ ] Golden-path reusable workflow (`workflow_call`) extracted from `build.yml`, with per-service
+      configuration
 - [ ] Team access model: a bot identity for agents, enforceable required reviews, namespace-per-
       team RBAC
 - [ ] Failure exercise + postmortem for Phase 2, and a demo
 
-## Phase 3 — MLOps on `recommendationservice`
+## Phase 3 — AI serving on the platform (LLMOps)
 
-Not started: PR-triggered train/eval, metrics-gated promotion on merge, versioned model
-artifacts.
+Not started. Scope (ADR-0010): an open-weight model server on the cluster (CPU-friendly small
+model, so it stays free), model versions promoted through an evaluation gate in CI with canary and
+rollback, latency, cost and token metrics with alerts, and autoscaling. Built on Phase 1 and 2's
+delivery and observability; a short GPU run at the milestone is the fallback if CPU inference cannot
+show autoscaling and latency alerts.
 
-## Phase 4 — Distributed tracing (optional/stretch)
+## Phase 4 — Classic MLOps
 
-Not started; explicitly non-blocking for calling the project "done" at Phase 3.
+Not started. Scope (ADR-0010): a real recommendation model for `recommendationservice` (the current
+service is not a real ML system), with training and evaluation on PR, a registry, metrics-gated
+promotion and drift monitoring, on Phase 3's platform.
+
+## Optional stretch
+
+Distributed tracing (OpenTelemetry) across all five languages; non-blocking for calling the project
+done.
 
 ## Standing goals (not phase-scoped)
 

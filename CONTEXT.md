@@ -1,6 +1,6 @@
 # Home Platform Engineering Project
 
-Platform/infra/CI-CD/MLOps tooling built around a vendored target application (`/app`, Google's
+Platform/infra/CI-CD/AI-infrastructure tooling built around a vendored target application (`/app`, Google's
 Online Boutique — see `README.md` for scope and attribution). This file defines terminology
 specific to the platform work; it does not describe `/app` itself, which is upstream code.
 
