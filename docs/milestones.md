@@ -60,8 +60,10 @@ atomic job with a saved, encrypted plan. Real AWS is deferred by [ADR-0012](../a
 - [x] `build.yml` publishes a `content-<hash>` tag per service beside the SHA tag, and skips services
       whose tag already exists (2026-09-21: 12 built, then 12 skipped on a re-run). The hash is the
       git tree of the build context, which every service keeps self-contained (amends ADR-0007)
-- [ ] `deploy/dev` and `deploy/milestone` kustomize overlays on the app's `app/kustomize` base,
-      images pinned by digest
+- [x] `deploy/dev` kustomize overlay on the app's `app/kustomize` base (10 services and `redis-cart`,
+      no load generator), with `render-manifests.sh` pinning each service to its content tag; tested
+      (2026-09-21) and every rendered tag confirmed on GHCR. A `milestone` overlay waits for real
+      AWS (ADR-0012)
 - [ ] `deploy.yml`, dev: on merge to `main`, start a throwaway Floci in the runner, apply the
       infra, deploy the overlay, wait for the rollout, smoke check the frontend
 - [ ] Rollback: redeploy the previous digest, exercised in a drill
