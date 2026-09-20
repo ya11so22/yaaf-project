@@ -74,7 +74,7 @@ scorecard, with reasons, is in [`docs/live-infra-gap-analysis.md`](docs/live-inf
 
 ## Status
 
-The repository is public. Floci runs locally with persistent storage
+The repository is public, `main` is protected, and the 12 service images are public on GHCR. Floci runs locally with persistent storage
 (`infra/environments/floci/compose.yaml`). The VPC, EKS-equivalent, ECR-equivalent and GitHub OIDC
 modules are applied and verified against it: `kubectl` reaches the cluster and images push and
 pull. The build, infra and cleanup workflows are written, linted and partly exercised locally, but

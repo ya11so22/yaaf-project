@@ -41,10 +41,11 @@ infrastructure.
       re-scanned with gitleaks (56 commits including the pre-rewrite copies, no leaks) (2026-09-20)
 - [x] Repository made public; SHA pinning enforced; workflows from all outside contributors need
       approval; default workflow token read-only (2026-09-20)
-- [ ] The branch lands on `main` through a PR with a merge commit
-- [ ] Branch protection on `main` (PR-only, `build` + `infra` required, no force-push); required
-      reviews stay off until a second identity exists (Phase 2)
-- [ ] The 12 GHCR packages made public by hand
+- [x] The branch landed on `main` through PR #1 with a merge commit (2026-09-20)
+- [x] Branch protection on `main` (2026-09-20): PR-only, applies to admins, `build`, `infra` and
+      `check` required, no force-push or deletion; required reviews stay off until a second
+      identity exists (Phase 2)
+- [x] The 12 GHCR packages made public by hand; verified with anonymous pulls (2026-09-20)
 
 ### Continuous delivery (ADR-0008)
 
