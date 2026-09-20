@@ -55,10 +55,11 @@ Design settled in [ADR-0011](../adr/0011-cd-image-identity-scope-and-state.md): 
 tags, the 11 base services without the load generator, and a milestone that holds local state in one
 atomic job with a saved, encrypted plan. Real AWS is deferred by [ADR-0012](../adr/0012-local-first-real-aws-deferred.md). Implementation has not started.
 
-- [ ] Spike: a throwaway Floci with EKS starts, and a deploy completes, on a GitHub-hosted runner
-      (unproven; ADR-0008 assumes it, and the dev deploy depends on it)
-- [ ] `build.yml` computes and publishes a content-hash tag per service, hash inputs including
-      shared build files (amends ADR-0007's SHA tags)
+- [x] Spike: a throwaway Floci with EKS starts, and a GHCR image rolls out, on a GitHub-hosted
+      runner (2026-09-20, about 1m50s end to end; multi-service and frontend checks still open)
+- [x] `build.yml` publishes a `content-<hash>` tag per service beside the SHA tag, and skips services
+      whose tag already exists (2026-09-21: 12 built, then 12 skipped on a re-run). The hash is the
+      git tree of the build context, which every service keeps self-contained (amends ADR-0007)
 - [ ] `deploy/dev` and `deploy/milestone` kustomize overlays on the app's `app/kustomize` base,
       images pinned by digest
 - [ ] `deploy.yml`, dev: on merge to `main`, start a throwaway Floci in the runner, apply the
