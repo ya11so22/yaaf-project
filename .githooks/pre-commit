@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+# Runs the project's fast checks before every commit (ADR-0009). Enable once with:
+#   git config core.hooksPath .githooks
+# Skippable with `git commit --no-verify`; CI runs the same script and is the real gate.
+exec "$(git rev-parse --show-toplevel)/scripts/check"

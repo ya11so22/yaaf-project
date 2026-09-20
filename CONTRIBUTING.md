@@ -23,6 +23,17 @@ agents are the app team, and I am the DevOps engineer who owns the platform.
   enforced yet. Until then, ownership is a convention the docs and CODEOWNERS state, not a control
   ([ADR-0008](adr/0008-phase-reslice-cd-and-team-model.md)).
 
+## Local checks (pre-gate)
+
+`scripts/check` runs the fast checks in a few seconds: `tofu fmt -check`, the change-detection
+tests, `actionlint`, and a `gitleaks` scan of staged changes. It needs `tofu` and Docker; a missing
+tool shows as a visible SKIP locally.
+
+- Enable the hook once: `git config core.hooksPath .githooks`. Or run `scripts/check` by hand.
+- It can be skipped (`git commit --no-verify`), so it is a convenience, not a control. The `check`
+  workflow runs `scripts/check --ci` (full-history secret scan, missing tools fail) on every PR and
+  is the real gate ([ADR-0009](adr/0009-local-pre-gate.md)).
+
 ## ADRs first
 
 Every nontrivial choice gets a short ADR (`/adr`, using `0000-template.md`) written *before*

@@ -1,0 +1,33 @@
+name: check
+
+# The same fast checks as the local pre-commit hook (ADR-0009), run as the source of truth.
+# Always runs, so it can be a required check on every PR.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Full history so gitleaks scans every commit, not just the tip.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: 1.12.6
+          tofu_wrapper: false
+
+      - name: Run the checks
+        run: bash scripts/check --ci

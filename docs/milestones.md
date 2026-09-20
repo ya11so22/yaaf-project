@@ -26,6 +26,8 @@ infrastructure.
       always-running `build` gate: written, linted, change detection unit-tested (ADR-0007)
 - [x] `infra.yml`: `fmt`/`validate`/`plan` without Floci, sticky plan comment, Floci smoke test
       (apply, no-diff re-plan, destroy), `infra` gate: written and linted
+- [x] Local pre-gate: `scripts/check`, a pre-commit hook and `check.yml` sharing one script
+      (ADR-0009). Each check proven against a planted fault; first CI run pending
 - [ ] `cleanup.yml` (weekly GHCR retention): written; verify the package-name format with a manual
       dispatch once images exist
 - [ ] **First real run on GitHub:** `build` and `infra` green on a PR, 12 images on GHCR. The

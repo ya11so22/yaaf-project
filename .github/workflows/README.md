@@ -6,6 +6,7 @@ Design and reasoning: [ADR-0007](../../adr/0007-ci-split-ghcr-and-floci-scope.md
 |---|---|---|
 | `build.yml` | `build` | Finds changed `app/src/<service>` folders (`.github/scripts/changed-services.sh`, tested by `changed-services.test.sh`), builds each for amd64 with a per-service cache, scans with Trivy (report-only, SARIF to the Security tab) and pushes `ghcr.io/<owner>/<repo>/<service>:<sha>`. Fork PRs build only. No Floci, no `tofu`, no AWS. |
 | `infra.yml` | `infra` | On changes under `infra/`: `fmt`, `validate` and `plan` without Floci, with the plan as one sticky PR comment; then a Floci smoke test that applies `environments/floci` from scratch, requires a no-changes re-plan, and destroys it. Re-runs on `main` after merge. |
+| `check.yml` | `check` | Runs `scripts/check --ci`: `tofu fmt -check`, the change-detection tests, `actionlint`, and a full-history `gitleaks` scan. The same script the local pre-commit hook runs ([ADR-0009](../../adr/0009-local-pre-gate.md)). |
 | `cleanup.yml` | | Weekly: keeps the newest 10 versions of each image on GHCR. Also runnable by hand. |
 
 Both `build` and `infra` are gate jobs that always run, so a PR that touches nothing relevant
