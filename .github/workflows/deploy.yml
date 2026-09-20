@@ -82,7 +82,10 @@ jobs:
             echo "AWS_SECRET_ACCESS_KEY=$SK"
           } >> "$GITHUB_ENV"
           AWS_ACCESS_KEY_ID=$AK AWS_SECRET_ACCESS_KEY=$SK aws eks update-kubeconfig --name "$CLUSTER"
-          kubectl wait --for=condition=Ready node --all --timeout=300s
+
+      # A separate step: the new key reaches it through GITHUB_ENV, not the step above.
+      - name: Wait for a Ready node
+        run: kubectl wait --for=condition=Ready node --all --timeout=300s
 
       - name: Render the manifests
         env:
