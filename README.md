@@ -43,9 +43,12 @@ phase starts.
 
 ## Status
 
-Floci is not yet running locally. This repository is currently scaffolding: directory layout,
-ADRs, and the vendored target app / skills. Phase 1 (Terraform + GitHub Actions foundation)
-starts once Floci is set up.
+Phase 1 is in progress. Floci runs locally (`infra/environments/floci/compose.yaml`) and the
+OpenTofu modules for the VPC, an EKS-equivalent cluster and an ECR-equivalent registry are
+applied and verified against it (`kubectl` reaches the cluster; images push and pull). The
+GitHub OIDC/IAM module is written and planned. Still to do: the GitHub Actions pipelines,
+budgets/billing alarm, and the real-AWS validation milestone. See `docs/milestones.md` for the
+checklist and `docs/journal/` for the narrative.
 
 ## Repository layout
 
