@@ -33,9 +33,10 @@ infrastructure.
 
 ### Repository (agreed sequence, see ADR-0007)
 
-- [ ] Email in the 20 affected commits rewritten to the GitHub noreply address, then the
-      repository made public, Actions settings applied (approval for outside collaborators, SHA
-      pinning enforced)
+- [x] Email in the commits rewritten to the GitHub noreply address and force-pushed; history
+      re-scanned with gitleaks (56 commits including the pre-rewrite copies, no leaks) (2026-09-20)
+- [x] Repository made public; SHA pinning enforced; workflows from all outside contributors need
+      approval; default workflow token read-only (2026-09-20)
 - [ ] The branch lands on `main` through a PR with a merge commit
 - [ ] Branch protection on `main` (PR-only, `build` + `infra` required, no force-push); required
       reviews stay off until a second identity exists (Phase 2)

@@ -74,12 +74,13 @@ scorecard, with reasons, is in [`docs/live-infra-gap-analysis.md`](docs/live-inf
 
 ## Status
 
-Floci runs locally with persistent storage (`infra/environments/floci/compose.yaml`). The VPC,
-EKS-equivalent, ECR-equivalent and GitHub OIDC modules are applied and verified against it:
-`kubectl` reaches the cluster and images push and pull. The build, infra and cleanup workflows
-are written, linted and partly exercised locally, but **none has run on GitHub yet**, and nothing
-is deployed to the cluster yet. Still to do, in order: make the repository public and land the
-work on `main`, prove the pipelines, add CD, then the budget alarm and the real-AWS milestone.
+The repository is public. Floci runs locally with persistent storage
+(`infra/environments/floci/compose.yaml`). The VPC, EKS-equivalent, ECR-equivalent and GitHub OIDC
+modules are applied and verified against it: `kubectl` reaches the cluster and images push and
+pull. The build, infra and cleanup workflows are written, linted and partly exercised locally, but
+**none has run on GitHub yet**, and nothing is deployed to the cluster yet. Still to do, in order:
+land the work on `main` through a PR and prove the pipelines, protect `main`, add CD, then the
+budget alarm and the real-AWS milestone.
 
 ## Repository layout
 
