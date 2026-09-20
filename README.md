@@ -119,6 +119,7 @@ CD (deploy overlays and a deploy workflow), then the budget alarm and the real-A
 - [ADR-0008: Phases end in a running app; named environments; push-based CD; team model](adr/0008-phase-reslice-cd-and-team-model.md)
 - [ADR-0009: A shared local pre-gate, with CI as the source of truth](adr/0009-local-pre-gate.md)
 - [ADR-0010: Position for the US DevOps, platform and AI-infrastructure market; reorder the phases](adr/0010-us-market-positioning-and-ai-phases.md)
+- [ADR-0011: CD design: image identity, deploy scope and milestone state](adr/0011-cd-image-identity-scope-and-state.md)
 
 New decisions use [`adr/0000-template.md`](adr/0000-template.md), written *before* asking Claude
 Code to implement.
