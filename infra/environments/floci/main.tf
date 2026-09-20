@@ -29,3 +29,15 @@ module "vpc" {
     Environment = "floci"
   }
 }
+
+module "eks" {
+  source = "../../modules/eks-cluster"
+
+  name       = "${var.project}-floci"
+  subnet_ids = module.vpc.private_subnet_ids
+
+  tags = {
+    Project     = var.project
+    Environment = "floci"
+  }
+}
