@@ -71,6 +71,7 @@ starts once Floci is set up.
 - [ADR-0001: Use an existing open-source app as the target codebase](adr/0001-target-application-choice.md)
 - [ADR-0002: Floci-first local AWS emulation, with periodic real-AWS validation milestones](adr/0002-aws-emulation-strategy.md)
 - [ADR-0003: Ephemeral EKS over ECS Fargate as the compute target](adr/0003-eks-ephemeral-vs-ecs-fargate.md)
+- [ADR-0004: Split Terraform state/execution strategy — local for Floci, HCP Terraform for the AWS milestone environment](adr/0004-tfstate-backend-strategy.md)
 
 New decisions use [`adr/0000-template.md`](adr/0000-template.md), written *before* asking Claude
 Code to implement.

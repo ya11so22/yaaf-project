@@ -41,3 +41,12 @@ Not started; explicitly non-blocking for calling the project "done" at Phase 3.
       hard problem hit along the way)
 - [ ] Deliberate failure exercise + postmortem at the end of each phase (see
       `docs/postmortems/`)
+
+## Phase 2 stretch candidate: self-hosted Terraform state backend
+
+Not committed, not scheduled — a candidate to revisit when Phase 2's platform layer takes
+shape. Running a self-hosted remote-state backend (MinIO + Terraform's native S3 state locking,
+or the `pg` backend) is its own demonstrable platform-engineering skill, distinct from pointing
+at HCP Terraform's SaaS. See [ADR-0004](../adr/0004-tfstate-backend-strategy.md)'s consequences
+section for why this isn't needed yet: neither `environments/floci` nor
+`environments/aws-milestone` currently needs state to persist across separate jobs/sessions.
