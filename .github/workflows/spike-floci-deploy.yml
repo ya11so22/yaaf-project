@@ -91,9 +91,12 @@ jobs:
           docker ps -a
           docker compose logs floci | tail -100
 
-      - name: Tear down
+      - name: Destroy
         if: always()
         working-directory: ${{ env.ENV_DIR }}
-        run: |
-          tofu destroy -input=false -auto-approve || true
-          docker compose down -v
+        run: tofu destroy -input=false -auto-approve
+
+      # COMPOSE_FILE is relative to the repo root, so this step runs there.
+      - name: Stop Floci
+        if: always()
+        run: docker compose down -v
