@@ -22,8 +22,10 @@ $env:AWS_SECRET_ACCESS_KEY = "test"
 $env:AWS_DEFAULT_REGION = $Region
 $env:AWS_ENDPOINT_URL = $Endpoint
 
-aws iam get-user --user-name $UserName *> $null
-if ($LASTEXITCODE -ne 0) {
+# list-users exits 0 whether or not the user exists; get-user would write to stderr, which
+# Windows PowerShell 5.1 treats as a fatal error under $ErrorActionPreference = "Stop".
+$existing = aws iam list-users --query "Users[?UserName=='$UserName'].UserName" --output text
+if (-not $existing) {
     aws iam create-user --user-name $UserName | Out-Null
 }
 
