@@ -28,8 +28,10 @@ infrastructure.
       (apply, no-diff re-plan, destroy), `infra` gate: written and linted
 - [x] Local pre-gate: `scripts/check`, a pre-commit hook and `check.yml` sharing one script
       (ADR-0009). Each check proven against a planted fault, and `check` passes on a runner
-- [ ] `cleanup.yml` (weekly GHCR retention): written; verify the package-name format with a manual
-      dispatch once images exist
+- [x] `cleanup.yml` (weekly GHCR retention): verified by a manual run (2026-09-20). The package name
+      `yaaf-project/<service>` is accepted and the built-in token can manage the packages. The
+      action's default of deleting 1 old version per run was raised to 100. Deletion itself is
+      untested until a package exceeds 10 versions.
 - [x] **First real run on GitHub** (PR #1, 2026-09-20): `build` and `infra` green, 12 images pushed
       to GHCR, Trivy results in code scanning, plan comment posted, Floci smoke test passed (apply,
       no-diff re-plan, destroy). A later PR confirmed the gates report green when nothing relevant
