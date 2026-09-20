@@ -22,7 +22,7 @@ jobs:
 
       # An empty base makes the script list every service that has a Dockerfile.
       - id: list
-        run: echo "matrix=$(.github/scripts/changed-services.sh '' HEAD)" >> "$GITHUB_OUTPUT"
+        run: echo "matrix=$(bash .github/scripts/changed-services.sh '' HEAD)" >> "$GITHUB_OUTPUT"
 
   prune:
     needs: services

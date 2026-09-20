@@ -31,13 +31,13 @@ jobs:
           fetch-depth: 0
 
       - name: Test the change detection
-        run: .github/scripts/changed-services.test.sh
+        run: bash .github/scripts/changed-services.test.sh
 
       - id: detect
         env:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
-          matrix="$(.github/scripts/changed-services.sh "$BASE" "$GITHUB_SHA")"
+          matrix="$(bash .github/scripts/changed-services.sh "$BASE" "$GITHUB_SHA")"
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
           if [ "$matrix" = "[]" ]; then echo "any=false" >> "$GITHUB_OUTPUT"; else echo "any=true" >> "$GITHUB_OUTPUT"; fi
           echo "Services to build: $matrix"

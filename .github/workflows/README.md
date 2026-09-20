@@ -15,3 +15,21 @@ Third-party actions are pinned to full commit SHAs with the version in a comment
 
 Not built yet: the manual, environment-gated apply of `aws-milestone` (needs that environment
 to exist), and pushing to real AWS through the OIDC roles (ADR-0006).
+
+## Running locally with act
+
+`.actrc` maps `ubuntu-latest` to `catthehacker/ubuntu:act-latest` (about 0.6 GB compressed, close
+enough to GitHub's runner for these workflows) so [act](https://github.com/nektos/act) and the
+GitHub Local Actions VS Code extension run without their interactive image prompt. Pull the image
+once first (`docker pull catthehacker/ubuntu:act-latest`), because `.actrc` sets `--pull=false`.
+
+Verified locally: `changes` (both workflows) and `plan`. Do not run these locally:
+
+- `infra.yml` `smoke`: it uses your local Floci's container names, port 4566 and data volume, and
+  ends with `docker compose down -v`, which deletes that volume.
+- `build.yml` `image` with a push-style event: it can log in to GHCR and push. Use a fork-PR event
+  payload and `--matrix service:<name>` to build one image without pushing.
+
+act ignores `concurrency`, `timeout-minutes` and OIDC, and has no Actions cache token, so the
+`type=gha` build cache does not work under it.
+

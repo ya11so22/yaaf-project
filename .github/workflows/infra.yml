@@ -62,6 +62,8 @@ jobs:
       - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
         with:
           tofu_version: 1.12.6
+          # The wrapper only exposes stdout/exit code as step outputs, which no step here uses.
+          tofu_wrapper: false
 
       - name: Format
         run: tofu fmt -check -recursive -diff infra
@@ -125,6 +127,8 @@ jobs:
       - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
         with:
           tofu_version: 1.12.6
+          # The wrapper only exposes stdout/exit code as step outputs, which no step here uses.
+          tofu_wrapper: false
 
       # Same compose file used locally, so Floci's config has one source of truth.
       - name: Start Floci
