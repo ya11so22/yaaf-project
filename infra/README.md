@@ -43,6 +43,21 @@ tofu plan
 tofu apply
 ```
 
+## Using kubectl against the Floci cluster
+
+Floci's EKS auth rejects the public `test`/`test` keys, and Floci forgets its IAM whenever it is
+recreated. After each `tofu apply` on a fresh Floci, run:
+
+```powershell
+cd infra/environments/floci
+powershell -ExecutionPolicy Bypass -File .\kubectl-setup.ps1
+kubectl get nodes
+```
+
+The script creates a `kubectl-dev` IAM user in Floci, stores its key in an AWS CLI profile named
+`floci`, and merges a kubeconfig context that uses that profile. Other contexts are left alone;
+switch back with `kubectl config use-context <name>`.
+
 ## Status
 
 - `modules/vpc`: VPC, public/private subnets across 2 AZs, IGW, single shared NAT gateway.
