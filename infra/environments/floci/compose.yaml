@@ -11,6 +11,9 @@ services:
       - floci-data:/app/data
     environment:
       FLOCI_STORAGE_MODE: persistent
+      # Docker Desktop on Windows can't resolve the default *.localhost registry hostnames,
+      # so use localhost:4566/<account>/<region>/<repo> URIs instead.
+      FLOCI_SERVICES_ECR_URI_STYLE: path
       # Floci does no version mapping: the k3s image it launches is this tag, whatever
       # kubernetes_version the module requests. Keep in step with modules/eks-cluster.
       FLOCI_SERVICES_EKS_DEFAULT_IMAGE: rancher/k3s:v1.36.4-k3s1
