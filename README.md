@@ -73,6 +73,7 @@ starts once Floci is set up.
 - [ADR-0003: Ephemeral EKS over ECS Fargate as the compute target](adr/0003-eks-ephemeral-vs-ecs-fargate.md)
 - [ADR-0004: Split Terraform state/execution strategy — local for Floci, HCP Terraform for the AWS milestone environment](adr/0004-tfstate-backend-strategy.md)
 - [ADR-0005: OpenTofu over Terraform as the IaC CLI](adr/0005-opentofu-over-terraform.md)
+- [ADR-0006: GitHub Actions federates into AWS via OIDC with three least-privilege roles](adr/0006-github-oidc-role-design.md)
 
 New decisions use [`adr/0000-template.md`](adr/0000-template.md), written *before* asking Claude
 Code to implement.

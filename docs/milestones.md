@@ -13,7 +13,9 @@ Updated as work lands — see `docs/journal/` for the narrative behind each chec
       clean, applied against Floci and `kubectl` verified (2026-09-20)
 - [x] ECR-equivalent registry module `modules/ecr` — written, `tofu validate`/`plan` clean,
       applied against Floci and an image push/pull verified (2026-09-20)
-- [ ] IAM module
+- [x] IAM module `modules/github-oidc` (ADR-0006) — written, `tofu validate`/`plan` clean
+      (2026-09-20), pending `tofu apply` against Floci; trust conditions can only be proven on
+      real AWS
 - [ ] GitHub Actions: build + push each of the 11 `/app` services on change only (path-filtered)
 - [ ] GitHub Actions: `tofu plan` on PR against Floci, plan output posted as a PR comment
 - [ ] GitHub Actions: `tofu apply` on merge

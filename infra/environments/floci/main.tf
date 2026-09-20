@@ -68,3 +68,16 @@ module "ecr" {
     Environment = "floci"
   }
 }
+
+module "github_oidc" {
+  source = "../../modules/github-oidc"
+
+  name_prefix         = var.project
+  github_repository   = "ya11so22/yaaf-project"
+  ecr_repository_arns = values(module.ecr.repository_arns)
+
+  tags = {
+    Project     = var.project
+    Environment = "floci"
+  }
+}

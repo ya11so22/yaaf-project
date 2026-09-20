@@ -21,3 +21,11 @@ output "cluster_endpoint" {
 output "ecr_repository_urls" {
   value = module.ecr.repository_urls
 }
+
+output "github_oidc_role_arns" {
+  value = {
+    ecr_push   = module.github_oidc.ecr_push_role_arn
+    tofu_plan  = module.github_oidc.tofu_plan_role_arn
+    tofu_apply = module.github_oidc.tofu_apply_role_arn
+  }
+}
