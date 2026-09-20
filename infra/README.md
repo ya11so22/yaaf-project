@@ -1,7 +1,8 @@
 # /infra
 
-Terraform modules and environments for the platform's AWS infrastructure — original work for
-this project (not part of the vendored `/app`).
+OpenTofu modules and environments for the platform's AWS infrastructure — original work for
+this project (not part of the vendored `/app`). See [ADR-0005](../adr/0005-opentofu-over-terraform.md)
+for why OpenTofu, not Terraform.
 
 ## Layout
 
@@ -16,7 +17,7 @@ infra/
 
 Environments call the same modules; only the provider block and environment-specific variables
 differ between `floci` and `aws-milestone`, so what gets validated against real AWS is the same
-Terraform shape exercised locally, not a parallel definition.
+OpenTofu shape exercised locally, not a parallel definition.
 
 ## Running against Floci
 
@@ -24,14 +25,15 @@ With Floci up locally (`http://localhost:4566` by default):
 
 ```bash
 cd infra/environments/floci
-terraform init
-terraform plan
-terraform apply
+tofu init
+tofu plan
+tofu apply
 ```
 
 ## Status
 
 - `modules/vpc`: VPC, public/private subnets across 2 AZs, IGW, single shared NAT gateway.
+  Applied and verified against Floci (2026-09-20).
 - Next up: `eks-cluster` and `ecr` modules, then `iam`, per the Phase 1 roadmap in the root
   README.
 - `environments/aws-milestone`: intentionally empty until Phase 1 reaches its real-AWS

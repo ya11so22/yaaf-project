@@ -25,10 +25,10 @@ day job (Jenkins/OpenShift, on-prem, regulated banking).
 Not a coding exercise. The target app is deliberately someone else's real, complex system;
 the interesting work is the platform layer built around it:
 
-- Terraform IaC for a VPC / EKS-equivalent cluster / ECR-equivalent registry / IAM, developed
+- OpenTofu IaC for a VPC / EKS-equivalent cluster / ECR-equivalent registry / IAM, developed
   locally against [Floci](https://github.com/floci-io/floci) (a free, MIT-licensed local AWS
   emulator), validated against real AWS at milestone checkpoints.
-- GitHub Actions: path-filtered per-service builds, `terraform plan`/`apply` gated by PR/merge,
+- GitHub Actions: path-filtered per-service builds, `tofu plan`/`apply` gated by PR/merge,
   OIDC federation to AWS (no long-lived credentials).
 - A platform engineering layer: one reusable "golden path" workflow instead of 11 near-identical
   pipelines, policy-as-code guardrails (OPA/`conftest`), ephemeral PR environments.
@@ -53,7 +53,7 @@ starts once Floci is set up.
 |---|---|
 | `/app` | Vendored Online Boutique (Google's code — see Attribution) |
 | `/adr` | Architecture Decision Records — written before implementation, not after |
-| `/infra` | Terraform modules (VPC, cluster, registry, IAM) — Phase 1 |
+| `/infra` | OpenTofu modules (VPC, cluster, registry, IAM) — Phase 1 |
 | `/pipelines` | Reusable/callable GitHub Actions workflows — Phase 2 golden path |
 | `/policy` | Policy-as-code (OPA/`conftest`) — Phase 2 |
 | `/platform` | Platform-layer docs/tooling (ephemeral env lifecycle, service catalog stretch) |
@@ -72,6 +72,7 @@ starts once Floci is set up.
 - [ADR-0002: Floci-first local AWS emulation, with periodic real-AWS validation milestones](adr/0002-aws-emulation-strategy.md)
 - [ADR-0003: Ephemeral EKS over ECS Fargate as the compute target](adr/0003-eks-ephemeral-vs-ecs-fargate.md)
 - [ADR-0004: Split Terraform state/execution strategy — local for Floci, HCP Terraform for the AWS milestone environment](adr/0004-tfstate-backend-strategy.md)
+- [ADR-0005: OpenTofu over Terraform as the IaC CLI](adr/0005-opentofu-over-terraform.md)
 
 New decisions use [`adr/0000-template.md`](adr/0000-template.md), written *before* asking Claude
 Code to implement.

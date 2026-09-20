@@ -7,7 +7,7 @@ practice them, not to move fast and skip them.
 
 Every nontrivial choice gets a short ADR (`/adr`, using `0000-template.md`) written *before*
 asking Claude Code to implement it, not after. This is the main defense against "can't explain
-why the Terraform is shaped this way" under questioning.
+why the infra code is shaped this way" under questioning.
 
 ## Documentation practice
 

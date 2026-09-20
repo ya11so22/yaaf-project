@@ -7,14 +7,14 @@ Updated as work lands — see `docs/journal/` for the narrative behind each chec
 ## Phase 1 — AWS IaC + GitHub Actions foundation
 
 - [x] Floci running locally (2026-09-16)
-- [x] VPC Terraform module + `environments/floci` root config (2026-09-16, pending
-      `terraform apply` confirmation)
+- [x] VPC OpenTofu module + `environments/floci` root config, applied and verified against
+      Floci (2026-09-16 module, applied 2026-09-20)
 - [ ] EKS-equivalent cluster module (ADR-0003)
 - [ ] ECR-equivalent registry module
 - [ ] IAM module
 - [ ] GitHub Actions: build + push each of the 11 `/app` services on change only (path-filtered)
-- [ ] GitHub Actions: `terraform plan` on PR against Floci, plan output posted as a PR comment
-- [ ] GitHub Actions: `terraform apply` on merge
+- [ ] GitHub Actions: `tofu plan` on PR against Floci, plan output posted as a PR comment
+- [ ] GitHub Actions: `tofu apply` on merge
 - [ ] AWS Budgets + billing alarm (before anything ever touches real AWS)
 - [ ] OIDC federation to AWS wired up in GitHub Actions
 - [ ] **Milestone:** one real, temporary AWS EKS deploy validating the pipeline end-to-end, then
@@ -42,11 +42,20 @@ Not started; explicitly non-blocking for calling the project "done" at Phase 3.
 - [ ] Deliberate failure exercise + postmortem at the end of each phase (see
       `docs/postmortems/`)
 
-## Phase 2 stretch candidate: self-hosted Terraform state backend
+## Phase 2 stretch candidate: self-hosted OpenTofu state backend
 
 Not committed, not scheduled — a candidate to revisit when Phase 2's platform layer takes
-shape. Running a self-hosted remote-state backend (MinIO + Terraform's native S3 state locking,
-or the `pg` backend) is its own demonstrable platform-engineering skill, distinct from pointing
-at HCP Terraform's SaaS. See [ADR-0004](../adr/0004-tfstate-backend-strategy.md)'s consequences
-section for why this isn't needed yet: neither `environments/floci` nor
-`environments/aws-milestone` currently needs state to persist across separate jobs/sessions.
+shape. Running a self-hosted remote-state backend (MinIO + native S3 state locking, or the `pg`
+backend) is its own demonstrable platform-engineering skill, distinct from pointing at a managed
+SaaS. See [ADR-0004](../adr/0004-tfstate-backend-strategy.md)'s consequences section for why
+this isn't needed yet: neither `environments/floci` nor `environments/aws-milestone` currently
+needs state to persist across separate jobs/sessions.
+
+## Open follow-up: aws-milestone backend needs revisiting post-OpenTofu
+
+ADR-0004 picked HCP Terraform for `environments/aws-milestone`, but HCP Terraform's remote
+execution only runs HashiCorp's own Terraform binary, not OpenTofu (see
+[ADR-0005](../adr/0005-opentofu-over-terraform.md)). Since `environments/aws-milestone` isn't
+built yet, this isn't urgent — pick an OpenTofu-compatible backend (self-hosted, or an
+OpenTofu-native managed option) when that environment is actually built, rather than deciding
+speculatively now.
