@@ -1,0 +1,44 @@
+name: floci
+
+services:
+  floci:
+    image: floci/floci:latest
+    container_name: floci
+    ports:
+      - "4566:4566"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      # Floci does no version mapping: the k3s image it launches is this tag, whatever
+      # kubernetes_version the module requests. Keep in step with modules/eks-cluster.
+      FLOCI_SERVICES_EKS_DEFAULT_IMAGE: rancher/k3s:v1.36.4-k3s1
+      # Cluster containers Floci spawns join this network so the k3s API server can reach
+      # Floci's IAM token webhook.
+      FLOCI_SERVICES_EKS_DOCKER_NETWORK: floci-net
+    networks:
+      - floci-net
+
+  floci-ui:
+    image: floci/floci-ui:latest
+    container_name: floci-ui
+    ports:
+      - "4500:4500"
+    environment:
+      PORT: "4500"
+      FLOCI_CLOUD: aws
+      FLOCI_HOSTNAME: floci
+      FLOCI_ENDPOINT: http://floci:4566
+      AWS_ENDPOINT_URL: http://floci:4566
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_SESSION_TOKEN: test
+    depends_on:
+      - floci
+    networks:
+      - floci-net
+
+networks:
+  floci-net:
+    name: floci-net
