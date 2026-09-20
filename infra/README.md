@@ -21,7 +21,20 @@ OpenTofu shape exercised locally, not a parallel definition.
 
 ## Running against Floci
 
-With Floci up locally (`http://localhost:4566` by default):
+Start Floci with its k3s image pinned to the module's Kubernetes version. Floci does no
+version mapping: it runs whatever `FLOCI_SERVICES_EKS_DEFAULT_IMAGE` names (default
+`rancher/k3s:latest`) and echoes the requested version back as metadata, so keep the tag below
+in step with `kubernetes_version` in `modules/eks-cluster`.
+
+```powershell
+docker run -d --name floci `
+  -p 4566:4566 `
+  -v /var/run/docker.sock:/var/run/docker.sock `
+  -e FLOCI_SERVICES_EKS_DEFAULT_IMAGE=rancher/k3s:v1.36.4-k3s1 `
+  floci/floci:latest
+```
+
+Then, with Floci up (`http://localhost:4566` by default):
 
 ```bash
 cd infra/environments/floci
