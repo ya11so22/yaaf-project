@@ -55,14 +55,18 @@ Design settled in [ADR-0011](../adr/0011-cd-image-identity-scope-and-state.md): 
 tags, the 11 base services without the load generator, and a milestone that holds local state in one
 atomic job with a saved, encrypted plan. Real AWS is deferred by [ADR-0012](../adr/0012-local-first-real-aws-deferred.md). Implementation has not started.
 
-- [ ] Spike: a throwaway Floci with EKS starts, and a deploy completes, on a GitHub-hosted runner
-      (unproven; ADR-0008 assumes it, and the dev deploy depends on it)
-- [ ] `build.yml` computes and publishes a content-hash tag per service, hash inputs including
-      shared build files (amends ADR-0007's SHA tags)
-- [ ] `deploy/dev` and `deploy/milestone` kustomize overlays on the app's `app/kustomize` base,
-      images pinned by digest
-- [ ] `deploy.yml`, dev: on merge to `main`, start a throwaway Floci in the runner, apply the
-      infra, deploy the overlay, wait for the rollout, smoke check the frontend
+- [x] Spike: a throwaway Floci with EKS starts, and a GHCR image rolls out, on a GitHub-hosted
+      runner (2026-09-20, about 1m50s end to end; multi-service and frontend checks still open)
+- [x] `build.yml` publishes a `content-<hash>` tag per service beside the SHA tag, and skips services
+      whose tag already exists (2026-09-21: 12 built, then 12 skipped on a re-run). The hash is the
+      git tree of the build context, which every service keeps self-contained (amends ADR-0007)
+- [x] `deploy/dev` kustomize overlay on the app's `app/kustomize` base (10 services and `redis-cart`,
+      no load generator), with `render-manifests.sh` pinning each service to its content tag; tested
+      (2026-09-21) and every rendered tag confirmed on GHCR. A `milestone` overlay waits for real
+      AWS (ADR-0012)
+- [x] `deploy.yml`, dev: start a throwaway Floci in the runner, apply the infra, render and deploy
+      the overlay, wait for every rollout, smoke check the frontend (2026-09-21, PR run green in
+      about 2m43s: 11 rollouts, frontend answers). Runs on merge to `main` once merged
 - [ ] Rollback: redeploy the previous digest, exercised in a drill
 - [ ] Promotion documented: the digest proven in dev is the one a later milestone deploy would use
       (the milestone `deploy.yml` itself is deferred with real AWS, ADR-0012)

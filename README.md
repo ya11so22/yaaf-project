@@ -93,7 +93,7 @@ CD (a Floci-on-a-runner spike, content-hash tags, deploy overlays and a deploy w
 | `/app` | Vendored Online Boutique (Google's code — see Attribution) |
 | `/adr` | Architecture Decision Records — written before implementation, not after |
 | `/infra` | OpenTofu modules (VPC, cluster, registry, IAM) and the `floci` / `aws-milestone` environments: Phase 1 |
-| `/deploy` | Kustomize overlays for `dev` and `milestone`, images pinned by digest (Phase 1, not yet created) |
+| `/deploy` | Kustomize overlay for `dev` on the app's own base; images are pinned to content tags at render time (Phase 1) |
 | `/pipelines` | Reusable/callable GitHub Actions workflows — Phase 2 golden path |
 | `/policy` | Policy-as-code (OPA/`conftest`) — Phase 2 |
 | `/platform` | Platform-layer docs/tooling (ephemeral env lifecycle, service catalog stretch) |

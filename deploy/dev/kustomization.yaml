@@ -1,0 +1,9 @@
+# The dev environment: Online Boutique's own base, without the load generator (ADR-0011).
+# Image names and tags are not set here; .github/scripts/render-manifests.sh pins each service to
+# its content-hash tag on GHCR at render time, so a rollback is a render at an earlier revision.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../app/kustomize/base
+components:
+  - ../../app/kustomize/components/without-loadgenerator
