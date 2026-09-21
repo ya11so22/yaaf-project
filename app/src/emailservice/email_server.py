@@ -18,10 +18,6 @@
 # app team. The change is this comment only; it exists to exercise the delivery pipeline end to
 # end (build, image pin bump, Argo CD rollout). See docs/journal/.
 
-# FAILURE DRILL (docs/postmortems/2026-09-21-phase1-bad-emailservice.md): the next line deliberately
-# breaks startup, to exercise detection and rollback. It is removed by reverting this commit.
-raise RuntimeError("failure drill: emailservice is intentionally broken")
-
 from concurrent import futures
 import argparse
 import os
