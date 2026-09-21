@@ -83,8 +83,9 @@ by the steps below. Build and test each step against the local Floci before push
 - [x] Image pins committed in `deploy/dev`, written by `bump-images.sh` (tested, with a `--verify`
       mode that checks each tag is on GHCR); replaces render-time pinning
 - [x] Bump workflow (`bump-images.yml`, `bump-pr.sh` with a dry-run test): after a successful build on
-      `main`, opens or updates one PR as the GitHub App bot and enables auto-merge. Written and tested
-      locally; the first real run needs `BOT_CLIENT_ID` and "Allow auto-merge" set, and is to be confirmed
+      `main`, opens or updates one PR as the GitHub App bot and enables auto-merge. Confirmed end to end
+      on 2026-09-21 (see the journal entry): an app change produced a one-line bot PR whose required
+      checks ran and which auto-merged, and Argo CD rolled out the one changed service
 - [x] Argo CD syncs `dev` on the long-lived cluster: `Synced` and `Healthy` (confirmed 2026-09-21).
       The first apply failed because Helm cannot create an `Application` in the release that
       installs its CRD; the module now uses a second release (`argocd-apps`)
