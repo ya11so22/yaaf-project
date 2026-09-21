@@ -23,7 +23,7 @@ images:
     newTag: content-582b4fbdc66b
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/emailservice
     newName: ghcr.io/ya11so22/yaaf-project/emailservice
-    newTag: content-244cffe52146
+    newTag: content-7e1d31f58204
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/frontend
     newName: ghcr.io/ya11so22/yaaf-project/frontend
     newTag: content-f5bead46a4e4
