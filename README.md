@@ -12,6 +12,8 @@ day job (Jenkins/OpenShift, on-prem, regulated banking).
   mine.** It is used purely as a target application — real polyglot (Go, Java, .NET, Node,
   Python), multi-service complexity to build platform tooling against. See `app/LICENSE` and
   `app/README.md` for upstream's own docs.
+  Changes made by the simulated app team (see below) are marked with a notice in each modified file,
+  as Apache-2.0 requires; everything else is upstream's, unmodified.
 - **`/.claude/skills`** vendors the promoted `engineering` and `productivity` skill buckets from
   [Matt Pocock's `skills` repo](https://github.com/mattpocock/skills) (MIT licensed), pinned at
   commit `6654f6b60cd9d5be8b54c6fafe44346dabeb3b76`. These are workflow skills for Claude Code

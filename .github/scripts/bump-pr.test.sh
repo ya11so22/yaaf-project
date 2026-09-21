@@ -16,6 +16,12 @@ cp "$src"/.github/scripts/*.sh .github/scripts/
 tr -d '\r' < "$src/deploy/dev/kustomization.yaml" > deploy/dev/kustomization.yaml
 git add -A && git commit -qm "test baseline" --allow-empty
 
+# Start from pins that are current for this clone, whatever state the real repository is in. The real
+# pins go stale on purpose whenever app code changes, until the bump PR lands, so a test that relied
+# on them would fail on exactly the change the bump workflow exists for.
+VERIFY=false bash .github/scripts/bump-images.sh deploy/dev HEAD
+git commit -qam "baseline: pins current" --allow-empty
+
 export BOT_NAME="test-bot[bot]" BOT_EMAIL="1+test-bot[bot]@users.noreply.github.com" DRY_RUN=1 VERIFY=false
 
 failures=0
