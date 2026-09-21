@@ -32,7 +32,8 @@ param(
     [string]$Cluster = "yaaf-floci",
     [string]$Endpoint = "http://localhost:4566",
     [string]$Region = "us-east-1",
-    [string]$AwsProfile = "floci"
+    [string]$AwsProfile = "floci",
+    [string]$Repo = "ya11so22/yaaf-project"
 )
 
 # Windows PowerShell 5.1 turns any native-command stderr into a terminating error under "Stop".
@@ -152,6 +153,59 @@ function Repair-Cluster {
     Assert-Ok (Invoke-Native docker @("compose", "-f", $ComposeFile, "up", "-d", "--wait")) "docker compose up"
 }
 
+# Registers the GitHub webhook that makes Argo CD refresh on a push instead of at its next poll (ADR-0015):
+# a push event to the smee.io channel OpenTofu created. Idempotent, and it removes stale smee hooks left
+# by an earlier channel. A warning, not a failure: the cluster works without it, only slower to notice a
+# merge. Uses the owner's gh login. The channel URL is a capability, so it is never printed.
+function Register-GitHubWebhook {
+    if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
+        Write-Step "WARNING: gh is not installed; skipping the GitHub webhook (Argo CD will poll instead)"
+        return
+    }
+    Push-Location $ClusterEnvDir
+    try { $out = Invoke-Native tofu @("output", "-json") } finally { Pop-Location }
+    if ($out.Code -ne 0) { Write-Step "WARNING: could not read the webhook URL; skipping the GitHub webhook"; return }
+    try { $url = ($out.Output | ConvertFrom-Json).webhook_url.value } catch { $url = $null }
+    if (-not $url) { Write-Step "WARNING: no webhook_url output yet; skipping the GitHub webhook"; return }
+
+    $list = Invoke-Native gh @("api", "repos/$Repo/hooks")
+    if ($list.Code -ne 0) { Write-Step "WARNING: could not list GitHub webhooks (is gh logged in with the repo scope?); skipping"; return }
+    $hooks = @($list.Output | ConvertFrom-Json)
+
+    foreach ($h in $hooks) {
+        if ($h.config.url -like "https://smee.io/*" -and $h.config.url -ne $url) {
+            $null = Invoke-Native gh @("api", "--method", "DELETE", "repos/$Repo/hooks/$($h.id)")
+            Write-Step "Removed a stale smee webhook"
+        }
+    }
+
+    $body = @{
+        name   = "web"
+        active = $true
+        events = @("push")
+        config = @{ url = $url; content_type = "json"; insecure_ssl = "0" }
+    } | ConvertTo-Json -Depth 5 -Compress
+
+    # The body goes through a temp file, not the pipeline: Windows PowerShell 5.1 pipes text to native
+    # commands in an encoding GitHub rejects, and a temp file behaves the same on 5.1 and 7.
+    $tmp = [System.IO.Path]::GetTempFileName()
+    try {
+        [System.IO.File]::WriteAllText($tmp, $body, (New-Object System.Text.UTF8Encoding($false)))
+        $existing = $hooks | Where-Object { $_.config.url -eq $url } | Select-Object -First 1
+        if ($existing) {
+            $r = & gh api --method PATCH "repos/$Repo/hooks/$($existing.id)" --input $tmp 2>&1
+            $verb = "updated"
+        } else {
+            $r = & gh api --method POST "repos/$Repo/hooks" --input $tmp 2>&1
+            $verb = "created"
+        }
+    } finally {
+        Remove-Item $tmp -ErrorAction SilentlyContinue
+    }
+    if ($LASTEXITCODE -eq 0) { Write-Step "GitHub webhook $verb (push events to the smee channel)" }
+    else { Write-Step "WARNING: could not $verb the GitHub webhook"; Write-Host ($r | Out-String) }
+}
+
 # Argo CD's view of the workload. A warning, not a failure: the cluster itself is what this script
 # guarantees, and the Application can lag or be degraded for reasons in git (for example a revision
 # that does not exist yet).
@@ -164,6 +218,20 @@ function Show-ArgoStatus {
     Write-Host (Invoke-Native kubectl @("--context", $ctx, "-n", "argocd", "get", "application")).Output
     if (-not $healthy) {
         Write-Step "WARNING: the application is not Synced and Healthy (revision '$Revision'). Inspect: kubectl -n argocd describe application online-boutique-dev"
+    }
+}
+
+# Calls each host through the ALB on 127.0.0.1:8080 (ADR-0016). A warning, not a failure: it needs Argo CD to
+# have synced Traefik and the Ingress objects, which can lag or be waiting on a git revision. curl.exe is
+# used because Windows PowerShell 5.1 will not set a Host header.
+function Show-Ingress {
+    $hosts = @("argocd.localhost", "headlamp.localhost", "shop.localhost")
+    foreach ($h in $hosts) {
+        $ok = Wait-Until "$h to answer through the ALB" 240 {
+            $r = Invoke-Native curl.exe @("-s", "-m", "5", "-o", "NUL", "-w", "%{http_code}", "-H", "Host: $h", "http://127.0.0.1:8080/")
+            $r.Output.Trim() -match "^(200|30[0-9]|401|403)$"
+        }
+        if ($ok) { Write-Step "  http://${h}:8080  OK" } else { Write-Step "  WARNING: http://${h}:8080 did not answer (is the revision '$Revision' synced?)" }
     }
 }
 
@@ -205,12 +273,15 @@ function Invoke-DevUp {
             Write-Host (Invoke-Native kubectl @("--context", $ctx, "get", "nodes")).Output
             Write-Step "Reconciling Argo CD (revision '$Revision')"
             Invoke-Tofu "apply" $ClusterEnvDir @("-var", "target_revision=$Revision")
+            Register-GitHubWebhook
             Show-ArgoStatus
             Write-Host ""
-            Write-Host "Dashboards (each in its own window):"
-            Write-Host "  Argo CD  kubectl -n argocd port-forward svc/argocd-server 8080:80    http://localhost:8080"
-            Write-Host "  Headlamp kubectl -n headlamp port-forward svc/headlamp 8082:80       http://localhost:8082"
-            Write-Host "           login token: kubectl -n headlamp create token headlamp"
+            Show-Ingress
+            Write-Host ""
+            Write-Host "Open in a regular browser (not VS Code's built-in one):"
+            Write-Host "  Argo CD   http://argocd.localhost:8080     user admin; password: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath={.data.password}  (base64)"
+            Write-Host "  Headlamp  http://headlamp.localhost:8080   token: kubectl -n headlamp create token headlamp"
+            Write-Host "  Shop      http://shop.localhost:8080"
             Write-Step "Done."
             return
         }

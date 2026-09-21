@@ -83,13 +83,21 @@ Docker Desktop must start at login (Docker Desktop settings). Compose gives Floc
 `restart: unless-stopped`, so Docker brings the emulator back by itself.
 
 After the cluster is ready, `dev-up.ps1` also applies `environments/floci-cluster`, which installs
-Argo CD and an Application for `deploy/dev`. It tracks `main` by default; to try a change before it
-is merged, run `.\scripts\dev-up.ps1 -Revision <branch>`. Argo CD's UI is reached with
-`kubectl -n argocd port-forward svc/argocd-server 8080:80` (user `admin`, password from the
-`argocd-initial-admin-secret` secret). Headlamp, a read-only cluster UI also deployed by Argo CD, is
-at `kubectl -n headlamp port-forward svc/headlamp 8082:80`; log in with
-`kubectl -n headlamp create token headlamp`. Open the dashboards in a regular browser: VS Code's
-built-in Simple Browser renders Headlamp as an empty page with only a search bar.
+Argo CD, Traefik, the tools and the app through Argo CD, and a relay that lets GitHub trigger Argo CD (ADR-0015). It
+tracks `main` by default; to try a change before it is merged, run
+`.\scripts\dev-up.ps1 -Revision <branch>`.
+
+Everything is reached through a Floci ALB on `127.0.0.1:8080` in front of Traefik (ADR-0016), with no
+port-forwards. Open these in a regular browser (VS Code's built-in one renders Headlamp as an empty page):
+
+| URL | What |
+|---|---|
+| http://argocd.localhost:8080 | Argo CD. User `admin`; password from the `argocd-initial-admin-secret` secret. |
+| http://headlamp.localhost:8080 | Headlamp, a read-only cluster UI. Token: `kubectl -n headlamp create token headlamp`. |
+| http://shop.localhost:8080 | The Online Boutique. |
+
+Browsers resolve `*.localhost` to loopback themselves; command-line tools on Windows may not, so use
+`curl.exe -H "Host: shop.localhost" http://127.0.0.1:8080/`.
 
 `kubectl` authenticates as an IAM user that OpenTofu creates in Floci (Floci's EKS auth rejects the
 public `test`/`test` keys and only accepts a key that exists in its IAM); `dev-up.ps1` reads that key

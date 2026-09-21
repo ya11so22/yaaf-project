@@ -38,3 +38,7 @@ output "kubectl_secret_access_key" {
   value     = aws_iam_access_key.kubectl.secret
   sensitive = true
 }
+
+output "ingress_dns_name" {
+  value = module.ingress.dns_name
+}

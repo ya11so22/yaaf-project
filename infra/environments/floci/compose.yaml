@@ -9,6 +9,9 @@ services:
     restart: unless-stopped
     ports:
       - "4566:4566"
+      # The ingress ALB's listener (ADR-0016). Floci binds listener sockets on its own host, so the port
+      # is published here, on loopback only.
+      - "127.0.0.1:8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - floci-data:/app/data

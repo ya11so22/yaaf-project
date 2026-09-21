@@ -1,0 +1,18 @@
+# The shop at http://shop.localhost:8080 (ADR-0016). No namespace: Argo CD deploys it into the app's.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: shop.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80

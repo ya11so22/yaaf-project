@@ -27,6 +27,44 @@ module "argocd" {
       }
     }
 
+    # Traefik, the ingress controller behind the ALB (ADR-0016). A NodePort service on 30080, which is
+    # what the ALB's target group points at. The Ingress status address is set to "localhost": with a
+    # NodePort service there is no load-balancer address for Traefik to copy, and Argo CD reports an
+    # Ingress Progressing until it has one.
+    "traefik" = {
+      namespace = "traefik"
+      source = {
+        repoURL        = "https://traefik.github.io/charts"
+        chart          = "traefik"
+        targetRevision = "41.6.0"
+        helm = {
+          valuesObject = {
+            service = { spec = { type = "NodePort" } }
+            ports = {
+              web       = { nodePort = 30080 }
+              websecure = { expose = { default = false } }
+            }
+            providers = {
+              kubernetesIngress = {
+                publishedService = { enabled = false }
+                ingressEndpoint  = { hostname = "localhost" }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    # The Ingress objects for the platform tools, from git. The shop's own Ingress is part of deploy/dev.
+    "platform-ingress" = {
+      namespace = "traefik"
+      source = {
+        repoURL        = "https://github.com/ya11so22/yaaf-project.git"
+        targetRevision = var.target_revision
+        path           = "deploy/ingress"
+      }
+    }
+
     # The read-only role Headlamp runs as, from git. Cluster-scoped, so the namespace is only where
     # Argo CD records the Application's resources.
     "headlamp-rbac" = {
