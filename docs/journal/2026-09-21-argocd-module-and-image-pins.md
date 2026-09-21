@@ -25,6 +25,15 @@ Three pieces of ADR-0013 landed:
 ADR-0013 was corrected: the Application is created by OpenTofu at bootstrap, not kept in
 `deploy/argocd/`, because the tracked revision differs by environment.
 
+## Finding: the Application cannot share the Argo CD release
+
+The first apply failed with `no matches for kind "Application" in version "argoproj.io/v1alpha1":
+ensure CRDs are installed first`. Helm cannot create a custom resource in the same release that
+installs its CRD, so creating the Application through the chart's `extraObjects` does not work. The
+module now uses two releases in order: `argo-cd` (which installs the CRDs), then the companion
+`argocd-apps` chart (2.0.5), which Argo's project publishes for this, with `depends_on`. The failed
+attempt left nothing behind (no state, namespace or CRDs), so the re-run started clean.
+
 ## Verification
 
 `tofu validate` passes for the new module and root; `tofu plan` fetched the real chart and showed the

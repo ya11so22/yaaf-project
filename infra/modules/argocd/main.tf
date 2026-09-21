@@ -1,7 +1,11 @@
 # Argo CD, installed from the official chart, plus one Application for the workload (ADR-0013).
 # Nothing pushes the workload into the cluster: Argo CD reconciles it from git with automated
-# sync, pruning and self-heal. The Application is created by the chart itself (extraObjects) so it
-# lands after the chart's CRDs in the same release.
+# sync, pruning and self-heal.
+#
+# Two releases, in order, on purpose: the Application is a custom resource, and Helm cannot create
+# one in the same release that installs its CRD ("no matches for kind Application"). The argo-cd
+# chart installs the CRDs; the companion argocd-apps chart, which Argo's project publishes for this,
+# then creates the Application once they exist.
 resource "helm_release" "argocd" {
   name             = "argocd"
   namespace        = var.namespace
@@ -26,18 +30,26 @@ resource "helm_release" "argocd" {
         "server.insecure" = true
       }
     }
+  })]
+}
 
-    extraObjects = [{
-      apiVersion = "argoproj.io/v1alpha1"
-      kind       = "Application"
-      metadata = {
-        name      = var.app_name
+resource "helm_release" "applications" {
+  name      = "argocd-apps"
+  namespace = var.namespace
+
+  repository = "https://argoproj.github.io/argo-helm"
+  chart      = "argocd-apps"
+  version    = var.apps_chart_version
+
+  depends_on = [helm_release.argocd]
+
+  values = [yamlencode({
+    applications = {
+      (var.app_name) = {
         namespace = var.namespace
         # Deleting the Application removes what it deployed.
         finalizers = ["resources-finalizer.argocd.argoproj.io"]
-      }
-      spec = {
-        project = "default"
+        project    = "default"
         source = {
           repoURL        = var.repo_url
           targetRevision = var.target_revision
@@ -52,6 +64,6 @@ resource "helm_release" "argocd" {
           syncOptions = ["CreateNamespace=true"]
         }
       }
-    }]
+    }
   })]
 }
