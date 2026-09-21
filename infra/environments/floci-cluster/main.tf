@@ -8,6 +8,11 @@ provider "helm" {
   }
 }
 
+provider "kubernetes" {
+  config_path    = pathexpand(var.kubeconfig_path)
+  config_context = "arn:aws:eks:${var.region}:000000000000:cluster/${var.cluster_name}"
+}
+
 module "argocd" {
   source = "../../modules/argocd"
 
@@ -50,4 +55,20 @@ module "argocd" {
       }
     }
   }
+}
+
+# The smee.io channel GitHub posts webhooks to (ADR-0015). A random ID kept in state and out of git: the
+# channel URL is the only thing limiting who can post to it.
+resource "random_id" "smee_channel" {
+  byte_length = 12
+}
+
+# Relays those webhooks to Argo CD's webhook endpoint inside the cluster, so a merge reaches the cluster in
+# seconds instead of at Argo's next poll. Created after Argo CD, whose namespace it runs in.
+module "webhook_relay" {
+  source = "../../modules/webhook-relay"
+
+  namespace  = module.argocd.namespace
+  smee_url   = "https://smee.io/${random_id.smee_channel.hex}"
+  target_url = "http://argocd-server.${module.argocd.namespace}.svc.cluster.local/api/webhook"
 }
