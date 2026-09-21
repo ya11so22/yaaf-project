@@ -9,7 +9,7 @@ script=".github/scripts/bump-images.sh"
 work="deploy/.bump-test.$$"
 trap 'rm -rf "$work"' EXIT
 mkdir "$work"
-cp deploy/dev/kustomization.yaml "$work/kustomization.yaml"
+cp deploy/dev/*.yaml "$work/"
 
 failures=0
 ok()   { echo "ok   - $1"; }

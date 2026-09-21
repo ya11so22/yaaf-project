@@ -82,6 +82,14 @@ by the steps below. Build and test each step against the local Floci before push
       applies it. Validated and planned; the apply on the long-lived Floci is to be confirmed
 - [x] Image pins committed in `deploy/dev`, written by `bump-images.sh` (tested, with a `--verify`
       mode that checks each tag is on GHCR); replaces render-time pinning
+- [ ] Argo CD is triggered by a GitHub webhook relayed through smee.io, not by polling (ADR-0015): a relay
+      Deployment in the cluster, and the webhook registered by `dev-up.ps1`. Written and planned, to be
+      applied and confirmed with a real delivery. smee cannot preserve the webhook signature, so no shared
+      secret is set; the real-AWS route (API Gateway or a load balancer in front of Argo) restores it
+- [ ] Ingress instead of port-forwards (ADR-0016): a Floci ALB (listener on `127.0.0.1:8080`) in front of
+      Traefik (Argo CD, chart 41.6.0), with Ingress objects for `argocd.localhost`, `headlamp.localhost` and
+      `shop.localhost`. Spike proved the data path (HTTP 200 through the ALB to the frontend); the ALB module
+      and Traefik are written and planned, to be applied and confirmed in a browser
 - [x] Bump workflow (`bump-images.yml`, `bump-pr.sh` with a dry-run test): after a successful build on
       `main`, opens or updates one PR as the GitHub App bot and enables auto-merge. Confirmed end to end
       on 2026-09-21 (see the journal entry): an app change produced a one-line bot PR whose required
@@ -123,11 +131,7 @@ Not started. Scope (ADR-0010):
 - [ ] Observability: a metrics stack and dashboards for the deployed app
 - [ ] SLOs and alerts on them, and an incident drill with a written postmortem
 - [ ] DORA metrics from the pipeline
-- [ ] Traefik as the ingress controller, installed by Argo CD from its Helm chart (pinned), with
-      host-based routes for the dashboards and the app (`argocd.localhost`, `headlamp.localhost`, ...)
-      and, with per-PR environments, one host per PR. Needs an ADR first (Ingress or Gateway API; the
-      k3s cluster is started with its bundled Traefik disabled). On Floci only the API port is published
-      to the host, so Traefik is reached through one `kubectl port-forward` instead of one per tool
+- [ ] Per-PR environments get one host each on the ingress from Phase 1 (`pr-<n>.localhost`)
 - [ ] Per-PR environments on the Argo CD from Phase 1 (an `ApplicationSet` with the pull-request
       generator, a namespace per PR, torn down on close)
 - [ ] Policy-as-code: `conftest` on plans (for example, no wildcard OIDC `sub`) and manifests, and

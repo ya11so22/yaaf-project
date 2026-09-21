@@ -129,6 +129,8 @@ the Phase 1 close-out. Real AWS comes later, and only when local options are exh
 - [ADR-0012: Local and free first; real AWS deferred](adr/0012-local-first-real-aws-deferred.md)
 - [ADR-0013: GitOps with Argo CD, on a long-lived local "AWS"](adr/0013-gitops-with-argo-cd-on-long-lived-aws.md)
 - [ADR-0014: Operating the long-lived AWS: restart policy and one reconcile command](adr/0014-operating-the-long-lived-aws.md)
+- [ADR-0015: Trigger Argo CD from GitHub with a webhook, relayed by smee.io](adr/0015-argocd-webhook-via-smee-relay.md)
+- [ADR-0016: Ingress: a Floci ALB in front of Traefik](adr/0016-ingress-via-floci-alb-and-traefik.md)
 
 New decisions use [`adr/0000-template.md`](adr/0000-template.md), written *before* asking Claude
 Code to implement.

@@ -8,6 +8,11 @@ provider "helm" {
   }
 }
 
+provider "kubernetes" {
+  config_path    = pathexpand(var.kubeconfig_path)
+  config_context = "arn:aws:eks:${var.region}:000000000000:cluster/${var.cluster_name}"
+}
+
 module "argocd" {
   source = "../../modules/argocd"
 
@@ -19,6 +24,44 @@ module "argocd" {
         repoURL        = "https://github.com/ya11so22/yaaf-project.git"
         targetRevision = var.target_revision
         path           = "deploy/dev"
+      }
+    }
+
+    # Traefik, the ingress controller behind the ALB (ADR-0016). A NodePort service on 30080, which is
+    # what the ALB's target group points at. The Ingress status address is set to "localhost": with a
+    # NodePort service there is no load-balancer address for Traefik to copy, and Argo CD reports an
+    # Ingress Progressing until it has one.
+    "traefik" = {
+      namespace = "traefik"
+      source = {
+        repoURL        = "https://traefik.github.io/charts"
+        chart          = "traefik"
+        targetRevision = "41.6.0"
+        helm = {
+          valuesObject = {
+            service = { spec = { type = "NodePort" } }
+            ports = {
+              web       = { nodePort = 30080 }
+              websecure = { expose = { default = false } }
+            }
+            providers = {
+              kubernetesIngress = {
+                publishedService = { enabled = false }
+                ingressEndpoint  = { hostname = "localhost" }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    # The Ingress objects for the platform tools, from git. The shop's own Ingress is part of deploy/dev.
+    "platform-ingress" = {
+      namespace = "traefik"
+      source = {
+        repoURL        = "https://github.com/ya11so22/yaaf-project.git"
+        targetRevision = var.target_revision
+        path           = "deploy/ingress"
       }
     }
 
@@ -36,6 +79,12 @@ module "argocd" {
     # A web UI for the cluster, from its official Helm chart (pinned). The chart binds its service
     # account to cluster-admin by default; it is bound to the read-only headlamp-viewer role instead
     # (deploy/headlamp-rbac): a dashboard should show status, not change anything.
+    #
+    # There is no login screen: every visitor is served as Headlamp's own read-only service account.
+    # A token login cannot survive a cluster reset (the new cluster has new signing keys, so every old
+    # token stops validating). Headlamp calls this option unsafe because anyone who can reach the UI
+    # gets that account's access; here that is read-only without secrets, and the only way in is the
+    # loopback-only ALB (ADR-0016). Do not carry this to anything reachable by others.
     "headlamp" = {
       namespace = "headlamp"
       source = {
@@ -45,9 +94,26 @@ module "argocd" {
         helm = {
           valuesObject = {
             clusterRoleBinding = { clusterRoleName = "headlamp-viewer" }
+            config             = { unsafeUseServiceAccountToken = true }
           }
         }
       }
     }
   }
+}
+
+# The smee.io channel GitHub posts webhooks to (ADR-0015). A random ID kept in state and out of git: the
+# channel URL is the only thing limiting who can post to it.
+resource "random_id" "smee_channel" {
+  byte_length = 12
+}
+
+# Relays those webhooks to Argo CD's webhook endpoint inside the cluster, so a merge reaches the cluster in
+# seconds instead of at Argo's next poll. Created after Argo CD, whose namespace it runs in.
+module "webhook_relay" {
+  source = "../../modules/webhook-relay"
+
+  namespace  = module.argocd.namespace
+  smee_url   = "https://smee.io/${random_id.smee_channel.hex}"
+  target_url = "http://argocd-server.${module.argocd.namespace}.svc.cluster.local/api/webhook"
 }

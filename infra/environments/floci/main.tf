@@ -10,12 +10,13 @@ provider "aws" {
   skip_requesting_account_id  = true
 
   endpoints {
-    ec2 = var.floci_endpoint
-    sts = var.floci_endpoint
-    iam = var.floci_endpoint
-    eks = var.floci_endpoint
-    ecr = var.floci_endpoint
-    s3  = var.floci_endpoint
+    ec2   = var.floci_endpoint
+    sts   = var.floci_endpoint
+    iam   = var.floci_endpoint
+    eks   = var.floci_endpoint
+    elbv2 = var.floci_endpoint
+    ecr   = var.floci_endpoint
+    s3    = var.floci_endpoint
   }
 }
 
@@ -97,4 +98,22 @@ resource "aws_iam_user" "kubectl" {
 
 resource "aws_iam_access_key" "kubectl" {
   user = aws_iam_user.kubectl.name
+}
+
+# The entry point in front of the cluster (ADR-0016): an ALB whose target is Traefik's NodePort on the
+# cluster node. Traefik itself is installed by Argo CD from ../floci-cluster. The target is the node's
+# container name (floci-eks-<cluster>), which Docker DNS resolves on the shared network.
+module "ingress" {
+  source = "../../modules/alb-ingress"
+
+  name        = "${var.project}-floci"
+  vpc_id      = module.vpc.vpc_id
+  subnet_ids  = module.vpc.public_subnet_ids
+  target_host = "floci-eks-${module.eks.cluster_name}"
+  target_port = 30080
+
+  tags = {
+    Project     = var.project
+    Environment = "floci"
+  }
 }

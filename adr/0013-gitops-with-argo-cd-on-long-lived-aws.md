@@ -58,8 +58,12 @@ cluster is only live while the machine is up. That push-based `deploy.yml` now e
    `deploy/headlamp-rbac` and deployed by Argo CD. The built-in `view` role was tried first and is
    too narrow (no nodes, no custom resources: the dashboard reported "forbidden"). `headlamp-viewer`
    grants read access to the core resources it shows, listed one by one so secrets, pod exec and node
-   proxy are excluded, and to every other API group, since secrets exist only in the core group. It is reached by port-forward and a service-account
-   token; there is no ingress.
+   proxy are excluded, and to every other API group, since secrets exist only in the core group. It is reached through the ingress (ADR-0016), with no login: Headlamp
+   serves every visitor as its own read-only service account (`unsafeUseServiceAccountToken`). A token login
+   cannot survive a cluster reset, since the new cluster has new signing keys and every old token stops
+   validating, so a login would have to be redone after each one. Headlamp labels the option unsafe because
+   anyone who can reach the UI gets that account's access; here that account is read-only without secrets,
+   and the only way in is the loopback-only ALB. It must not be reused where others can reach the UI.
 
 ## Options considered
 
