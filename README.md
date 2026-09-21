@@ -28,12 +28,14 @@ the interesting work is the platform layer built around it:
 - OpenTofu IaC for a VPC, an EKS-equivalent cluster, an ECR-equivalent registry and IAM,
   developed against [Floci](https://github.com/floci-io/floci) (a free, MIT-licensed local AWS
   emulator) and validated on real AWS at milestone checkpoints.
-- GitHub Actions: path-filtered per-service image builds to GHCR, an infrastructure pipeline
-  (plan on PR, an apply-from-scratch smoke test), and CD that deploys one image digest to a
-  throwaway `dev` environment (Floci with EKS), with a real-AWS `milestone` deferred until needed. OIDC federation, so there
+- GitHub Actions: path-filtered per-service image builds to GHCR with content-hash tags, and an
+  infrastructure pipeline (plan on PR, an apply-from-scratch smoke test).
+- GitOps delivery: Argo CD, installed by OpenTofu into an EKS cluster on a long-lived local "AWS"
+  (Floci), reconciles the app from git; a bot PR bumps the pinned images and rollback is a git
+  revert. A real-AWS milestone is deferred until local options are exhausted. OIDC federation, so there
   are no long-lived AWS credentials.
-- A platform engineering layer: one reusable "golden path" workflow, GitOps with per-PR
-  environments, policy-as-code, DORA metrics, and access management for the team.
+- A platform engineering layer: one reusable "golden path" workflow, per-PR environments,
+  policy-as-code, DORA metrics, and access management for the team.
 - Operating it: observability with SLOs and alerts, and an incident drill with a written
   postmortem.
 - AI serving on the platform: an open-weight model server with eval-gated promotion, canary and
@@ -62,8 +64,8 @@ Each phase ends with a running app, from commit to deployment, and is demoable o
 
 | Phase | Ends with | State |
 |---|---|---|
-| 1. Commit to running app | IaC, CI, and minimal CD: images built and deployed to `dev` (Floci with EKS, free), with rollback | In progress: modules and pipelines are done and green; CD is open. Real AWS is deferred until local options are exhausted ([ADR-0012](adr/0012-local-first-real-aws-deferred.md)) |
-| 2. Operate it | Observability, SLOs and alerts, an incident drill and postmortem, GitOps with PR environments, policy-as-code, golden-path workflow, DORA metrics, team access model | Not started |
+| 1. Commit to running app | IaC, CI, and GitOps CD: images built, pinned in git, and reconciled by Argo CD into a `dev` EKS cluster on the local AWS (Floci), with rollback | In progress: modules, pipelines and image tagging are done and green; Argo CD is next ([ADR-0013](adr/0013-gitops-with-argo-cd-on-long-lived-aws.md)). Real AWS is deferred ([ADR-0012](adr/0012-local-first-real-aws-deferred.md)) |
+| 2. Operate it | Observability, SLOs and alerts, an incident drill and postmortem, PR environments, policy-as-code, golden-path workflow, DORA metrics, team access model | Not started |
 | 3. AI serving | LLM/model serving on the platform: eval-gated promotion, canary and rollback, latency and cost metrics | Not started |
 | 4. MLOps | A real recommendation model: train/eval on PR, registry, metrics-gated promotion, drift monitoring | Not started |
 
@@ -79,12 +81,13 @@ scorecard, with reasons, is in [`docs/live-infra-gap-analysis.md`](docs/live-inf
 ## Status
 
 The repository is public, `main` is protected (PRs only, with `build`, `infra` and `check` required),
-and the 12 service images are public on GHCR. Floci runs locally with persistent storage
-(`infra/environments/floci/compose.yaml`). The VPC, EKS-equivalent, ECR-equivalent and GitHub OIDC
-modules are applied and verified against it: `kubectl` reaches the cluster and images push and
-pull. The `build`, `infra` and `check` workflows have run and passed on GitHub; the weekly
-`cleanup` workflow has not run yet. Nothing is deployed to the cluster yet. Still to do, in order:
-CD (a Floci-on-a-runner spike, content-hash tags, deploy overlays and a deploy workflow), then the Phase 1 close-out. Real AWS comes later, and only when local options are exhausted.
+and the 12 service images are public on GHCR, tagged by commit and by content hash. Floci runs
+locally with persistent storage (`infra/environments/floci/compose.yaml`) as the long-lived "AWS".
+The VPC, EKS, ECR and GitHub OIDC modules are applied and verified against it. The `build`, `infra`,
+`check` and weekly `cleanup` workflows have run on GitHub. A push-based dev deploy on a throwaway
+Floci works (all 11 rollouts, frontend answering) and is being replaced by GitOps. Still to do, in
+order: a bot identity, Argo CD installed by OpenTofu, committed image pins with a bump workflow, then
+the Phase 1 close-out. Real AWS comes later, and only when local options are exhausted.
 
 ## Repository layout
 
@@ -121,6 +124,7 @@ CD (a Floci-on-a-runner spike, content-hash tags, deploy overlays and a deploy w
 - [ADR-0010: Position for the US DevOps, platform and AI-infrastructure market; reorder the phases](adr/0010-us-market-positioning-and-ai-phases.md)
 - [ADR-0011: CD design: image identity, deploy scope and milestone state](adr/0011-cd-image-identity-scope-and-state.md)
 - [ADR-0012: Local and free first; real AWS deferred](adr/0012-local-first-real-aws-deferred.md)
+- [ADR-0013: GitOps with Argo CD, on a long-lived local "AWS"](adr/0013-gitops-with-argo-cd-on-long-lived-aws.md)
 
 New decisions use [`adr/0000-template.md`](adr/0000-template.md), written *before* asking Claude
 Code to implement.

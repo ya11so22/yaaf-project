@@ -51,9 +51,9 @@ infrastructure.
 
 ### Continuous delivery (ADR-0008, ADR-0010)
 
-Design settled in [ADR-0011](../adr/0011-cd-image-identity-scope-and-state.md): content-hash image
-tags, the 11 base services without the load generator, and a milestone that holds local state in one
-atomic job with a saved, encrypted plan. Real AWS is deferred by [ADR-0012](../adr/0012-local-first-real-aws-deferred.md). Implementation has not started.
+Image identity and scope settled in [ADR-0011](../adr/0011-cd-image-identity-scope-and-state.md):
+content-hash image tags, and 10 services plus `redis-cart` without the load generator. Real AWS is
+deferred by [ADR-0012](../adr/0012-local-first-real-aws-deferred.md).
 
 - [x] Spike: a throwaway Floci with EKS starts, and a GHCR image rolls out, on a GitHub-hosted
       runner (2026-09-20, about 1m50s end to end; multi-service and frontend checks still open)
@@ -67,9 +67,21 @@ atomic job with a saved, encrypted plan. Real AWS is deferred by [ADR-0012](../a
 - [x] `deploy.yml`, dev: start a throwaway Floci in the runner, apply the infra, render and deploy
       the overlay, wait for every rollout, smoke check the frontend (2026-09-21, PR run green in
       about 2m43s: 11 rollouts, frontend answers). Runs on merge to `main` once merged
-- [ ] Rollback: redeploy the previous digest, exercised in a drill
-- [ ] Promotion documented: the digest proven in dev is the one a later milestone deploy would use
-      (the milestone `deploy.yml` itself is deferred with real AWS, ADR-0012)
+Superseded by [ADR-0013](../adr/0013-gitops-with-argo-cd-on-long-lived-aws.md): pull-based GitOps
+with Argo CD, on the long-lived local AWS. The push-based `deploy.yml` above worked and is replaced
+by the steps below. Build and test each step against the local Floci before pushing.
+
+- [ ] GitHub App bot identity (manual, owner): scoped to this repository, key stored as a secret
+- [ ] `argocd` module in `infra/`: pinned Helm chart and a root `Application`, applied on the
+      long-lived Floci
+- [ ] Image pins committed in `deploy/dev`; `bump-images.sh` writes them; the bump workflow opens a
+      PR as the bot, and its checks run and merge
+- [ ] Argo CD syncs `dev` on the long-lived cluster: `Synced` and `Healthy`, frontend answers
+- [ ] CI verifies CD on a throwaway Floci: apply, install Argo, sync the PR's commit, wait Healthy
+      (replaces `deploy.yml`)
+- [ ] Rollback drill: revert a bump PR and watch Argo converge
+- [ ] Promotion documented: the image proven in dev is the one a later milestone deploy would use
+      (the milestone itself is deferred with real AWS, ADR-0012)
 
 ### Phase 1 close-out (local, free; ADR-0012)
 
@@ -96,8 +108,8 @@ Not started. Scope (ADR-0010):
 - [ ] Observability: a metrics stack and dashboards for the deployed app
 - [ ] SLOs and alerts on them, and an incident drill with a written postmortem
 - [ ] DORA metrics from the pipeline
-- [ ] GitOps (Argo CD) in a persistent cluster, with per-PR environments (a namespace per PR,
-      torn down on close)
+- [ ] Per-PR environments on the Argo CD from Phase 1 (an `ApplicationSet` with the pull-request
+      generator, a namespace per PR, torn down on close)
 - [ ] Policy-as-code: `conftest` on plans (for example, no wildcard OIDC `sub`) and manifests, and
       an IaC security scan
 - [ ] Golden-path reusable workflow (`workflow_call`) extracted from `build.yml`, with per-service
