@@ -62,9 +62,9 @@ run "change-detection tests" bash .github/scripts/changed-services.test.sh
 run "content-tag tests" bash .github/scripts/content-tag.test.sh
 
 if command -v kubectl >/dev/null 2>&1; then
-  run "manifest render tests" bash .github/scripts/render-manifests.test.sh
+  run "image pin tests" bash .github/scripts/bump-images.test.sh
 else
-  unavailable "manifest render tests" "kubectl not installed"
+  unavailable "image pin tests" "kubectl not installed"
 fi
 
 if have_docker; then

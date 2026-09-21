@@ -25,8 +25,9 @@ cluster is only live while the machine is up. That push-based `deploy.yml` now e
    about Floci's own behaviour and limits. An **environment** is what OpenTofu provisions on top
    of AWS, and `dev` is the only one for now.
 2. **Who does what.**
-   - OpenTofu provisions on AWS: VPC, EKS, ECR, IAM, and Argo CD itself (pinned Helm chart) plus
-     one root `Application` that points at this repository.
+   - OpenTofu provisions on AWS: VPC, EKS, ECR, IAM (`infra/environments/floci`), and, in a second
+     root that needs the cluster to exist (`infra/environments/floci-cluster`), Argo CD itself
+     (pinned Helm chart) plus one `Application` that points at this repository.
    - Argo CD in the cluster reconciles workloads from git (`deploy/`), with automated sync, prune
      and self-heal. Nothing pushes workloads into the cluster.
    - CI builds images and records what should run in git; it does not touch the cluster.
@@ -37,8 +38,11 @@ cluster is only live while the machine is up. That push-based `deploy.yml` now e
    required checks would never report and the bump PR could never merge. The bump workflow
    therefore uses a GitHub App (free) as a bot identity, which is also the bot identity ADR-0008
    scheduled for Phase 2.
-5. **Same repository**, under `deploy/`, with the Argo Applications in `deploy/argocd/`. Bump
-   commits touch only `deploy/`, which triggers no image builds.
+5. **Same repository**, under `deploy/`. Bump commits touch only `deploy/`, which triggers no
+   image builds. The Application is created by OpenTofu at bootstrap rather than kept in git,
+   because the revision it tracks differs by environment (a branch when trying a change, a
+   commit SHA in CI). It moves into git as an `ApplicationSet` with per-PR environments in
+   Phase 2.
 6. **Verification in CI stays on a throwaway Floci.** GitHub-hosted runners cannot reach the
    long-lived local one, so the CD test becomes: apply the environment, install Argo, point it at
    the PR's commit, and wait for `Synced` and `Healthy`. The existing push-based `deploy.yml` is

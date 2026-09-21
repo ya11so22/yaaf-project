@@ -37,3 +37,4 @@ vendor/
 .env.*
 *.pem
 .render.*
+.bump-test.*

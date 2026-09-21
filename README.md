@@ -97,7 +97,7 @@ the Phase 1 close-out. Real AWS comes later, and only when local options are exh
 | `/app` | Vendored Online Boutique (Google's code — see Attribution) |
 | `/adr` | Architecture Decision Records — written before implementation, not after |
 | `/infra` | OpenTofu modules (VPC, cluster, registry, IAM) and the `floci` / `aws-milestone` environments: Phase 1 |
-| `/deploy` | Kustomize overlay for `dev` on the app's own base; images are pinned to content tags at render time (Phase 1) |
+| `/deploy` | Kustomize overlay for `dev` on the app's own base, with committed image pins that Argo CD deploys (Phase 1) |
 | `/pipelines` | Reusable/callable GitHub Actions workflows — Phase 2 golden path |
 | `/policy` | Policy-as-code (OPA/`conftest`) — Phase 2 |
 | `/platform` | Platform-layer docs/tooling (ephemeral env lifecycle, service catalog stretch) |

@@ -77,10 +77,12 @@ by the steps below. Build and test each step against the local Floci before push
       recreated clean in about 19s); the full apply run and a real restart are to be confirmed
 - [x] GitHub App bot identity (manual, owner): `BOT_APP_ID` and `BOT_APP_PRIVATE_KEY` set as
       repository secrets (2026-09-21), scoped to this repository
-- [ ] `argocd` module in `infra/`: pinned Helm chart and a root `Application`, applied on the
-      long-lived Floci
-- [ ] Image pins committed in `deploy/dev`; `bump-images.sh` writes them; the bump workflow opens a
-      PR as the bot, and its checks run and merge
+- [x] `argocd` module in `infra/modules/` and a `floci-cluster` root: chart 10.9.2 (Argo CD v3.5.3),
+      Helm provider 3.3.0, and an `Application` for `deploy/dev`; `dev-up.ps1 -Revision <branch>`
+      applies it. Validated and planned; the apply on the long-lived Floci is to be confirmed
+- [x] Image pins committed in `deploy/dev`, written by `bump-images.sh` (tested, with a `--verify`
+      mode that checks each tag is on GHCR); replaces render-time pinning
+- [ ] Bump workflow: opens a PR as the bot after a build, and its checks run and merge
 - [ ] Argo CD syncs `dev` on the long-lived cluster: `Synced` and `Healthy`, frontend answers
 - [ ] CI verifies CD on a throwaway Floci: apply, install Argo, sync the PR's commit, wait Healthy
       (replaces `deploy.yml`)

@@ -11,23 +11,28 @@
   4. refreshes the kubeconfig and requires the cluster API and every node to be Ready
   5. if the cluster is not healthy, wipes the k3s container and its volume, lets Floci recreate it,
      and repeats 3 and 4 once. k3s state is disposable; workloads come back from git (ADR-0013).
+  6. tofu apply on infra/environments/floci-cluster: Argo CD and the Application that reconciles
+     the workload from git, then reports what Argo CD sees.
 
 .PARAMETER Register
   Runs this script at every login (per-user, no admin needed) via the HKCU Run key.
 .PARAMETER Unregister
   Removes that login entry.
 .PARAMETER PlanOnly
-  Runs tofu plan instead of apply and stops after it. For trying the script safely.
+  Runs tofu plan (infra/environments/floci only) instead of apply and stops. For trying the script safely.
+.PARAMETER Revision
+  The git revision Argo CD tracks (default main). Use a branch name to try a change before it is merged.
 #>
 [CmdletBinding()]
 param(
     [switch]$Register,
     [switch]$Unregister,
     [switch]$PlanOnly,
+    [string]$Revision = "main",
     [string]$Cluster = "yaaf-floci",
     [string]$Endpoint = "http://localhost:4566",
     [string]$Region = "us-east-1",
-    [string]$Profile = "floci"
+    [string]$AwsProfile = "floci"
 )
 
 # Windows PowerShell 5.1 turns any native-command stderr into a terminating error under "Stop".
@@ -36,6 +41,7 @@ $ErrorActionPreference = "Continue"
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $EnvDir = Join-Path $RepoRoot "infra\environments\floci"
+$ClusterEnvDir = Join-Path $RepoRoot "infra\environments\floci-cluster"
 $ComposeFile = Join-Path $EnvDir "compose.yaml"
 $RunKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
 $RunName = "yaaf-dev-up"
@@ -78,16 +84,16 @@ function Start-Floci {
     Assert-Ok (Invoke-Native docker @("compose", "-f", $ComposeFile, "up", "-d", "--wait")) "docker compose up"
 }
 
-function Invoke-Tofu([string]$Verb) {
-    Push-Location $EnvDir
+function Invoke-Tofu([string]$Verb, [string]$Dir = $EnvDir, [string[]]$ExtraArgs = @()) {
+    Push-Location $Dir
     try {
-        Assert-Ok (Invoke-Native tofu @("init", "-input=false")) "tofu init"
+        Assert-Ok (Invoke-Native tofu @("init", "-input=false")) "tofu init ($Dir)"
         if ($Verb -eq "plan") {
-            $r = Invoke-Native tofu @("plan", "-input=false")
+            $r = Invoke-Native tofu (@("plan", "-input=false") + $ExtraArgs)
         } else {
-            $r = Invoke-Native tofu @("apply", "-input=false", "-auto-approve")
+            $r = Invoke-Native tofu (@("apply", "-input=false", "-auto-approve") + $ExtraArgs)
         }
-        Assert-Ok $r "tofu $Verb"
+        Assert-Ok $r "tofu $Verb ($Dir)"
         Write-Host ($r.Output -split "`n" | Select-Object -Last 4 | Out-String)
     } finally {
         Pop-Location
@@ -115,9 +121,9 @@ function Update-Kubeconfig {
         @("endpoint_url", $Endpoint)
     )
     foreach ($kv in $set) {
-        $null = Invoke-Native aws @("configure", "set", $kv[0], $kv[1], "--profile", $Profile)
+        $null = Invoke-Native aws @("configure", "set", $kv[0], $kv[1], "--profile", $AwsProfile)
     }
-    (Invoke-Native aws @("eks", "update-kubeconfig", "--name", $Cluster, "--profile", $Profile)).Code -eq 0
+    (Invoke-Native aws @("eks", "update-kubeconfig", "--name", $Cluster, "--profile", $AwsProfile)).Code -eq 0
 }
 
 # The cluster API answers and every node is Ready.
@@ -144,6 +150,21 @@ function Repair-Cluster {
     Write-Step "Restarting Floci"
     Assert-Ok (Invoke-Native docker @("compose", "-f", $ComposeFile, "restart", "floci")) "docker compose restart"
     Assert-Ok (Invoke-Native docker @("compose", "-f", $ComposeFile, "up", "-d", "--wait")) "docker compose up"
+}
+
+# Argo CD's view of the workload. A warning, not a failure: the cluster itself is what this script
+# guarantees, and the Application can lag or be degraded for reasons in git (for example a revision
+# that does not exist yet).
+function Show-ArgoStatus {
+    $ctx = "arn:aws:eks:${Region}:000000000000:cluster/$Cluster"
+    $healthy = Wait-Until "the Argo CD application to be Synced and Healthy" 300 {
+        $r = Invoke-Native kubectl @("--context", $ctx, "-n", "argocd", "get", "application", "online-boutique-dev", "-o", "jsonpath={.status.sync.status} {.status.health.status}")
+        $r.Code -eq 0 -and $r.Output.Trim() -eq "Synced Healthy"
+    }
+    Write-Host (Invoke-Native kubectl @("--context", $ctx, "-n", "argocd", "get", "application")).Output
+    if (-not $healthy) {
+        Write-Step "WARNING: the application is not Synced and Healthy (revision '$Revision'). Inspect: kubectl -n argocd describe application online-boutique-dev"
+    }
 }
 
 function Show-K3sLog {
@@ -179,9 +200,13 @@ function Invoke-DevUp {
         Invoke-Tofu "apply"
         Write-Step "Waiting for the cluster"
         if (Wait-ClusterReady) {
-            Write-Step "Ready."
+            Write-Step "Cluster ready."
             $ctx = "arn:aws:eks:${Region}:000000000000:cluster/$Cluster"
             Write-Host (Invoke-Native kubectl @("--context", $ctx, "get", "nodes")).Output
+            Write-Step "Reconciling Argo CD (revision '$Revision')"
+            Invoke-Tofu "apply" $ClusterEnvDir @("-var", "target_revision=$Revision")
+            Show-ArgoStatus
+            Write-Step "Done."
             return
         }
         if ($attempt -eq 1) { Repair-Cluster }
