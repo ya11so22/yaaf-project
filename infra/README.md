@@ -93,7 +93,7 @@ port-forwards. Open these in a regular browser (VS Code's built-in one renders H
 | URL | What |
 |---|---|
 | http://argocd.localhost:8080 | Argo CD. User `admin`; password from the `argocd-initial-admin-secret` secret. |
-| http://headlamp.localhost:8080 | Headlamp, a read-only cluster UI. Token: `kubectl -n headlamp create token headlamp`. |
+| http://headlamp.localhost:8080 | Headlamp, a read-only cluster UI. No login: it serves everyone as its own read-only account (see ADR-0013). |
 | http://shop.localhost:8080 | The Online Boutique. |
 
 Browsers resolve `*.localhost` to loopback themselves; command-line tools on Windows may not, so use

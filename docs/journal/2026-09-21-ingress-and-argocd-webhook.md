@@ -40,6 +40,16 @@ March 2026). `dev-up.ps1` now checks each host through the ALB and prints the UR
 - Argo CD reports an Ingress Progressing until it has a load-balancer address; Traefik with a NodePort
   service has none, so the chart is told to publish `localhost` as the Ingress address.
 
+## Decision: no login for Headlamp
+
+The owner had to re-authenticate Headlamp after every cluster reset. Cause: the repair path wipes the k3s
+data, so the new cluster has new signing keys and service-account IDs and every earlier token stops
+validating (and `kubectl create token` expires in an hour anyway), so no token-based login can survive a
+reset. Options were a long-lived token in a Secret, a fresh token printed by `dev-up`, Headlamp using its
+own service account for everyone, or OIDC. The owner chose the third: `unsafeUseServiceAccountToken`.
+Headlamp calls it unsafe because anyone who reaches the UI gets that account's access; here the account is
+read-only without secrets, and the only way in is the loopback-only ALB. Recorded in ADR-0013 decision 8.
+
 ## Verification
 
 `tofu validate` and `tofu plan` pass for both roots (the ALB module: 4 to add; the cluster root: relay and

@@ -79,6 +79,12 @@ module "argocd" {
     # A web UI for the cluster, from its official Helm chart (pinned). The chart binds its service
     # account to cluster-admin by default; it is bound to the read-only headlamp-viewer role instead
     # (deploy/headlamp-rbac): a dashboard should show status, not change anything.
+    #
+    # There is no login screen: every visitor is served as Headlamp's own read-only service account.
+    # A token login cannot survive a cluster reset (the new cluster has new signing keys, so every old
+    # token stops validating). Headlamp calls this option unsafe because anyone who can reach the UI
+    # gets that account's access; here that is read-only without secrets, and the only way in is the
+    # loopback-only ALB (ADR-0016). Do not carry this to anything reachable by others.
     "headlamp" = {
       namespace = "headlamp"
       source = {
@@ -88,6 +94,7 @@ module "argocd" {
         helm = {
           valuesObject = {
             clusterRoleBinding = { clusterRoleName = "headlamp-viewer" }
+            config             = { unsafeUseServiceAccountToken = true }
           }
         }
       }

@@ -280,7 +280,7 @@ function Invoke-DevUp {
             Write-Host ""
             Write-Host "Open in a regular browser (not VS Code's built-in one):"
             Write-Host "  Argo CD   http://argocd.localhost:8080     user admin; password: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath={.data.password}  (base64)"
-            Write-Host "  Headlamp  http://headlamp.localhost:8080   token: kubectl -n headlamp create token headlamp"
+            Write-Host "  Headlamp  http://headlamp.localhost:8080   no login (read-only, loopback only)"
             Write-Host "  Shop      http://shop.localhost:8080"
             Write-Step "Done."
             return
