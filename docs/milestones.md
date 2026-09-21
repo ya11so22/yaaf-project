@@ -83,7 +83,11 @@ by the steps below. Build and test each step against the local Floci before push
 - [x] Image pins committed in `deploy/dev`, written by `bump-images.sh` (tested, with a `--verify`
       mode that checks each tag is on GHCR); replaces render-time pinning
 - [ ] Bump workflow: opens a PR as the bot after a build, and its checks run and merge
-- [ ] Argo CD syncs `dev` on the long-lived cluster: `Synced` and `Healthy`, frontend answers
+- [x] Argo CD syncs `dev` on the long-lived cluster: `Synced` and `Healthy` (confirmed 2026-09-21).
+      The first apply failed because Helm cannot create an `Application` in the release that
+      installs its CRD; the module now uses a second release (`argocd-apps`)
+- [x] Headlamp, a read-only web UI for the cluster, deployed by Argo CD from its Helm chart
+      (2026-09-21; the chart's default `cluster-admin` binding overridden to `view`)
 - [ ] CI verifies CD on a throwaway Floci: apply, install Argo, sync the PR's commit, wait Healthy
       (replaces `deploy.yml`)
 - [ ] Rollback drill: revert a bump PR and watch Argo converge

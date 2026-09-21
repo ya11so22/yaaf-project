@@ -51,6 +51,13 @@ cluster is only live while the machine is up. That push-based `deploy.yml` now e
    Argo setup. Per-PR environments (an `ApplicationSet` with the pull-request generator) stay in
    Phase 2.
 
+8. **A read-only cluster dashboard.** Headlamp (`kubernetes-sigs`, Apache-2.0) is deployed by Argo CD
+   from its official Helm chart, pinned, in its own namespace. It is chosen because the Kubernetes
+   Dashboard was archived in January 2026 and points to it. The chart binds its service account to
+   `cluster-admin` by default; it is overridden to the built-in `view` role, since a dashboard
+   needs to show status, not change anything. It is reached by port-forward and a service-account
+   token; there is no ingress.
+
 ## Options considered
 
 - **Keep push-based CD** (ADR-0008): works, but it is a script, not reconciliation: no drift

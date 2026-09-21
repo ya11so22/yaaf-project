@@ -45,19 +45,15 @@ resource "helm_release" "applications" {
 
   values = [yamlencode({
     applications = {
-      (var.app_name) = {
+      for name, app in var.applications : name => {
         namespace = var.namespace
         # Deleting the Application removes what it deployed.
         finalizers = ["resources-finalizer.argocd.argoproj.io"]
         project    = "default"
-        source = {
-          repoURL        = var.repo_url
-          targetRevision = var.target_revision
-          path           = var.app_path
-        }
+        source     = app.source
         destination = {
           server    = "https://kubernetes.default.svc"
-          namespace = var.app_namespace
+          namespace = app.namespace
         }
         syncPolicy = {
           automated   = { prune = true, selfHeal = true }

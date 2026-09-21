@@ -206,6 +206,11 @@ function Invoke-DevUp {
             Write-Step "Reconciling Argo CD (revision '$Revision')"
             Invoke-Tofu "apply" $ClusterEnvDir @("-var", "target_revision=$Revision")
             Show-ArgoStatus
+            Write-Host ""
+            Write-Host "Dashboards (each in its own window):"
+            Write-Host "  Argo CD  kubectl -n argocd port-forward svc/argocd-server 8080:80    http://localhost:8080"
+            Write-Host "  Headlamp kubectl -n headlamp port-forward svc/headlamp 8082:80       http://localhost:8082"
+            Write-Host "           login token: kubectl -n headlamp create token headlamp"
             Write-Step "Done."
             return
         }

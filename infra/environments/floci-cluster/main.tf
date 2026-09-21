@@ -11,10 +11,32 @@ provider "helm" {
 module "argocd" {
   source = "../../modules/argocd"
 
-  repo_url        = "https://github.com/ya11so22/yaaf-project.git"
-  target_revision = var.target_revision
+  applications = {
+    # The workload, reconciled from this repository.
+    "online-boutique-dev" = {
+      namespace = "boutique"
+      source = {
+        repoURL        = "https://github.com/ya11so22/yaaf-project.git"
+        targetRevision = var.target_revision
+        path           = "deploy/dev"
+      }
+    }
 
-  app_name      = "online-boutique-dev"
-  app_path      = "deploy/dev"
-  app_namespace = "boutique"
+    # A web UI for the cluster, from its official Helm chart (pinned). The chart binds its service
+    # account to cluster-admin by default; the built-in read-only "view" role is enough to see
+    # status, and a dashboard should not be able to change anything.
+    "headlamp" = {
+      namespace = "headlamp"
+      source = {
+        repoURL        = "https://kubernetes-sigs.github.io/headlamp/"
+        chart          = "headlamp"
+        targetRevision = "0.45.0"
+        helm = {
+          valuesObject = {
+            clusterRoleBinding = { clusterRoleName = "view" }
+          }
+        }
+      }
+    }
+  }
 }
