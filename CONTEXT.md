@@ -22,8 +22,9 @@ Terms are added as they are resolved (via `/domain-modeling`), not written specu
   torn down straight after (ADR-0002, ADR-0003).
 - **Content tag**: an image tag `content-<hash>`, the git tree hash of a service's build context, so
   unchanged services keep their tag (ADR-0011).
-- **Image pin**: the committed content tag for a service in `deploy/dev`; what Argo CD deploys.
-  Rollback is reverting the pin change.
+- **Image pin**: the committed content tag for a service in `deploy/dev`; what Argo CD deploys. Pins are
+  derived from the source, so rollback is reverting the source change: a pin-only revert is undone by the
+  next bump.
 - **Argo CD**: runs in the cluster and reconciles workloads from git; nothing pushes into the cluster
   (ADR-0013).
 - **Promotion**: deploying the same image proven in dev to milestone (by content tag and digest).

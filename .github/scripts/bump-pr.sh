@@ -44,7 +44,7 @@ number="$(gh pr list --head "$branch" --state open --json number --jq '.[0].numb
 if [ -z "$number" ]; then
   url="$(gh pr create --base main --head "$branch" \
     --title "Bump dev image pins" \
-    --body "Automated by the bump-images workflow (ADR-0013). Argo CD deploys the pins on merge; reverting this PR rolls them back.")"
+    --body "Automated by the bump-images workflow (ADR-0013). Argo CD deploys the pins on merge. To roll back, revert the source change that caused the problem: pins are derived from the source, so reverting only this PR is undone by the next bump.")"
   number="${url##*/}"
   echo "Opened $url"
 else

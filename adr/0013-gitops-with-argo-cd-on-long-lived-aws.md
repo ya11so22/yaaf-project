@@ -33,7 +33,11 @@ cluster is only live while the machine is up. That push-based `deploy.yml` now e
    - CI builds images and records what should run in git; it does not touch the cluster.
 3. **Image pins live in git.** `deploy/dev/kustomization.yaml` carries the content-hash tags
    (ADR-0011) in an `images:` block. A script computes them, and a workflow opens a PR bumping them
-   after each build. Rollback is reverting that PR; Argo converges. Render-time pinning is retired.
+   after each build. Render-time pinning is retired. **Rollback is reverting the source change, not the pin:**
+   pins are derived from the source, and the bump workflow recomputes them after every build on `main`, so a
+   pin-only revert is undone within about a minute (observed in the Phase 1 failure exercise, see
+   `docs/postmortems/2026-09-21-phase1-bad-emailservice.md`). Reverting the source returns the content tag to
+   its earlier value, which is already built, so nothing is rebuilt and the bump workflow then re-pins to it.
 4. **A bot identity.** PRs created with the default `GITHUB_TOKEN` do not trigger workflows, so the
    required checks would never report and the bump PR could never merge. The bump workflow
    therefore uses a GitHub App (free) as a bot identity, which is also the bot identity ADR-0008

@@ -102,15 +102,17 @@ by the steps below. Build and test each step against the local Floci before push
       `headlamp-viewer` role from git that excludes secrets)
 - [ ] CI verifies CD on a throwaway Floci: apply, install Argo, sync the PR's commit, wait Healthy
       (replaces `deploy.yml`)
-- [ ] Rollback drill: revert a bump PR and watch Argo converge
+- [x] Rollback drill (2026-09-21, see the postmortem): a pin-only revert healed the cluster in 48 s but was
+      undone 78 s later by the bump workflow; reverting the source recovered it durably (2 min 7 s from
+      opening the revert to healthy). Rollback is reverting the source (ADR-0013)
 - [ ] Promotion documented: the image proven in dev is the one a later milestone deploy would use
       (the milestone itself is deferred with real AWS, ADR-0012)
 
 ### Phase 1 close-out (local, free; ADR-0012)
 
 - [ ] Threat model (STRIDE-style pass on pipeline and infra)
-- [ ] A simple failure exercise for Phase 1 (a bad digest, recovered by rollback) and a short
-      postmortem
+- [x] A simple failure exercise for Phase 1 (a bad image, recovered by rollback) and its postmortem:
+      [`docs/postmortems/2026-09-21-phase1-bad-emailservice.md`](postmortems/2026-09-21-phase1-bad-emailservice.md)
 - [ ] Phase 1 demo: README + short recording/GIF, from a local or runner-hosted cluster
 
 ### Real AWS (deferred, optional; ADR-0012)
