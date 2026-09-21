@@ -15,4 +15,6 @@ One file per exercise: `YYYY-MM-DD-<what-broke>.md`, one paragraph covering:
 - How it was caught (or wasn't, and should have been)
 - What changed as a result
 
-No entries yet — the first lands at the end of Phase 1.
+## Entries
+
+- [2026-09-21: A broken emailservice through the delivery pipeline](2026-09-21-phase1-bad-emailservice.md): Phase 1. A change that only fails at start-up passes CI and reaches `dev`; readiness contained it; a pin-only revert was undone by the bump workflow, and reverting the source recovered it.

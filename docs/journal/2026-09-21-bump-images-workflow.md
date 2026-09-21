@@ -17,7 +17,8 @@ GitHub App, checks out the built commit, and runs `bump-pr.sh`, which:
 - otherwise commits the change on one fixed branch, `bot/bump-images`, as the bot, force-pushes it, opens
   a PR if none is open (or updates the open one), and enables auto-merge.
 
-Reverting the merged PR rolls the pins back, and Argo CD converges.
+Reverting the merged PR rolls the pins back, and Argo CD converges. (Corrected the same day: this holds only until
+the next build on `main`, which recomputes the pins from the source; see the failure-exercise postmortem.)
 
 ## Why
 

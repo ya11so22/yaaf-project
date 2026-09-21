@@ -33,8 +33,8 @@ the interesting work is the platform layer built around it:
 - GitHub Actions: path-filtered per-service image builds to GHCR with content-hash tags, and an
   infrastructure pipeline (plan on PR, an apply-from-scratch smoke test).
 - GitOps delivery: Argo CD, installed by OpenTofu into an EKS cluster on a long-lived local "AWS"
-  (Floci), reconciles the app from git; a bot PR bumps the pinned images and rollback is a git
-  revert. A real-AWS milestone is deferred until local options are exhausted. OIDC federation, so there
+  (Floci), reconciles the app from git; a bot PR bumps the pinned images and rollback is reverting the change
+  that caused the problem. A real-AWS milestone is deferred until local options are exhausted. OIDC federation, so there
   are no long-lived AWS credentials.
 - A platform engineering layer: one reusable "golden path" workflow, per-PR environments,
   policy-as-code, DORA metrics, and access management for the team.
