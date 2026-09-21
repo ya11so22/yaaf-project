@@ -88,7 +88,8 @@ is merged, run `.\scripts\dev-up.ps1 -Revision <branch>`. Argo CD's UI is reache
 `kubectl -n argocd port-forward svc/argocd-server 8080:80` (user `admin`, password from the
 `argocd-initial-admin-secret` secret). Headlamp, a read-only cluster UI also deployed by Argo CD, is
 at `kubectl -n headlamp port-forward svc/headlamp 8082:80`; log in with
-`kubectl -n headlamp create token headlamp`.
+`kubectl -n headlamp create token headlamp`. Open the dashboards in a regular browser: VS Code's
+built-in Simple Browser renders Headlamp as an empty page with only a search bar.
 
 `kubectl` authenticates as an IAM user that OpenTofu creates in Floci (Floci's EKS auth rejects the
 public `test`/`test` keys and only accepts a key that exists in its IAM); `dev-up.ps1` reads that key

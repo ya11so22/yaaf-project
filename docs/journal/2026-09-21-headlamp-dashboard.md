@@ -28,6 +28,13 @@ port-forward plus a service-account token; there is no ingress.
 boutique application unchanged, Headlamp added). `dev-up.ps1` parses on Windows PowerShell 5.1 and
 PowerShell 7 and now prints how to reach both dashboards. The owner confirms the apply and the login.
 
+## Finding: the dashboard looked empty in VS Code's browser
+
+The owner saw only a search bar and no login at the Headlamp URL. The pod, its logs, `/config` (which
+lists the in-cluster context `main`) and the API's 401 without a token were all correct, so the server
+was fine. The cause was the client: VS Code's built-in browser does not render Headlamp; a regular
+browser (Edge) shows the login. Noted in the infra README.
+
 ## Next
 
 The bump workflow (bot PR after each build), then the CI check that Argo syncs a PR's commit, then
