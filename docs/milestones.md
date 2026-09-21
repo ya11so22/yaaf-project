@@ -51,9 +51,9 @@ infrastructure.
 
 ### Continuous delivery (ADR-0008, ADR-0010)
 
-Design settled in [ADR-0011](../adr/0011-cd-image-identity-scope-and-state.md): content-hash image
-tags, the 11 base services without the load generator, and a milestone that holds local state in one
-atomic job with a saved, encrypted plan. Real AWS is deferred by [ADR-0012](../adr/0012-local-first-real-aws-deferred.md). Implementation has not started.
+Image identity and scope settled in [ADR-0011](../adr/0011-cd-image-identity-scope-and-state.md):
+content-hash image tags, and 10 services plus `redis-cart` without the load generator. Real AWS is
+deferred by [ADR-0012](../adr/0012-local-first-real-aws-deferred.md).
 
 - [x] Spike: a throwaway Floci with EKS starts, and a GHCR image rolls out, on a GitHub-hosted
       runner (2026-09-20, about 1m50s end to end; multi-service and frontend checks still open)
@@ -67,9 +67,33 @@ atomic job with a saved, encrypted plan. Real AWS is deferred by [ADR-0012](../a
 - [x] `deploy.yml`, dev: start a throwaway Floci in the runner, apply the infra, render and deploy
       the overlay, wait for every rollout, smoke check the frontend (2026-09-21, PR run green in
       about 2m43s: 11 rollouts, frontend answers). Runs on merge to `main` once merged
-- [ ] Rollback: redeploy the previous digest, exercised in a drill
-- [ ] Promotion documented: the digest proven in dev is the one a later milestone deploy would use
-      (the milestone `deploy.yml` itself is deferred with real AWS, ADR-0012)
+Superseded by [ADR-0013](../adr/0013-gitops-with-argo-cd-on-long-lived-aws.md): pull-based GitOps
+with Argo CD, on the long-lived local AWS. The push-based `deploy.yml` above worked and is replaced
+by the steps below. Build and test each step against the local Floci before pushing.
+
+- [x] Long-lived AWS operated by one command: `restart: unless-stopped` and pinned images in compose,
+      `scripts/dev-up.ps1` (health check, repair, `tofu apply`, kubeconfig), the `kubectl` IAM key as
+      an OpenTofu resource, a login entry via `-Register` (ADR-0014). Repair path tested (cluster
+      recreated clean in about 19s); the full apply run and a real restart are to be confirmed
+- [x] GitHub App bot identity (manual, owner): `BOT_APP_ID` and `BOT_APP_PRIVATE_KEY` set as
+      repository secrets (2026-09-21), scoped to this repository
+- [x] `argocd` module in `infra/modules/` and a `floci-cluster` root: chart 10.9.2 (Argo CD v3.5.3),
+      Helm provider 3.3.0, and an `Application` for `deploy/dev`; `dev-up.ps1 -Revision <branch>`
+      applies it. Validated and planned; the apply on the long-lived Floci is to be confirmed
+- [x] Image pins committed in `deploy/dev`, written by `bump-images.sh` (tested, with a `--verify`
+      mode that checks each tag is on GHCR); replaces render-time pinning
+- [ ] Bump workflow: opens a PR as the bot after a build, and its checks run and merge
+- [x] Argo CD syncs `dev` on the long-lived cluster: `Synced` and `Healthy` (confirmed 2026-09-21).
+      The first apply failed because Helm cannot create an `Application` in the release that
+      installs its CRD; the module now uses a second release (`argocd-apps`)
+- [x] Headlamp, a read-only web UI for the cluster, deployed by Argo CD from its Helm chart
+      (2026-09-21; the chart's default `cluster-admin` binding replaced by a read-only
+      `headlamp-viewer` role from git that excludes secrets)
+- [ ] CI verifies CD on a throwaway Floci: apply, install Argo, sync the PR's commit, wait Healthy
+      (replaces `deploy.yml`)
+- [ ] Rollback drill: revert a bump PR and watch Argo converge
+- [ ] Promotion documented: the image proven in dev is the one a later milestone deploy would use
+      (the milestone itself is deferred with real AWS, ADR-0012)
 
 ### Phase 1 close-out (local, free; ADR-0012)
 
@@ -96,8 +120,13 @@ Not started. Scope (ADR-0010):
 - [ ] Observability: a metrics stack and dashboards for the deployed app
 - [ ] SLOs and alerts on them, and an incident drill with a written postmortem
 - [ ] DORA metrics from the pipeline
-- [ ] GitOps (Argo CD) in a persistent cluster, with per-PR environments (a namespace per PR,
-      torn down on close)
+- [ ] Traefik as the ingress controller, installed by Argo CD from its Helm chart (pinned), with
+      host-based routes for the dashboards and the app (`argocd.localhost`, `headlamp.localhost`, ...)
+      and, with per-PR environments, one host per PR. Needs an ADR first (Ingress or Gateway API; the
+      k3s cluster is started with its bundled Traefik disabled). On Floci only the API port is published
+      to the host, so Traefik is reached through one `kubectl port-forward` instead of one per tool
+- [ ] Per-PR environments on the Argo CD from Phase 1 (an `ApplicationSet` with the pull-request
+      generator, a namespace per PR, torn down on close)
 - [ ] Policy-as-code: `conftest` on plans (for example, no wildcard OIDC `sub`) and manifests, and
       an IaC security scan
 - [ ] Golden-path reusable workflow (`workflow_call`) extracted from `build.yml`, with per-service

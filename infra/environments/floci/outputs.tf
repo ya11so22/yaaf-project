@@ -29,3 +29,12 @@ output "github_oidc_role_arns" {
     tofu_apply = module.github_oidc.tofu_apply_role_arn
   }
 }
+
+output "kubectl_access_key_id" {
+  value = aws_iam_access_key.kubectl.id
+}
+
+output "kubectl_secret_access_key" {
+  value     = aws_iam_access_key.kubectl.secret
+  sensitive = true
+}

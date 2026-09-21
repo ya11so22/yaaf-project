@@ -12,17 +12,27 @@ Terms are added as they are resolved (via `/domain-modeling`), not written specu
   `CONTRIBUTING.md`.
 - **Platform engineer**: the DevOps owner of infrastructure, pipelines, policy and environments;
   the code owner for everything outside `app/src`.
-- **Environment**: where a deployment runs. Exactly two: **dev** (Floci, `infra/environments/floci`)
-  and **milestone** (real AWS, `infra/environments/aws-milestone`). There is no production.
+- **AWS**: the cloud layer (IAM, VPC, ECR, EKS). Backed by a long-lived local Floci for now; real AWS
+  is a later second backend. Say "AWS" for the layer, and name the thing when it matters: the
+  **EKS cluster**, a **workload** in it, or the **emulator** for Floci's own behaviour (ADR-0013).
+- **Environment**: what OpenTofu provisions on top of AWS. **dev** (`infra/environments/floci`) is
+  the only one now; **milestone** (`infra/environments/aws-milestone`) waits for real AWS
+  (ADR-0012). There is no production.
 - **Milestone deploy**: the brief, real-AWS deployment used to validate what the emulator cannot,
   torn down straight after (ADR-0002, ADR-0003).
-- **Promotion**: deploying the same image *digest* that was proven in dev to milestone. Tags are
-  per-commit SHAs; the digest is what is promoted.
-- **Smoke test**: the infra pipeline's throwaway-Floci run: apply from scratch, a re-plan that must
+- **Content tag**: an image tag `content-<hash>`, the git tree hash of a service's build context, so
+  unchanged services keep their tag (ADR-0011).
+- **Image pin**: the committed content tag for a service in `deploy/dev`; what Argo CD deploys.
+  Rollback is reverting the pin change.
+- **Argo CD**: runs in the cluster and reconciles workloads from git; nothing pushes into the cluster
+  (ADR-0013).
+- **Promotion**: deploying the same image proven in dev to milestone (by content tag and digest).
+- **Smoke test**: the infra pipeline's throwaway-Floci run (a fresh emulator per CI run, unlike the
+  long-lived AWS): apply from scratch, a re-plan that must
   show no changes, then destroy. It proves the code applies, not that it is secure.
 - **Gate job**: an always-running job (`build`, `infra`) that is the single required check for its
   pipeline, so PRs that touch nothing relevant still report it.
 - **Golden path**: the single, reusable, parameterised build workflow that Phase 2 extracts from
   `build.yml`, replacing per-service pipelines.
-- **Floci**: the local AWS emulator. It stores IAM, ECR and cluster metadata persistently in local
+- **Floci**: the local AWS emulator that backs AWS. It stores IAM, ECR and cluster metadata persistently in local
   development and is fresh in every CI run. It does not enforce IAM trust policies.

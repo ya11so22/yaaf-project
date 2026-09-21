@@ -4,16 +4,15 @@ name: deploy
 # runner, the same infrastructure as the infra smoke test, then the rendered manifests pinned to
 # each service's content-hash tag. Passing means every rollout completed and the frontend answers.
 #
-# Rollback: run this workflow by hand with `rev` set to an earlier commit; the manifests are
-# rendered at that revision, so they reference the tags that revision was deployed with.
+# Interim (ADR-0013 replaces this with a check that Argo CD syncs the same manifests). The image
+# pins are committed in deploy/dev, so this deploys exactly what the checked-out revision pins.
+# Run by hand with `rev` set to an earlier commit to deploy that revision.
 on:
   push:
     branches: [main]
   pull_request:
     paths:
       - .github/workflows/deploy.yml
-      - .github/scripts/render-manifests.sh
-      - .github/scripts/content-tag.sh
       - deploy/**
   workflow_dispatch:
     inputs:
@@ -43,7 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
+          ref: ${{ inputs.rev || github.sha }}
 
       - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
         with:
@@ -65,7 +64,7 @@ jobs:
           tofu init -input=false
           tofu apply -input=false -auto-approve
 
-      # Floci's EKS auth rejects test/test, so mint a real IAM key in Floci (see kubectl-setup.ps1).
+      # Floci's EKS auth rejects test/test, so mint a real IAM key in Floci (locally this key is an OpenTofu resource: ADR-0014).
       - name: Point kubectl at the cluster
         env:
           AWS_ENDPOINT_URL: http://localhost:4566
@@ -88,12 +87,10 @@ jobs:
         run: kubectl wait --for=condition=Ready node --all --timeout=300s
 
       - name: Render the manifests
-        env:
-          REV: ${{ inputs.rev || 'HEAD' }}
         run: |
-          bash .github/scripts/render-manifests.sh deploy/dev "$REV" > rendered.yaml
+          kubectl kustomize deploy/dev > rendered.yaml
           {
-            echo "Rendered at \`$(git rev-parse --short "$REV")\`:"
+            echo "Rendered at \`$(git rev-parse --short HEAD)\`:"
             echo '```'
             grep -o 'image: ghcr.io[^ ]*' rendered.yaml | sort -u
             echo '```'

@@ -2,8 +2,11 @@ name: floci
 
 services:
   floci:
-    image: floci/floci:latest
+    # Pinned by digest (Floci v2.1.0); bump deliberately. restart keeps the emulator up across
+    # machine restarts (ADR-0014). The image ships its own healthcheck, which `up --wait` uses.
+    image: floci/floci@sha256:f5aa8c18302cedb4f2385f5c4e455b3efc77fee6bf7b6e5d1712b2817ba102db
     container_name: floci
+    restart: unless-stopped
     ports:
       - "4566:4566"
     volumes:
@@ -24,8 +27,9 @@ services:
       - floci-net
 
   floci-ui:
-    image: floci/floci-ui:latest
+    image: floci/floci-ui@sha256:f3a2d38bbc306409bcada19efba092721216f315dcb27c2658551d7d29d5f9bb
     container_name: floci-ui
+    restart: unless-stopped
     ports:
       - "4500:4500"
     environment:
@@ -40,7 +44,8 @@ services:
       AWS_SECRET_ACCESS_KEY: test
       AWS_SESSION_TOKEN: test
     depends_on:
-      - floci
+      floci:
+        condition: service_healthy
     networks:
       - floci-net
 

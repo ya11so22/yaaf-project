@@ -1,9 +1,48 @@
 # The dev environment: Online Boutique's own base, without the load generator (ADR-0011).
-# Image names and tags are not set here; .github/scripts/render-manifests.sh pins each service to
-# its content-hash tag on GHCR at render time, so a rollback is a render at an earlier revision.
+# The image pins below are committed and written by .github/scripts/bump-images.sh; Argo CD
+# deploys what is here (ADR-0013), so a rollback is reverting the pin commit.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../../app/kustomize/base
 components:
   - ../../app/kustomize/components/without-loadgenerator
+# BEGIN image pins (written by .github/scripts/bump-images.sh; do not edit by hand)
+images:
+  - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/adservice
+    newName: ghcr.io/ya11so22/yaaf-project/adservice
+    newTag: content-2b278d0390f3
+  - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/cartservice
+    newName: ghcr.io/ya11so22/yaaf-project/cartservice
+    newTag: content-5accb8fc294f
+  - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/checkoutservice
+    newName: ghcr.io/ya11so22/yaaf-project/checkoutservice
+    newTag: content-98fa30d9f986
+  - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/currencyservice
+    newName: ghcr.io/ya11so22/yaaf-project/currencyservice
+    newTag: content-582b4fbdc66b
+  - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/emailservice
+    newName: ghcr.io/ya11so22/yaaf-project/emailservice
+    newTag: content-244cffe52146
+  - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/frontend
+    newName: ghcr.io/ya11so22/yaaf-project/frontend
+    newTag: content-f5bead46a4e4
+  - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/loadgenerator
+    newName: ghcr.io/ya11so22/yaaf-project/loadgenerator
+    newTag: content-01428054871b
+  - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/paymentservice
+    newName: ghcr.io/ya11so22/yaaf-project/paymentservice
+    newTag: content-510987408aa9
+  - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/productcatalogservice
+    newName: ghcr.io/ya11so22/yaaf-project/productcatalogservice
+    newTag: content-0ede80f056b9
+  - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/recommendationservice
+    newName: ghcr.io/ya11so22/yaaf-project/recommendationservice
+    newTag: content-7dfce87c6712
+  - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/shippingservice
+    newName: ghcr.io/ya11so22/yaaf-project/shippingservice
+    newTag: content-0eaeaf515e46
+  - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/shoppingassistantservice
+    newName: ghcr.io/ya11so22/yaaf-project/shoppingassistantservice
+    newTag: content-032bb90c833c
+# END image pins
