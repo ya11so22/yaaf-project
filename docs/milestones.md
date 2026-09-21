@@ -64,8 +64,9 @@ atomic job with a saved, encrypted plan. Real AWS is deferred by [ADR-0012](../a
       no load generator), with `render-manifests.sh` pinning each service to its content tag; tested
       (2026-09-21) and every rendered tag confirmed on GHCR. A `milestone` overlay waits for real
       AWS (ADR-0012)
-- [ ] `deploy.yml`, dev: on merge to `main`, start a throwaway Floci in the runner, apply the
-      infra, deploy the overlay, wait for the rollout, smoke check the frontend
+- [x] `deploy.yml`, dev: start a throwaway Floci in the runner, apply the infra, render and deploy
+      the overlay, wait for every rollout, smoke check the frontend (2026-09-21, PR run green in
+      about 2m43s: 11 rollouts, frontend answers). Runs on merge to `main` once merged
 - [ ] Rollback: redeploy the previous digest, exercised in a drill
 - [ ] Promotion documented: the digest proven in dev is the one a later milestone deploy would use
       (the milestone `deploy.yml` itself is deferred with real AWS, ADR-0012)
