@@ -14,6 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# NOTICE: modified from upstream (GoogleCloudPlatform/microservices-demo) by the yaaf-project
+# app team. The change is this comment only; it exists to exercise the delivery pipeline end to
+# end (build, image pin bump, Argo CD rollout). See docs/journal/.
+
 from concurrent import futures
 import argparse
 import os
