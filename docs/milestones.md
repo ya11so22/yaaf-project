@@ -120,6 +120,11 @@ Not started. Scope (ADR-0010):
 - [ ] Observability: a metrics stack and dashboards for the deployed app
 - [ ] SLOs and alerts on them, and an incident drill with a written postmortem
 - [ ] DORA metrics from the pipeline
+- [ ] Traefik as the ingress controller, installed by Argo CD from its Helm chart (pinned), with
+      host-based routes for the dashboards and the app (`argocd.localhost`, `headlamp.localhost`, ...)
+      and, with per-PR environments, one host per PR. Needs an ADR first (Ingress or Gateway API; the
+      k3s cluster is started with its bundled Traefik disabled). On Floci only the API port is published
+      to the host, so Traefik is reached through one `kubectl port-forward` instead of one per tool
 - [ ] Per-PR environments on the Argo CD from Phase 1 (an `ApplicationSet` with the pull-request
       generator, a namespace per PR, torn down on close)
 - [ ] Policy-as-code: `conftest` on plans (for example, no wildcard OIDC `sub`) and manifests, and
