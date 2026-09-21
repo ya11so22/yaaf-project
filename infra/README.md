@@ -58,21 +58,34 @@ tofu apply
 
 `tofu plan` needs no running Floci on a fresh state, which is how the pipeline plans without it.
 
-## Using kubectl against the Floci cluster
+## Bringing the local AWS up: `scripts/dev-up.ps1`
 
-Floci's EKS auth rejects the public `test`/`test` keys and only accepts a key that exists in its
-IAM. Run this once (and again only if the `floci_floci-data` volume is deleted):
+One idempotent command owns the local Floci lifecycle (ADR-0014). Run it after a restart, after
+changing the infrastructure, or whenever something looks wrong:
 
 ```powershell
-cd infra/environments/floci
-powershell -ExecutionPolicy Bypass -File .\kubectl-setup.ps1
-kubectl get nodes
+.\scripts\dev-up.ps1
 ```
 
-The script creates a `kubectl-dev` IAM user in Floci, stores its key in an AWS CLI profile named
-`floci`, and merges a kubeconfig context that uses it. Other contexts are left alone; switch back
-with `kubectl config use-context <name>`. After a Floci restart the old node lingers as
-`NotReady`; delete it with `docker exec floci-eks-yaaf-floci kubectl delete node <old-name>`.
+It waits for Docker, starts Floci and waits for its health check, runs `tofu apply` on this
+environment (which is the drift detection), refreshes the kubeconfig and requires the cluster API
+and every node to be Ready. If the cluster is not healthy it wipes the k3s container and volume,
+lets Floci recreate the cluster, and applies again. k3s state is disposable; workloads come back
+from git. `-PlanOnly` runs `tofu plan` instead of apply.
+
+To run it automatically at every login (per user, no admin), once:
+
+```powershell
+.\scripts\dev-up.ps1 -Register      # -Unregister removes it; the log is %LOCALAPPDATA%\yaaf\dev-up.log
+```
+
+Docker Desktop must start at login (Docker Desktop settings). Compose gives Floci
+`restart: unless-stopped`, so Docker brings the emulator back by itself.
+
+`kubectl` authenticates as an IAM user that OpenTofu creates in Floci (Floci's EKS auth rejects the
+public `test`/`test` keys and only accepts a key that exists in its IAM); `dev-up.ps1` reads that key
+from the OpenTofu outputs into an AWS CLI profile named `floci` and merges the kubeconfig context.
+Other contexts are left alone; switch back with `kubectl config use-context <name>`.
 
 ## Known Floci differences from real AWS
 
@@ -83,6 +96,12 @@ These are why the real-AWS milestone exists. Details are in `docs/journal/`.
 - IAM web-identity trust conditions are not enforced (so ADR-0006's security property is unproven
   until real AWS).
 - EKS auth needs a real IAM key rather than the dummy pair.
+- Floci restores its EKS cluster lazily, only when the EKS API is first called after a restart.
+- After an abrupt stop, the surviving k3s container is adopted and can exit at once because its
+  IP changed, while Floci keeps reporting the cluster `ACTIVE`. OpenTofu cannot see this, which is
+  why `dev-up.ps1` checks the cluster itself.
+- After a graceful stop the k3s container is removed but its data volume is kept and reused, so
+  the old node lingers as a `NotReady` ghost.
 
 ## Status
 

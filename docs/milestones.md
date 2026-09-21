@@ -71,7 +71,12 @@ Superseded by [ADR-0013](../adr/0013-gitops-with-argo-cd-on-long-lived-aws.md): 
 with Argo CD, on the long-lived local AWS. The push-based `deploy.yml` above worked and is replaced
 by the steps below. Build and test each step against the local Floci before pushing.
 
-- [ ] GitHub App bot identity (manual, owner): scoped to this repository, key stored as a secret
+- [x] Long-lived AWS operated by one command: `restart: unless-stopped` and pinned images in compose,
+      `scripts/dev-up.ps1` (health check, repair, `tofu apply`, kubeconfig), the `kubectl` IAM key as
+      an OpenTofu resource, a login entry via `-Register` (ADR-0014). Repair path tested (cluster
+      recreated clean in about 19s); the full apply run and a real restart are to be confirmed
+- [x] GitHub App bot identity (manual, owner): `BOT_APP_ID` and `BOT_APP_PRIVATE_KEY` set as
+      repository secrets (2026-09-21), scoped to this repository
 - [ ] `argocd` module in `infra/`: pinned Helm chart and a root `Application`, applied on the
       long-lived Floci
 - [ ] Image pins committed in `deploy/dev`; `bump-images.sh` writes them; the bump workflow opens a

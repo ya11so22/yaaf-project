@@ -81,3 +81,20 @@ module "github_oidc" {
     Environment = "floci"
   }
 }
+
+# Floci's EKS auth webhook rejects the public test/test key pair and needs a real IAM key, so
+# `kubectl` authenticates as this user. Managed here, not by a script, so it is created once and
+# reconciled like everything else (ADR-0014). The secret lives only in the local, git-ignored
+# state of this emulator environment.
+resource "aws_iam_user" "kubectl" {
+  name = "${var.project}-kubectl"
+
+  tags = {
+    Project     = var.project
+    Environment = "floci"
+  }
+}
+
+resource "aws_iam_access_key" "kubectl" {
+  user = aws_iam_user.kubectl.name
+}

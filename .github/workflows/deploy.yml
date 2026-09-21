@@ -65,7 +65,7 @@ jobs:
           tofu init -input=false
           tofu apply -input=false -auto-approve
 
-      # Floci's EKS auth rejects test/test, so mint a real IAM key in Floci (see kubectl-setup.ps1).
+      # Floci's EKS auth rejects test/test, so mint a real IAM key in Floci (locally this key is an OpenTofu resource: ADR-0014).
       - name: Point kubectl at the cluster
         env:
           AWS_ENDPOINT_URL: http://localhost:4566

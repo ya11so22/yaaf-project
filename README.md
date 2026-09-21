@@ -82,7 +82,8 @@ scorecard, with reasons, is in [`docs/live-infra-gap-analysis.md`](docs/live-inf
 
 The repository is public, `main` is protected (PRs only, with `build`, `infra` and `check` required),
 and the 12 service images are public on GHCR, tagged by commit and by content hash. Floci runs
-locally with persistent storage (`infra/environments/floci/compose.yaml`) as the long-lived "AWS".
+locally with persistent storage (`infra/environments/floci/compose.yaml`) as the long-lived "AWS",
+brought up and reconciled by one command, `scripts/dev-up.ps1` (ADR-0014).
 The VPC, EKS, ECR and GitHub OIDC modules are applied and verified against it. The `build`, `infra`,
 `check` and weekly `cleanup` workflows have run on GitHub. A push-based dev deploy on a throwaway
 Floci works (all 11 rollouts, frontend answering) and is being replaced by GitOps. Still to do, in
@@ -125,6 +126,7 @@ the Phase 1 close-out. Real AWS comes later, and only when local options are exh
 - [ADR-0011: CD design: image identity, deploy scope and milestone state](adr/0011-cd-image-identity-scope-and-state.md)
 - [ADR-0012: Local and free first; real AWS deferred](adr/0012-local-first-real-aws-deferred.md)
 - [ADR-0013: GitOps with Argo CD, on a long-lived local "AWS"](adr/0013-gitops-with-argo-cd-on-long-lived-aws.md)
+- [ADR-0014: Operating the long-lived AWS: restart policy and one reconcile command](adr/0014-operating-the-long-lived-aws.md)
 
 New decisions use [`adr/0000-template.md`](adr/0000-template.md), written *before* asking Claude
 Code to implement.
