@@ -87,7 +87,8 @@ by the steps below. Build and test each step against the local Floci before push
       The first apply failed because Helm cannot create an `Application` in the release that
       installs its CRD; the module now uses a second release (`argocd-apps`)
 - [x] Headlamp, a read-only web UI for the cluster, deployed by Argo CD from its Helm chart
-      (2026-09-21; the chart's default `cluster-admin` binding overridden to `view`)
+      (2026-09-21; the chart's default `cluster-admin` binding replaced by a read-only
+      `headlamp-viewer` role from git that excludes secrets)
 - [ ] CI verifies CD on a throwaway Floci: apply, install Argo, sync the PR's commit, wait Healthy
       (replaces `deploy.yml`)
 - [ ] Rollback drill: revert a bump PR and watch Argo converge

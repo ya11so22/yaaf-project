@@ -35,8 +35,19 @@ lists the in-cluster context `main`) and the API's 401 without a token were all 
 was fine. The cause was the client: VS Code's built-in browser does not render Headlamp; a regular
 browser (Edge) shows the login. Noted in the infra README.
 
+## Finding: the `view` role was too narrow
+
+Headlamp then reported `gateways.gateway.networking.k8s.io is forbidden` for its service account.
+The built-in `view` role has no nodes and no custom resources, and Headlamp also probes for Gateway
+API whether or not it is installed (Kubernetes authorizes the request before checking that the group
+exists, so an uninstalled group is "forbidden", not "not found"). Rather than add rules one error at
+a time, `deploy/headlamp-rbac` defines a `headlamp-viewer` ClusterRole: the core resources listed one
+by one (no secrets, no pod exec, no node proxy) and every other API group in the cluster, plus Gateway
+API and volume snapshots. It is deployed by Argo CD as a third Application and the chart's binding
+now points at it. A server-side dry run of the role passed.
+
 ## Next
 
 The bump workflow (bot PR after each build), then the CI check that Argo syncs a PR's commit, then
-the rollback drill. `view` does not include custom resources, so Argo's Applications are not visible in
-Headlamp; a small aggregated role could add that if it is wanted.
+the rollback drill. Argo's Applications are now readable in Headlamp, since `headlamp-viewer` includes
+`argoproj.io`.

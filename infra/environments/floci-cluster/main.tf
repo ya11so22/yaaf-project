@@ -22,9 +22,20 @@ module "argocd" {
       }
     }
 
+    # The read-only role Headlamp runs as, from git. Cluster-scoped, so the namespace is only where
+    # Argo CD records the Application's resources.
+    "headlamp-rbac" = {
+      namespace = "headlamp"
+      source = {
+        repoURL        = "https://github.com/ya11so22/yaaf-project.git"
+        targetRevision = var.target_revision
+        path           = "deploy/headlamp-rbac"
+      }
+    }
+
     # A web UI for the cluster, from its official Helm chart (pinned). The chart binds its service
-    # account to cluster-admin by default; the built-in read-only "view" role is enough to see
-    # status, and a dashboard should not be able to change anything.
+    # account to cluster-admin by default; it is bound to the read-only headlamp-viewer role instead
+    # (deploy/headlamp-rbac): a dashboard should show status, not change anything.
     "headlamp" = {
       namespace = "headlamp"
       source = {
@@ -33,7 +44,7 @@ module "argocd" {
         targetRevision = "0.45.0"
         helm = {
           valuesObject = {
-            clusterRoleBinding = { clusterRoleName = "view" }
+            clusterRoleBinding = { clusterRoleName = "headlamp-viewer" }
           }
         }
       }
