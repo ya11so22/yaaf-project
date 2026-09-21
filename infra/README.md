@@ -73,6 +73,19 @@ and every node to be Ready. If the cluster is not healthy it wipes the k3s conta
 lets Floci recreate the cluster, and applies again. k3s state is disposable; workloads come back
 from git. `-PlanOnly` runs `tofu plan` instead of apply.
 
+To shut down (for example to free the laptop's memory), run the counterpart. It backs up the two OpenTofu state
+files, which exist only on this machine, stops Floci gracefully and everything it started, and removes nothing:
+
+```powershell
+.\scripts\dev-down.ps1              # add -QuitDocker to quit Docker Desktop as well; -DryRun to preview
+```
+
+The Docker volumes and the state files are kept, so `.\scripts\dev-up.ps1` brings everything back: the
+cluster is recreated and Argo CD redeploys the workloads from git. Do not shut down with
+`docker compose down -v`, `docker volume prune`, or Docker Desktop's "Clean / Purge data" or "Reset to factory
+defaults": those delete the state. If the volumes are ever gone, delete the two `terraform.tfstate` files first so
+OpenTofu does not believe resources still exist, then run `dev-up.ps1`.
+
 To run it automatically at every login (per user, no admin), once:
 
 ```powershell
