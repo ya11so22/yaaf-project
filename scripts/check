@@ -60,6 +60,7 @@ fi
 
 run "change-detection tests" bash .github/scripts/changed-services.test.sh
 run "content-tag tests" bash .github/scripts/content-tag.test.sh
+run "bump pull request tests" bash .github/scripts/bump-pr.test.sh
 
 if command -v kubectl >/dev/null 2>&1; then
   run "image pin tests" bash .github/scripts/bump-images.test.sh

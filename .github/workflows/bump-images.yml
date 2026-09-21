@@ -1,0 +1,52 @@
+name: bump-images
+
+# After a successful build on main, opens (or updates) one pull request that bumps the image pins in
+# deploy/dev to the new content tags (ADR-0013). Argo CD deploys the pins when it merges; reverting
+# that PR rolls them back.
+#
+# The PR is created with a GitHub App token, not the default GITHUB_TOKEN: pull requests created with
+# GITHUB_TOKEN do not trigger workflows, so the required checks would never report and the PR could
+# never merge. Only builds of pushes to main trigger this, and it checks out that pushed commit, never
+# code from a pull request.
+on:
+  workflow_run:
+    workflows: [build]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+# One bump at a time; a later run waits instead of racing the branch.
+concurrency:
+  group: bump-images
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - id: app
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.BOT_CLIENT_ID }}
+          private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          token: ${{ steps.app.outputs.token }}
+
+      - name: Bump the pins and open the pull request
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          APP_SLUG: ${{ steps.app.outputs.app-slug }}
+        run: |
+          bot_id="$(gh api "users/${APP_SLUG}%5Bbot%5D" --jq .id)"
+          export BOT_NAME="${APP_SLUG}[bot]"
+          export BOT_EMAIL="${bot_id}+${APP_SLUG}[bot]@users.noreply.github.com"
+          bash .github/scripts/bump-pr.sh
