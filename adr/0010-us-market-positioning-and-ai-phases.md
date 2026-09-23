@@ -1,6 +1,6 @@
 # ADR-0010: Position for the US DevOps, platform and AI-infrastructure market; reorder the phases
 
-**Status:** accepted (amends [ADR-0008](0008-phase-reslice-cd-and-team-model.md) on phases 2 to 4; Phase 1's real-AWS deploy deferred by [ADR-0012](0012-local-first-real-aws-deferred.md))
+**Status:** accepted (extended by [ADR-0017](0017-well-architected-architecture-track.md), which adds an architecture track; amends [ADR-0008](0008-phase-reslice-cd-and-team-model.md) on phases 2 to 4; Phase 1's real-AWS deploy deferred by [ADR-0012](0012-local-first-real-aws-deferred.md))
 **Date:** 2026-09-20
 
 ## Context

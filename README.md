@@ -1,8 +1,8 @@
 # Home Platform Engineering Project
 
 A personal, portfolio-scoped project for building demonstrable depth in GitHub Actions,
-AWS infrastructure-as-code, platform engineering, and AI infrastructure — areas not exercised at my
-day job (Jenkins/OpenShift, on-prem, regulated banking).
+AWS infrastructure-as-code, platform engineering, AI infrastructure and AWS solution architecture —
+areas not exercised at my day job (Jenkins/OpenShift, on-prem, regulated banking).
 
 ## Attribution
 
@@ -42,10 +42,16 @@ the interesting work is the platform layer built around it:
   postmortem.
 - AI serving on the platform: an open-weight model server with eval-gated promotion, canary and
   rollback, and latency and cost metrics; then classic MLOps on a real recommendation model.
+- An architecture track (in progress, [ADR-0017](adr/0017-well-architected-architecture-track.md)): a fictional
+  customer's requirements, architecture views, a review against the AWS Well-Architected Framework with a
+  findings register, and reliability, cost, migration and security designs. Each claim is labelled *designed*,
+  *verified on Floci* or *verified on real AWS*; see [`docs/architecture/`](docs/architecture/README.md).
 - Optional stretch: distributed tracing (OpenTelemetry) across all five languages.
 
-The pitch: a regulated-grade delivery, operations and AI-serving platform on AWS and EKS
-([ADR-0010](adr/0010-us-market-positioning-and-ai-phases.md)). Every decision is an ADR written
+The pitch: a Well-Architected, AWS-shaped platform that is designed, reviewed, costed, built, operated and
+broken on purpose, with the reasoning written down
+([ADR-0010](adr/0010-us-market-positioning-and-ai-phases.md), [ADR-0017](adr/0017-well-architected-architecture-track.md)).
+Every decision is an ADR written
 before the work, every step a journal entry, every milestone a checkbox. See "How this compares
 to live infrastructure" below for what is deliberately not here.
 
@@ -66,7 +72,7 @@ Each phase ends with a running app, from commit to deployment, and is demoable o
 
 | Phase | Ends with | State |
 |---|---|---|
-| 1. Commit to running app | IaC, CI, and GitOps CD: images built, pinned in git, and reconciled by Argo CD into a `dev` EKS cluster on the local AWS (Floci), with rollback | In progress: modules, pipelines and image tagging are done and green; Argo CD is next ([ADR-0013](adr/0013-gitops-with-argo-cd-on-long-lived-aws.md)). Real AWS is deferred ([ADR-0012](adr/0012-local-first-real-aws-deferred.md)) |
+| 1. Commit to running app | IaC, CI, and GitOps CD: images built, pinned in git by a bot PR, and reconciled by Argo CD into a `dev` EKS cluster on the local AWS (Floci), behind an ALB and Traefik, with rollback | Built and confirmed, including a failure exercise with a [postmortem](docs/postmortems/2026-09-21-phase1-bad-emailservice.md). Left: a pre-merge deploy check, the threat model, the demo. Real AWS is deferred ([ADR-0012](adr/0012-local-first-real-aws-deferred.md)) |
 | 2. Operate it | Observability, SLOs and alerts, an incident drill and postmortem, PR environments, policy-as-code, golden-path workflow, DORA metrics, team access model | Not started |
 | 3. AI serving | LLM/model serving on the platform: eval-gated promotion, canary and rollback, latency and cost metrics | Not started |
 | 4. MLOps | A real recommendation model: train/eval on PR, registry, metrics-gated promotion, drift monitoring | Not started |
@@ -82,15 +88,15 @@ scorecard, with reasons, is in [`docs/live-infra-gap-analysis.md`](docs/live-inf
 
 ## Status
 
-The repository is public, `main` is protected (PRs only, with `build`, `infra` and `check` required),
-and the 12 service images are public on GHCR, tagged by commit and by content hash. Floci runs
-locally with persistent storage (`infra/environments/floci/compose.yaml`) as the long-lived "AWS",
-brought up and reconciled by one command, `scripts/dev-up.ps1` (ADR-0014).
-The VPC, EKS, ECR and GitHub OIDC modules are applied and verified against it. The `build`, `infra`,
-`check` and weekly `cleanup` workflows have run on GitHub. A push-based dev deploy on a throwaway
-Floci works (all 11 rollouts, frontend answering) and is being replaced by GitOps. Still to do, in
-order: a bot identity, Argo CD installed by OpenTofu, committed image pins with a bump workflow, then
-the Phase 1 close-out. Real AWS comes later, and only when local options are exhausted.
+The repository is public, `main` is protected (PRs only, with `build`, `infra` and `check` required), and the
+12 service images are public on GHCR, tagged by commit and by content hash. Floci runs locally with persistent
+storage as the long-lived "AWS", brought up and reconciled by one command, `scripts/dev-up.ps1` (ADR-0014).
+On it, OpenTofu provisions the VPC, EKS, ECR, IAM and an ALB; Argo CD deploys the app, Traefik and Headlamp from
+git; a bot PR bumps the image pins after each build and Argo CD is triggered by a GitHub webhook (relayed through
+smee.io, ADR-0015), so a merge reaches the cluster in seconds. The pipeline was exercised end to end, and broken
+on purpose, in the Phase 1 failure exercise. Still to do in Phase 1: a pre-merge deploy check, the threat model
+and the demo. The architecture track (ADR-0017) starts next. Real AWS comes later, and only when local options
+are exhausted.
 
 ## Repository layout
 
@@ -99,6 +105,7 @@ the Phase 1 close-out. Real AWS comes later, and only when local options are exh
 | `/app` | Vendored Online Boutique (Google's code — see Attribution) |
 | `/adr` | Architecture Decision Records — written before implementation, not after |
 | `/infra` | OpenTofu modules (VPC, cluster, registry, IAM) and the `floci` / `aws-milestone` environments: Phase 1 |
+| `/docs/architecture` | The architecture track: scenario, views, Well-Architected review, designs (ADR-0017) |
 | `/deploy` | Kustomize overlay for `dev` on the app's own base, with committed image pins that Argo CD deploys (Phase 1) |
 | `/pipelines` | Reusable/callable GitHub Actions workflows — Phase 2 golden path |
 | `/policy` | Policy-as-code (OPA/`conftest`) — Phase 2 |
@@ -131,6 +138,7 @@ the Phase 1 close-out. Real AWS comes later, and only when local options are exh
 - [ADR-0014: Operating the long-lived AWS: restart policy and one reconcile command](adr/0014-operating-the-long-lived-aws.md)
 - [ADR-0015: Trigger Argo CD from GitHub with a webhook, relayed by smee.io](adr/0015-argocd-webhook-via-smee-relay.md)
 - [ADR-0016: Ingress: a Floci ALB in front of Traefik](adr/0016-ingress-via-floci-alb-and-traefik.md)
+- [ADR-0017: Extend the project into a Well-Architected reference, with an architecture track](adr/0017-well-architected-architecture-track.md)
 
 New decisions use [`adr/0000-template.md`](adr/0000-template.md), written *before* asking Claude
 Code to implement.
