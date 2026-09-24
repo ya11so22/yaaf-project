@@ -1,7 +1,7 @@
 # 2026-09-21: A read-only cluster dashboard (Headlamp)
 
 **Phase:** Phase 1, GitOps delivery (operator tooling)
-**Related ADRs:** [ADR-0013](../../adr/0013-gitops-with-argo-cd-on-long-lived-aws.md), decision 8
+**Related ADRs:** [ADR-0013](../../adr/archive/0013-gitops-with-argo-cd-on-long-lived-aws.md), decision 8
 
 ## What happened
 

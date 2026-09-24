@@ -1,7 +1,7 @@
 # 2026-09-20: Terraform installed locally, VPC plan validated, state backend strategy decided
 
 **Phase:** Phase 1 — AWS IaC + GitHub Actions foundation
-**Related ADRs:** [ADR-0002](../../adr/0002-aws-emulation-strategy.md), [ADR-0004](../../adr/0004-tfstate-backend-strategy.md)
+**Related ADRs:** [ADR-0002](../../adr/archive/0002-aws-emulation-strategy.md), [ADR-0004](../../adr/archive/0004-tfstate-backend-strategy.md)
 
 ## What happened
 
@@ -31,7 +31,7 @@ rather than the cloud sandbox that scaffolded the VPC module.
    evaluated HCP Terraform (free tier) for everything, local-only for everything, and a split
    strategy — landed on splitting by environment because HCP Terraform's free-tier "remote"
    execution runs on HashiCorp's cloud runners, which can reach real AWS but can't reach
-   `localhost:4566` (Floci). Wrote this up as [ADR-0004](../../adr/0004-tfstate-backend-strategy.md)
+   `localhost:4566` (Floci). Wrote this up as [ADR-0004](../../adr/archive/0004-tfstate-backend-strategy.md)
    rather than letting it live only in chat/journal, since it's an architectural decision, not
    just a config default.
 8. Also discussed self-hosted state backend options (MinIO + Terraform's native S3 state

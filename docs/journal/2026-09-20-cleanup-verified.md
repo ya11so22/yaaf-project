@@ -1,7 +1,7 @@
 # 2026-09-20: Cleanup workflow verified, delete count fixed
 
 **Phase:** Phase 1 — Commit to running app
-**Related ADRs:** [ADR-0007](../../adr/0007-ci-split-ghcr-and-floci-scope.md)
+**Related ADRs:** [ADR-0007](../../adr/archive/0007-ci-split-ghcr-and-floci-scope.md)
 
 ## What happened
 

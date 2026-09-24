@@ -30,6 +30,13 @@ one-off: follow it every session without being asked.
   off in `docs/milestones.md` as they land.
 - **Deliberate failure exercises** (one per phase, per the brief) get written up in
   `docs/postmortems/`.
+- **Learning** (owner's request, 2026-09-24): the project is also a course for the owner.
+  - When a step introduces a concept new to the project, write or extend a guide in `docs/guides/` using
+    `docs/guides/_template.md` (the idea, how it works here, why this way, watch out for, check yourself), and
+    add it to the index in `docs/guides/README.md`.
+  - While working, explain the *why* in plain words as you go, and flag traps as they come up with a short
+    "Watch out:" line in the reply; carry the lasting ones into the guide's "Watch out for".
+  - Each journal entry's "Learn" section links the guides it touched and names what to take away.
 
 Update `docs/journal/` and `docs/milestones.md` at the end of every session, unprompted, the
 same way commits get made — this is part of finishing the work, not a separate ask.

@@ -1,7 +1,7 @@
 # 2026-09-21: Operating the long-lived AWS after a restart
 
 **Phase:** Phase 1, continuous delivery (operations of the base)
-**Related ADRs:** [ADR-0014](../../adr/0014-operating-the-long-lived-aws.md), [ADR-0013](../../adr/0013-gitops-with-argo-cd-on-long-lived-aws.md)
+**Related ADRs:** [ADR-0014](../../adr/archive/0014-operating-the-long-lived-aws.md), [ADR-0013](../../adr/archive/0013-gitops-with-argo-cd-on-long-lived-aws.md)
 
 ## What happened
 

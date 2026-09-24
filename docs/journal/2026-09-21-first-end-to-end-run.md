@@ -1,7 +1,7 @@
 # 2026-09-21: The first end-to-end run: app change to rollout
 
 **Phase:** Phase 1, GitOps delivery
-**Related ADRs:** [ADR-0013](../../adr/0013-gitops-with-argo-cd-on-long-lived-aws.md), [ADR-0011](../../adr/0011-cd-image-identity-scope-and-state.md)
+**Related ADRs:** [ADR-0013](../../adr/archive/0013-gitops-with-argo-cd-on-long-lived-aws.md), [ADR-0011](../../adr/archive/0011-cd-image-identity-scope-and-state.md)
 
 ## What happened
 

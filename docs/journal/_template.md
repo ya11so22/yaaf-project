@@ -19,6 +19,11 @@ link it here instead of re-explaining it.
 How it was confirmed to work (command output, a passing check, a manual test) — not just "did
 it," but "how do we know."
 
+## Learn
+
+What to take away from this step: the concept in one or two lines, the guide it lives in (`docs/guides/`), and any
+trap worth remembering.
+
 ## Next
 
 What this unblocks or what comes next.

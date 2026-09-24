@@ -1,8 +1,10 @@
 name: infra
 
-# Validates infrastructure changes (ADR-0007). `plan` runs without Floci. The smoke test applies
-# the whole Floci environment from scratch, requires a clean re-plan, then destroys it. Floci
-# proves the code applies; it does not prove IAM trust or other security properties (ADR-0006).
+# Validates infrastructure changes (ADR-0023). `plan` runs without Floci, on a local backend. The smoke test
+# starts a fresh Floci, applies the bootstrap root (the state bucket) and then the foundation root on its real S3
+# backend, requires a clean re-plan, and destroys the foundation. Floci proves the code applies; it does not prove
+# IAM trust or other security properties (ADR-0006, ADR-0020). The cluster root needs a running cluster and Argo CD,
+# so it is validated here and exercised by the planned pre-merge deploy check.
 #
 # No workflow-level path filter: the `infra` job at the bottom is the required check and must
 # report even on PRs that touch no infrastructure.
@@ -19,8 +21,9 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  ENV_DIR: infra/environments/floci
-  COMPOSE_FILE: infra/environments/floci/compose.yaml
+  DEV_DIR: infra/environments/dev
+  ENV_DIR: infra/environments/dev/foundation
+  COMPOSE_FILE: infra/environments/dev/compose.yaml
 
 jobs:
   changes:
@@ -68,14 +71,22 @@ jobs:
       - name: Format
         run: tofu fmt -check -recursive -diff infra
 
-      - name: Init and validate
+      - name: Validate every root
+        run: |
+          for root in bootstrap foundation cluster; do
+            echo "::group::$root"
+            (cd "$DEV_DIR/$root" && tofu init -input=false -backend=false && tofu validate)
+            echo "::endgroup::"
+          done
+
+      # The state bucket only exists on a running Floci, so the plan uses a local backend through an override file
+      # (override files replace matching blocks; *_override.tf is gitignored). With no deployed state to diff
+      # against, this is the plan for creating the foundation from nothing, and it needs no Floci to compute.
+      - name: Local backend for the plan
         working-directory: ${{ env.ENV_DIR }}
         run: |
-          tofu init -input=false
-          tofu validate
-
-      # Floci is ephemeral, so there is no deployed state to diff against: this is the plan
-      # for creating the whole environment from nothing. It needs no Floci to compute.
+          printf 'terraform {\n  backend "local" {}\n}\n' > ci_override.tf
+          tofu init -input=false -reconfigure
       - name: Plan
         working-directory: ${{ env.ENV_DIR }}
         run: |
@@ -85,7 +96,7 @@ jobs:
           fi
           cat plan.txt
           {
-            echo "### OpenTofu plan (environments/floci)"
+            echo "### OpenTofu plan (dev/foundation)"
             echo '```'
             tail -c 60000 plan.txt
             echo '```'
@@ -103,7 +114,7 @@ jobs:
             if (plan.length > limit) {
               plan = plan.slice(0, limit) + '\n... truncated; see the job summary for the tail ...';
             }
-            const body = marker + '\n### OpenTofu plan (environments/floci)\n' +
+            const body = marker + '\n### OpenTofu plan (dev/foundation)\n' +
               'Plan for creating the whole environment from nothing (Floci is ephemeral, so there is no deployed state to diff against).\n\n' +
               '<details><summary>Show plan</summary>\n\n```\n' + plan + '\n```\n</details>';
             const { owner, repo } = context.repo;
@@ -130,7 +141,7 @@ jobs:
           # The wrapper only exposes stdout/exit code as step outputs, which no step here uses.
           tofu_wrapper: false
 
-      # Same compose file used locally, so Floci's config has one source of truth.
+      # Same compose file used locally, so Floci's config has one source of truth. CI starts only Floci.
       - name: Start Floci
         run: |
           docker compose up -d floci
@@ -141,6 +152,13 @@ jobs:
           echo "Floci did not become healthy"
           exit 1
 
+      - name: Bootstrap the state bucket
+        working-directory: ${{ env.DEV_DIR }}/bootstrap
+        run: |
+          tofu init -input=false
+          tofu apply -input=false -auto-approve
+
+      # The real S3 backend on the fresh Floci, with its lock file, as dev-up uses it.
       - name: Init
         working-directory: ${{ env.ENV_DIR }}
         run: tofu init -input=false
@@ -149,11 +167,20 @@ jobs:
         working-directory: ${{ env.ENV_DIR }}
         run: tofu apply -input=false -auto-approve
 
+      # Floci's CloudFront drops the tags given in CreateDistributionWithTags (checked 2026-09-24 with the AWS CLI
+      # against Floci 2.1.0), so the first re-apply adds the provider's default tags and re-evaluates the bucket
+      # policy that references the distribution. One converging apply absorbs that emulator bug; the re-plan below
+      # still fails on any real drift. Remove this step once Floci keeps creation tags.
+      - name: Converge (Floci CloudFront tags)
+        working-directory: ${{ env.ENV_DIR }}
+        run: tofu apply -input=false -auto-approve
+
       # Exit code 2 means the plan still has changes: the config is not idempotent.
       - name: Re-plan must show no changes
         working-directory: ${{ env.ENV_DIR }}
         run: tofu plan -input=false -detailed-exitcode
 
+      # The state bucket is protected by prevent_destroy on purpose; it goes with Floci's volume below.
       - name: Destroy
         working-directory: ${{ env.ENV_DIR }}
         run: tofu destroy -input=false -auto-approve

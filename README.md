@@ -1,144 +1,92 @@
 # Home Platform Engineering Project
 
-A personal, portfolio-scoped project for building demonstrable depth in GitHub Actions,
-AWS infrastructure-as-code, platform engineering, AI infrastructure and AWS solution architecture —
-areas not exercised at my day job (Jenkins/OpenShift, on-prem, regulated banking).
+A portfolio and learning project: a fictional card-payments retailer moves its storefront to AWS, and this repository
+is that engagement, designed, built, operated and broken on purpose, with every decision written down. It targets
+DevOps and platform roles now and Solutions Architect roles next
+([ADR-0021](adr/0021-project-purpose-scenario-and-scope.md)).
 
-## Attribution
+Everything runs on a **local AWS** ([Floci](https://github.com/floci-io/floci), a free emulator) on one machine. Nothing
+billable is ever created on real AWS ([ADR-0020](adr/0020-zero-spend-real-aws-lane.md)); where Floci differs from AWS,
+the difference is written down.
 
-- **`/app`** is [Google's Online Boutique](https://github.com/GoogleCloudPlatform/microservices-demo)
-  (`microservices-demo`), vendored unmodified from upstream commit
-  `72ba613a05f7fcee51cf1d0badff401b6ae7074d`, Apache-2.0 licensed. **That code is Google's, not
-  mine.** It is used purely as a target application — real polyglot (Go, Java, .NET, Node,
-  Python), multi-service complexity to build platform tooling against. See `app/LICENSE` and
-  `app/README.md` for upstream's own docs.
-  Changes made by the simulated app team (see below) are marked with a notice in each modified file,
-  as Apache-2.0 requires; everything else is upstream's, unmodified.
-- **`/.claude/skills`** vendors the promoted `engineering` and `productivity` skill buckets from
-  [Matt Pocock's `skills` repo](https://github.com/mattpocock/skills) (MIT licensed), pinned at
-  commit `6654f6b60cd9d5be8b54c6fafe44346dabeb3b76`. These are workflow skills for Claude Code
-  (grill → spec → tickets → implement → TDD → review), not part of this project's own work.
-  See `.claude/skills/LICENSE-mattpocock-skills`.
-- Everything under **`/adr`, `/platform`, `/pipelines`, `/policy`, `/infra`** (once populated) is
-  original work for this project.
+## Run it
 
-## What this project is
+Prerequisites: Docker Desktop, [OpenTofu](https://opentofu.org/docs/intro/install/) 1.10+, the AWS CLI v2, `kubectl`.
 
-Not a coding exercise. The target app is deliberately someone else's real, complex system;
-the interesting work is the platform layer built around it:
+```powershell
+.\scripts\dev-up.ps1        # build or repair the whole environment; safe to re-run
+.\scripts\dev-down.ps1      # stop it, keeping everything (-Reset to start from nothing)
+```
 
-- OpenTofu IaC for a VPC, an EKS-equivalent cluster, an ECR-equivalent registry and IAM,
-  developed against [Floci](https://github.com/floci-io/floci) (a free, MIT-licensed local AWS
-  emulator) and validated on real AWS at milestone checkpoints.
-- GitHub Actions: path-filtered per-service image builds to GHCR with content-hash tags, and an
-  infrastructure pipeline (plan on PR, an apply-from-scratch smoke test).
-- GitOps delivery: Argo CD, installed by OpenTofu into an EKS cluster on a long-lived local "AWS"
-  (Floci), reconciles the app from git; a bot PR bumps the pinned images and rollback is reverting the change
-  that caused the problem. A real-AWS milestone is deferred until local options are exhausted. OIDC federation, so there
-  are no long-lived AWS credentials.
-- A platform engineering layer: one reusable "golden path" workflow, per-PR environments,
-  policy-as-code, DORA metrics, and access management for the team.
-- Operating it: observability with SLOs and alerts, and an incident drill with a written
-  postmortem.
-- AI serving on the platform: an open-weight model server with eval-gated promotion, canary and
-  rollback, and latency and cost metrics; then classic MLOps on a real recommendation model.
-- An architecture track (in progress, [ADR-0017](adr/0017-well-architected-architecture-track.md)): a fictional
-  customer's requirements, architecture views, a review against the AWS Well-Architected Framework with a
-  findings register, and reliability, cost, migration and security designs. Each claim is labelled *designed*,
-  *verified on Floci* or *verified on real AWS*; see [`docs/architecture/`](docs/architecture/README.md).
-- Optional stretch: distributed tracing (OpenTelemetry) across all five languages.
+`dev-up` prints every URL when it finishes. The main ones, all on loopback:
 
-The pitch: a Well-Architected, AWS-shaped platform that is designed, reviewed, costed, built, operated and
-broken on purpose, with the reasoning written down
-([ADR-0010](adr/0010-us-market-positioning-and-ai-phases.md), [ADR-0017](adr/0017-well-architected-architecture-track.md)).
-Every decision is an ADR written
-before the work, every step a journal entry, every milestone a checkbox. See "How this compares
-to live infrastructure" below for what is deliberately not here.
+| URL | What |
+|---|---|
+| `http://<id>.cloudfront.localhost:4566/` | The portal: a static site in S3 behind CloudFront, linking to everything else |
+| http://localhost:9877 | An AWS-console-style dashboard for the local AWS (floci-dash) |
+| http://argocd.localhost:8080 | Argo CD, reconciling the cluster from git |
+| http://headlamp.localhost:8080 | A read-only view of the EKS cluster |
+| http://shop.localhost:8080 | The app: Online Boutique, through an ALB and Traefik |
+
+And from a terminal: `aws --profile floci s3 ls`, `kubectl get pods -A`. Details: [`infra/README.md`](infra/README.md).
+
+## What is here
+
+- **Infrastructure as code** (OpenTofu, [ADR-0005](adr/0005-opentofu-over-terraform.md)) in three layered roots:
+  a state bucket, the account-level infrastructure (VPC, EKS, ECR, IAM, an ALB, a CloudFront site) with state in S3
+  and native locking, and what runs in the cluster ([ADR-0022](adr/0022-the-local-aws-environment.md)).
+- **CI on GitHub Actions**: path-filtered image builds to GHCR with content-hash tags, a Trivy scan, an
+  infrastructure pipeline that plans and smoke-tests on a fresh Floci, and a shared pre-commit gate
+  ([ADR-0023](adr/0023-build-and-delivery.md), [ADR-0009](adr/0009-local-pre-gate.md)).
+- **GitOps delivery**: Argo CD deploys from git; a bot pull request bumps image pins after each build; rollback is
+  reverting the source change, learned in a [deliberate failure exercise](docs/postmortems/2026-09-21-phase1-bad-emailservice.md).
+- **Least-privilege identity**: GitHub Actions federates into AWS with OIDC and three narrowly trusted roles, no
+  stored keys ([ADR-0006](adr/0006-github-oidc-role-design.md)).
+- **The architecture track** (starting): requirements, views, a Well-Architected review with a findings register,
+  reliability, cost, migration and security designs ([`docs/architecture/`](docs/architecture/README.md)). Each
+  claim is labelled *designed*, *verified on Floci* or *verified on real AWS*.
+- **Guides** ([`docs/guides/`](docs/guides/README.md)): what each piece is, why it was done this way, and what to watch
+  out for.
+
+## Where it is going
+
+1. Close Phase 1: threat model, a pre-merge deploy check, a demo.
+2. Requirements, architecture views, Well-Architected review v1.
+3. Phase 2, operate it: observability, SLOs and alerts, policy as code, an incident drill.
+4. Phase 3, a migration: the shopping assistant moves from Google Cloud (Gemini, AlloyDB) to AWS's shape (Bedrock
+   designed; PostgreSQL with pgvector and Secrets Manager built), with a backup-and-restore drill.
+5. Cost model, DR design, review v2, an interview kit.
+
+Checklist: [`docs/milestones.md`](docs/milestones.md). Step-by-step narrative: [`docs/journal/`](docs/journal/).
 
 ## How the team works (simulated)
 
-- **App team:** a handful of Claude agents. They change `app/src`, open PRs, and pick up work
-  from GitHub Issues labelled `ready-for-agent`. Their PRs are the realistic trigger for the
-  pipelines, and the reason environments and access management matter.
-- **Platform (DevOps):** me. I own the infrastructure, pipelines, policy and environments, and am
-  the code owner for everything outside `app/src` (`.github/CODEOWNERS`).
-- **What is simulated:** the roles. One GitHub identity does everything through Phase 1, so
-  required reviews and permission boundaries cannot be enforced or demonstrated yet; a bot
-  identity and per-team cluster access arrive in Phase 2 ([ADR-0008](adr/0008-phase-reslice-cd-and-team-model.md)).
-
-## Phases
-
-Each phase ends with a running app, from commit to deployment, and is demoable on its own.
-
-| Phase | Ends with | State |
-|---|---|---|
-| 1. Commit to running app | IaC, CI, and GitOps CD: images built, pinned in git by a bot PR, and reconciled by Argo CD into a `dev` EKS cluster on the local AWS (Floci), behind an ALB and Traefik, with rollback | Built and confirmed, including a failure exercise with a [postmortem](docs/postmortems/2026-09-21-phase1-bad-emailservice.md). Left: a pre-merge deploy check, the threat model, the demo. Real AWS is deferred ([ADR-0012](adr/0012-local-first-real-aws-deferred.md)) |
-| 2. Operate it | Observability, SLOs and alerts, an incident drill and postmortem, PR environments, policy-as-code, golden-path workflow, DORA metrics, team access model | Not started |
-| 3. AI serving | LLM/model serving on the platform: eval-gated promotion, canary and rollback, latency and cost metrics | Not started |
-| 4. MLOps | A real recommendation model: train/eval on PR, registry, metrics-gated promotion, drift monitoring | Not started |
-
-Checklist: [`docs/milestones.md`](docs/milestones.md). Narrative: [`docs/journal/`](docs/journal/).
-
-## How this compares to live infrastructure
-
-The project mirrors how infrastructure is built and changed (IaC, CI gates, least-privilege
-identity, decision records) well, and how it is run (deploy, observe, operate) only partly. Some
-gaps are deliberate (no permanent production, no public traffic); the rest are scheduled. The
-scorecard, with reasons, is in [`docs/live-infra-gap-analysis.md`](docs/live-infra-gap-analysis.md).
-
-## Status
-
-The repository is public, `main` is protected (PRs only, with `build`, `infra` and `check` required), and the
-12 service images are public on GHCR, tagged by commit and by content hash. Floci runs locally with persistent
-storage as the long-lived "AWS", brought up and reconciled by one command, `scripts/dev-up.ps1` (ADR-0014).
-On it, OpenTofu provisions the VPC, EKS, ECR, IAM and an ALB; Argo CD deploys the app, Traefik and Headlamp from
-git; a bot PR bumps the image pins after each build and Argo CD is triggered by a GitHub webhook (relayed through
-smee.io, ADR-0015), so a merge reaches the cluster in seconds. The pipeline was exercised end to end, and broken
-on purpose, in the Phase 1 failure exercise. Still to do in Phase 1: a pre-merge deploy check, the threat model
-and the demo. The architecture track (ADR-0017) starts next. Real AWS comes later, and only when local options
-are exhausted.
+The "app team" is a set of Claude agents that change `app/src` through pull requests; I am the platform engineer and
+code owner of everything else. One GitHub identity does both, so required reviews cannot be enforced yet;
+`CODEOWNERS` records the intent. Conventions: [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Repository layout
 
 | Path | What lives here |
 |---|---|
-| `/app` | Vendored Online Boutique (Google's code — see Attribution) |
-| `/adr` | Architecture Decision Records — written before implementation, not after |
-| `/infra` | OpenTofu modules (VPC, cluster, registry, IAM) and the `floci` / `aws-milestone` environments: Phase 1 |
-| `/docs/architecture` | The architecture track: scenario, views, Well-Architected review, designs (ADR-0017) |
-| `/deploy` | Kustomize overlay for `dev` on the app's own base, with committed image pins that Argo CD deploys (Phase 1) |
-| `/pipelines` | Reusable/callable GitHub Actions workflows — Phase 2 golden path |
-| `/policy` | Policy-as-code (OPA/`conftest`) — Phase 2 |
-| `/platform` | Platform-layer docs/tooling (ephemeral env lifecycle, service catalog stretch) |
-| `.github/workflows` | CI/CD workflows (`build`, `infra`, `cleanup`) and `.github/scripts` (change detection and its tests) |
-| `.claude/skills` | Vendored Matt Pocock engineering/productivity skills for Claude Code |
-| `CLAUDE.md` | Per-repo config for those skills, plus the documentation-practice convention |
-| `docs/agents` | Config files `CLAUDE.md` points to — issue tracker, triage labels, domain docs layout |
-| `CONTEXT.md` | This project's own domain glossary (not `/app`'s — that's upstream) |
-| `docs/journal` | Dated, one-per-step narrative log of what happened and why |
-| `docs/milestones.md` | Phase-by-phase progress against the "independently demoable" bar |
-| `docs/live-infra-gap-analysis.md` | Honest comparison with live infrastructure: what is built, deliberate, scheduled, or unproven |
-| `docs/postmortems` | Write-ups from each phase's deliberate failure exercise |
+| `adr/` | Decisions, written before the work. [Index](adr/README.md): seven current, sixteen archived |
+| `infra/` | The local AWS (`environments/dev`: compose file and three OpenTofu roots) and the modules |
+| `deploy/` | What Argo CD deploys: the `dev` overlay with committed image pins, ingress rules, RBAC |
+| `scripts/` | `dev-up.ps1`, `dev-down.ps1`, and `check` (the pre-commit gate) |
+| `.github/` | Workflows and their scripts, with tests |
+| `app/` | Vendored Online Boutique (Google's code; see Attribution) |
+| `docs/architecture/` | The architecture track |
+| `docs/guides/` | Explanations for learning and interviews |
+| `docs/journal/`, `docs/milestones.md`, `docs/postmortems/` | What happened, progress, failure write-ups |
+| `docs/research/` | Market research behind the project's direction |
+| `CONTEXT.md` | This project's glossary |
 
-## Architecture Decision Records
+## Attribution
 
-- [ADR-0001: Use an existing open-source app as the target codebase](adr/0001-target-application-choice.md)
-- [ADR-0002: Floci-first local AWS emulation, with periodic real-AWS validation milestones](adr/0002-aws-emulation-strategy.md)
-- [ADR-0003: Ephemeral EKS over ECS Fargate as the compute target](adr/0003-eks-ephemeral-vs-ecs-fargate.md)
-- [ADR-0004: Split Terraform state/execution strategy — local for Floci, HCP Terraform for the AWS milestone environment](adr/0004-tfstate-backend-strategy.md)
-- [ADR-0005: OpenTofu over Terraform as the IaC CLI](adr/0005-opentofu-over-terraform.md)
-- [ADR-0006: GitHub Actions federates into AWS via OIDC with three least-privilege roles](adr/0006-github-oidc-role-design.md)
-- [ADR-0007: Split CI into build and infra pipelines; images live on GHCR; Floci only validates infra](adr/0007-ci-split-ghcr-and-floci-scope.md)
-- [ADR-0008: Phases end in a running app; named environments; push-based CD; team model](adr/0008-phase-reslice-cd-and-team-model.md)
-- [ADR-0009: A shared local pre-gate, with CI as the source of truth](adr/0009-local-pre-gate.md)
-- [ADR-0010: Position for the US DevOps, platform and AI-infrastructure market; reorder the phases](adr/0010-us-market-positioning-and-ai-phases.md)
-- [ADR-0011: CD design: image identity, deploy scope and milestone state](adr/0011-cd-image-identity-scope-and-state.md)
-- [ADR-0012: Local and free first; real AWS deferred](adr/0012-local-first-real-aws-deferred.md)
-- [ADR-0013: GitOps with Argo CD, on a long-lived local "AWS"](adr/0013-gitops-with-argo-cd-on-long-lived-aws.md)
-- [ADR-0014: Operating the long-lived AWS: restart policy and one reconcile command](adr/0014-operating-the-long-lived-aws.md)
-- [ADR-0015: Trigger Argo CD from GitHub with a webhook, relayed by smee.io](adr/0015-argocd-webhook-via-smee-relay.md)
-- [ADR-0016: Ingress: a Floci ALB in front of Traefik](adr/0016-ingress-via-floci-alb-and-traefik.md)
-- [ADR-0017: Extend the project into a Well-Architected reference, with an architecture track](adr/0017-well-architected-architecture-track.md)
-
-New decisions use [`adr/0000-template.md`](adr/0000-template.md), written *before* asking Claude
-Code to implement.
+- **`app/`** is [Google's Online Boutique](https://github.com/GoogleCloudPlatform/microservices-demo), Apache-2.0,
+  vendored from upstream commit `72ba613a05f7fcee51cf1d0badff401b6ae7074d` and kept to `src/`, `protos/` and
+  `kustomize/` (the Google Cloud tooling was removed). **That code is Google's.** Files the simulated app team changed
+  carry a modification notice, as Apache-2.0 requires. See `app/LICENSE`.
+- **`.claude/skills/`** vendors skills from [Matt Pocock's `skills` repo](https://github.com/mattpocock/skills) (MIT),
+  pinned at commit `6654f6b60cd9d5be8b54c6fafe44346dabeb3b76`: workflow skills for Claude Code, not this project's work.
+- Everything else is original work for this project.

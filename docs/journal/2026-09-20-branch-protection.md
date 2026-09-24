@@ -1,7 +1,7 @@
 # 2026-09-20: Branch protection on main; images public
 
 **Phase:** Phase 1 — Commit to running app
-**Related ADRs:** [ADR-0007](../../adr/0007-ci-split-ghcr-and-floci-scope.md), [ADR-0008](../../adr/0008-phase-reslice-cd-and-team-model.md), [ADR-0009](../../adr/0009-local-pre-gate.md)
+**Related ADRs:** [ADR-0007](../../adr/archive/0007-ci-split-ghcr-and-floci-scope.md), [ADR-0008](../../adr/archive/0008-phase-reslice-cd-and-team-model.md), [ADR-0009](../../adr/0009-local-pre-gate.md)
 
 ## What happened
 

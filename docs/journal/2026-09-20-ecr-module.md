@@ -1,7 +1,7 @@
 # 2026-09-20: ECR-equivalent registry module, wired into the Floci environment
 
 **Phase:** Phase 1 — AWS IaC + GitHub Actions foundation
-**Related ADRs:** [ADR-0002](../../adr/0002-aws-emulation-strategy.md)
+**Related ADRs:** [ADR-0002](../../adr/archive/0002-aws-emulation-strategy.md)
 
 ## What happened
 

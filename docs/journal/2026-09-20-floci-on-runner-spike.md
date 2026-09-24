@@ -1,7 +1,7 @@
 # 2026-09-20: Spike: Floci with EKS and a GHCR rollout on a GitHub runner
 
 **Phase:** Phase 1, continuous delivery (de-risking the dev deploy)
-**Related ADRs:** [ADR-0008](../../adr/0008-phase-reslice-cd-and-team-model.md), [ADR-0012](../../adr/0012-local-first-real-aws-deferred.md)
+**Related ADRs:** [ADR-0008](../../adr/archive/0008-phase-reslice-cd-and-team-model.md), [ADR-0012](../../adr/archive/0012-local-first-real-aws-deferred.md)
 
 ## What happened
 

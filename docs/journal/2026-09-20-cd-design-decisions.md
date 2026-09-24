@@ -1,7 +1,7 @@
 # 2026-09-20: CD design decisions and milestone bookkeeping
 
 **Phase:** Phase 1, continuous delivery (design only)
-**Related ADRs:** [ADR-0011](../../adr/0011-cd-image-identity-scope-and-state.md)
+**Related ADRs:** [ADR-0011](../../adr/archive/0011-cd-image-identity-scope-and-state.md)
 
 ## What happened
 

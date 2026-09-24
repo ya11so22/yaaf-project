@@ -1,7 +1,7 @@
 # 2026-09-20: EKS-equivalent cluster module, wired into the Floci environment
 
 **Phase:** Phase 1 — AWS IaC + GitHub Actions foundation
-**Related ADRs:** [ADR-0003](../../adr/0003-eks-ephemeral-vs-ecs-fargate.md), [ADR-0002](../../adr/0002-aws-emulation-strategy.md)
+**Related ADRs:** [ADR-0003](../../adr/archive/0003-eks-ephemeral-vs-ecs-fargate.md), [ADR-0002](../../adr/archive/0002-aws-emulation-strategy.md)
 
 ## What happened
 

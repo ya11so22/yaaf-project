@@ -1,0 +1,69 @@
+# The local AWS (ADR-0022): Floci, and an AWS-console-style dashboard for it.
+# Started by scripts/dev-up.ps1, stopped by scripts/dev-down.ps1, and used as-is by CI for a fresh Floci per run.
+# Images are pinned by digest; bump them deliberately.
+name: floci
+
+services:
+  floci:
+    # Floci 2.1.0 (MIT, github.com/floci-io/floci). The image ships its own healthcheck, which `up --wait` uses.
+    image: floci/floci@sha256:f5aa8c18302cedb4f2385f5c4e455b3efc77fee6bf7b6e5d1712b2817ba102db
+    container_name: floci
+    restart: unless-stopped
+    ports:
+      # Loopback only. Floci holds the Docker socket (it starts Lambda, RDS and EKS as containers), so anyone who
+      # could reach this port from the network could start containers on this machine.
+      - "127.0.0.1:4566:4566"
+      # The ingress ALB's listener. Floci binds listener sockets on its own host, so the port is published here.
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - floci-data:/app/data
+    environment:
+      # Every write is saved to the floci-data volume, so the AWS survives restarts (and so does the OpenTofu state
+      # kept in its S3 bucket).
+      FLOCI_STORAGE_MODE: persistent
+      # Docker Desktop on Windows cannot resolve the default *.localhost registry host names, so ECR uses
+      # localhost:4566/<account>/<region>/<repo> URIs instead.
+      FLOCI_SERVICES_ECR_URI_STYLE: path
+      # Floci does no Kubernetes version mapping: every EKS cluster runs this k3s image, whatever version is asked
+      # for. Keep it in step with kubernetes_version in infra/modules/eks-cluster (1.36, the newest EKS supports).
+      FLOCI_SERVICES_EKS_DEFAULT_IMAGE: rancher/k3s:v1.36.4-k3s1
+      # The cluster containers Floci starts join this network, so the k3s API server can reach Floci's IAM
+      # authenticator and the ALB can reach the node.
+      FLOCI_SERVICES_EKS_DOCKER_NETWORK: floci-net
+      # CloudFront distributions get <ID>.cloudfront.localhost as their domain (instead of cloudfront.net), which
+      # browsers resolve to this machine by themselves, so a site is reachable at http://<domain>:4566/ with no
+      # hosts-file edit. Floci routes viewer requests by that generated domain.
+      FLOCI_SERVICES_CLOUDFRONT_DOMAIN_SUFFIX: cloudfront.localhost
+    networks:
+      - floci-net
+
+  floci-dash:
+    # floci-dash 0.4.0 (MIT, github.com/ofsazib/floci-dash): a dashboard modelled on the AWS Management Console.
+    image: ghcr.io/ofsazib/floci-dash@sha256:4aa21c7df2bf9d4daeae87dd31f8581d9513a84a428edb9dd0b9f53ee88cb217
+    container_name: floci-dash
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9877:3000"
+    # The Docker socket powers the in-browser EC2 terminal (a `docker exec` into the instance's container). Its code
+    # only targets containers named floci-ec2-<instance-id>, but whoever holds the socket controls Docker on this
+    # machine, so this trusts floci-dash at the pinned digest: review its changes before bumping it. Accepted by the
+    # owner on 2026-09-24 to use the dashboard as intended (ADR-0022, and the guide's "Watch out for").
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      FLOCI_URL: http://floci:4566
+      AWS_REGION: us-east-1
+      NODE_ENV: production
+    depends_on:
+      floci:
+        condition: service_healthy
+    networks:
+      - floci-net
+
+volumes:
+  floci-data:
+
+networks:
+  floci-net:
+    name: floci-net

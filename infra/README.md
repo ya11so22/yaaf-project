@@ -1,140 +1,124 @@
 # /infra
 
-OpenTofu modules and environments for the platform's AWS infrastructure: original work for
-this project (not part of the vendored `/app`). See [ADR-0005](../adr/0005-opentofu-over-terraform.md)
-for why OpenTofu, not Terraform.
+The local AWS and everything OpenTofu builds on it ([ADR-0022](../adr/0022-the-local-aws-environment.md)). Original
+work for this project, not part of the vendored `/app`. OpenTofu, not Terraform: [ADR-0005](../adr/0005-opentofu-over-terraform.md).
+
+The AWS here is [Floci](https://github.com/floci-io/floci), a free local emulator. Nothing in this folder can reach
+real AWS: every provider uses Floci's endpoint and dummy keys (see the [cost guide](../docs/guides/aws-cost-safety.md)).
 
 ## Layout
 
 ```
 infra/
-├── modules/
-│   ├── vpc/             VPC, public/private subnets over 2 AZs, IGW, one shared NAT gateway
-│   ├── eks-cluster/     EKS control plane, managed node group, cluster and node IAM roles
-│   ├── ecr/             One repository per app service, lifecycle policy, immutable tags
-│   └── github-oidc/     GitHub OIDC provider and three least-privilege roles (ADR-0006)
-└── environments/
-    ├── floci/           the `dev` environment: pointed at local Floci
-    └── aws-milestone/   the `milestone` environment: real AWS (not built yet)
+├── environments/dev/
+│   ├── compose.yaml    Floci and floci-dash (the AWS-console-style dashboard), pinned by digest, loopback only
+│   ├── bootstrap/      1st root: the S3 bucket that holds the other roots' state (its own state is a local file)
+│   ├── foundation/     2nd root: VPC, EKS, ECR, IAM, the ingress ALB, the portal website (state in S3)
+│   └── cluster/        3rd root: Argo CD and the Applications it reconciles from git (state in S3)
+└── modules/
+    ├── vpc/            VPC, public and private subnets over 2 AZs, internet gateway, one shared NAT gateway
+    ├── eks-cluster/    EKS control plane, managed node group, cluster and node IAM roles
+    ├── ecr/            one repository per app service, lifecycle policy, immutable tags
+    ├── github-oidc/    GitHub OIDC provider and three least-privilege roles (ADR-0006)
+    ├── alb-ingress/    an ALB forwarding to the ingress controller's NodePort
+    ├── static-site/    a private S3 bucket behind CloudFront with origin access control
+    └── argocd/         Argo CD from its Helm chart, and its Applications
 ```
 
-Environments call the same modules; only the provider block and environment-specific variables
-differ, so what is validated on real AWS is the same shape exercised against Floci
-([ADR-0002](../adr/0002-aws-emulation-strategy.md)). Environment *names* (`dev`, `milestone`) and
-the promotion path between them are defined in [ADR-0008](../adr/0008-phase-reslice-cd-and-team-model.md);
-the directory names are unchanged.
+The roots are split by lifecycle, the way real teams layer infrastructure: the state bucket is created once, the
+account-level infrastructure changes occasionally, and what runs in the cluster changes most. Each root is applied
+after the one before it.
 
-The ECR module is kept as tested IaC but the pipelines push images to GHCR instead
-([ADR-0007](../adr/0007-ci-split-ghcr-and-floci-scope.md)).
+## Prerequisites
 
-## Running against Floci
+Docker Desktop, [OpenTofu](https://opentofu.org/docs/intro/install/) 1.10 or later, the AWS CLI v2, `kubectl` and
+`curl` (built into Windows). About 6 GB of free memory for Docker while the cluster runs.
 
-Start Floci (and its UI at `http://localhost:4500`) with the compose file next to the
-environment:
+## Start and stop
 
 ```powershell
-cd infra/environments/floci
-docker compose up -d
+.\scripts\dev-up.ps1        # start or repair everything; safe to run any number of times
+.\scripts\dev-down.ps1      # stop everything, keep all data
 ```
 
-`compose.yaml` sets three things you would otherwise trip over:
+`dev-up.ps1` starts Docker Desktop if needed, then Floci and floci-dash, applies the three roots in order, writes the
+`floci` AWS CLI profile and the kubeconfig, checks the cluster (and repairs it if Floci left it broken), waits for
+Argo CD and checks every URL. A first run takes several minutes; later runs mostly report "No changes". Its log is
+`%LOCALAPPDATA%\yaaf\dev-up.log`.
 
-- **Persistent storage** (`FLOCI_STORAGE_MODE=persistent`, a named volume): IAM, ECR and resources
-  survive restarts, so the OpenTofu state stays valid. CI still starts a fresh Floci.
-- **The k3s image is pinned** to the module's Kubernetes version. Floci does no version mapping:
-  it runs whatever image `FLOCI_SERVICES_EKS_DEFAULT_IMAGE` names and echoes the requested
-  version back as metadata, so keep the tag in step with `kubernetes_version` in `modules/eks-cluster`.
-- **ECR URIs use path style** (`localhost:4566/<account>/<region>/<repo>`), because Windows and
-  Docker Desktop cannot resolve the default `*.localhost` hostnames.
+| Option | Does |
+|---|---|
+| `dev-up.ps1 -Revision <branch>` | Argo CD tracks a branch, to try a change before merging. Run plain `dev-up` again once it is merged. |
+| `dev-up.ps1 -PlanOnly` | Plans instead of applying. |
+| `dev-down.ps1 -QuitDocker` | Also quits Docker Desktop, to give its memory back. |
+| `dev-down.ps1 -Reset` | Deletes everything (Floci's data, the state, the cluster) after a confirmation, for a clean start. `-Force` skips the question; `-WhatIf` shows what would happen. |
 
-Then, with Floci up (`http://localhost:4566` by default):
+Both scripts back up the state first, to `$HOME\yaaf-backup\<timestamp>` (the newest five are kept).
 
-```bash
-cd infra/environments/floci
-tofu init
+Do not use Docker Desktop's "Clean / Purge data" or `docker volume prune` to reset: they delete Floci's data but
+leave the bootstrap state behind. Use `dev-down.ps1 -Reset`.
+
+## What you can open
+
+All on loopback: nothing is reachable from other machines. Use a regular browser (VS Code's built-in one shows
+Headlamp as an empty page).
+
+| URL | What |
+|---|---|
+| `http://<id>.cloudfront.localhost:4566/` | The portal: a static site in S3 behind CloudFront, linking to everything below. `dev-up` prints the exact URL. |
+| http://localhost:9877 | floci-dash, a dashboard modelled on the AWS Management Console |
+| http://argocd.localhost:8080 | Argo CD. User `admin`; the password is in the `argocd-initial-admin-secret` secret |
+| http://headlamp.localhost:8080 | Headlamp, a read-only view of the cluster, no login |
+| http://shop.localhost:8080 | The Online Boutique, through the ALB and Traefik |
+| http://localhost:4566 | Floci's AWS API endpoint |
+
+Browsers resolve `*.localhost` names to loopback themselves; command-line tools on Windows may not, so use
+`curl.exe -H "Host: shop.localhost" http://127.0.0.1:8080/`.
+
+## Using it like AWS
+
+The `floci` profile points the AWS CLI at Floci, so ordinary commands work:
+
+```powershell
+aws --profile floci s3 ls
+aws --profile floci s3 cp .\notes.txt s3://my-bucket/          # after: aws --profile floci s3 mb s3://my-bucket
+aws --profile floci eks describe-cluster --name yaaf-dev
+aws --profile floci ec2 describe-vpcs
+kubectl get pods -A
+```
+
+To change infrastructure, edit the code and run `dev-up.ps1`, or run OpenTofu in one root:
+
+```powershell
+cd infra\environments\dev\foundation
+tofu init        # connects to the S3 backend on Floci
 tofu plan
 tofu apply
 ```
 
-`tofu plan` needs no running Floci on a fresh state, which is how the pipeline plans without it.
+Objects created by hand (in floci-dash or with the CLI) are not in OpenTofu's state, and survive until a reset. That
+is fine for experiments; anything that should last belongs in code.
 
-## Bringing the local AWS up: `scripts/dev-up.ps1`
+## Known differences from real AWS
 
-One idempotent command owns the local Floci lifecycle (ADR-0014). Run it after a restart, after
-changing the infrastructure, or whenever something looks wrong:
+Floci proves that tested SDK and IaC scenarios work, not that AWS behaves the same way. The ones that matter here:
 
-```powershell
-.\scripts\dev-up.ps1
-```
+- **EKS:** one k3s node whatever the node group asks for. The Kubernetes version follows the pinned k3s image
+  (`FLOCI_SERVICES_EKS_DEFAULT_IMAGE` in `compose.yaml`), not the requested version, so the two are kept in step
+  by hand. EKS authentication needs a key that exists in Floci's IAM, not the dummy `test` pair.
+- **IAM:** policies and trust conditions are stored but not enforced. ADR-0006's OIDC trust design is therefore
+  unproven here; ADR-0020 proposes proving it on real AWS at no cost.
+- **Load balancing:** target health stays `initial` although traffic flows, and there is no TLS on the ingress.
+- **CloudFront:** served over plain HTTP at `<id>.cloudfront.localhost:4566`, so the portal allows HTTP; on real
+  AWS the module's default redirects to HTTPS.
+- **Restarts:** Floci restores the cluster only when the EKS API is first called, and after an abrupt stop the k3s
+  container can die on a stale IP while Floci still reports the cluster `ACTIVE`. That is why `dev-up.ps1` checks the
+  cluster itself and repairs it.
+- **State and resources together:** the OpenTofu state is in Floci's S3, so losing Floci's data loses the state
+  with it. The next `dev-up` rebuilds from code, which is the point.
 
-It waits for Docker, starts Floci and waits for its health check, runs `tofu apply` on this
-environment (which is the drift detection), refreshes the kubeconfig and requires the cluster API
-and every node to be Ready. If the cluster is not healthy it wipes the k3s container and volume,
-lets Floci recreate the cluster, and applies again. k3s state is disposable; workloads come back
-from git. `-PlanOnly` runs `tofu plan` instead of apply.
+## CI
 
-To shut down (for example to free the laptop's memory), run the counterpart. It backs up the two OpenTofu state
-files, which exist only on this machine, stops Floci gracefully and everything it started, and removes nothing:
-
-```powershell
-.\scripts\dev-down.ps1              # add -QuitDocker to quit Docker Desktop as well; -DryRun to preview
-```
-
-The Docker volumes and the state files are kept, so `.\scripts\dev-up.ps1` brings everything back: the
-cluster is recreated and Argo CD redeploys the workloads from git. Do not shut down with
-`docker compose down -v`, `docker volume prune`, or Docker Desktop's "Clean / Purge data" or "Reset to factory
-defaults": those delete the state. If the volumes are ever gone, delete the two `terraform.tfstate` files first so
-OpenTofu does not believe resources still exist, then run `dev-up.ps1`.
-
-To run it automatically at every login (per user, no admin), once:
-
-```powershell
-.\scripts\dev-up.ps1 -Register      # -Unregister removes it; the log is %LOCALAPPDATA%\yaaf\dev-up.log
-```
-
-Docker Desktop must start at login (Docker Desktop settings). Compose gives Floci
-`restart: unless-stopped`, so Docker brings the emulator back by itself.
-
-After the cluster is ready, `dev-up.ps1` also applies `environments/floci-cluster`, which installs
-Argo CD, Traefik, the tools and the app through Argo CD, and a relay that lets GitHub trigger Argo CD (ADR-0015). It
-tracks `main` by default; to try a change before it is merged, run
-`.\scripts\dev-up.ps1 -Revision <branch>`.
-
-Everything is reached through a Floci ALB on `127.0.0.1:8080` in front of Traefik (ADR-0016), with no
-port-forwards. Open these in a regular browser (VS Code's built-in one renders Headlamp as an empty page):
-
-| URL | What |
-|---|---|
-| http://argocd.localhost:8080 | Argo CD. User `admin`; password from the `argocd-initial-admin-secret` secret. |
-| http://headlamp.localhost:8080 | Headlamp, a read-only cluster UI. No login: it serves everyone as its own read-only account (see ADR-0013). |
-| http://shop.localhost:8080 | The Online Boutique. |
-
-Browsers resolve `*.localhost` to loopback themselves; command-line tools on Windows may not, so use
-`curl.exe -H "Host: shop.localhost" http://127.0.0.1:8080/`.
-
-`kubectl` authenticates as an IAM user that OpenTofu creates in Floci (Floci's EKS auth rejects the
-public `test`/`test` keys and only accepts a key that exists in its IAM); `dev-up.ps1` reads that key
-from the OpenTofu outputs into an AWS CLI profile named `floci` and merges the kubeconfig context.
-Other contexts are left alone; switch back with `kubectl config use-context <name>`.
-
-## Known Floci differences from real AWS
-
-These are why the real-AWS milestone exists. Details are in `docs/journal/`.
-
-- The Kubernetes version follows the pinned image, not the requested version.
-- A node group of any size yields one k3s node.
-- IAM web-identity trust conditions are not enforced (so ADR-0006's security property is unproven
-  until real AWS).
-- EKS auth needs a real IAM key rather than the dummy pair.
-- Floci restores its EKS cluster lazily, only when the EKS API is first called after a restart.
-- After an abrupt stop, the surviving k3s container is adopted and can exit at once because its
-  IP changed, while Floci keeps reporting the cluster `ACTIVE`. OpenTofu cannot see this, which is
-  why `dev-up.ps1` checks the cluster itself.
-- After a graceful stop the k3s container is removed but its data volume is kept and reused, so
-  the old node lingers as a `NotReady` ghost.
-
-## Status
-
-- Applied and verified against Floci: `vpc`, `eks-cluster`, `ecr`, `github-oidc`.
-- CI: `.github/workflows/infra.yml` plans without Floci and smoke-tests an apply from scratch.
-- `environments/aws-milestone`: not built yet (see its README).
+`.github/workflows/infra.yml` checks formatting, validates all three roots, plans the foundation (on a local
+backend, no Floci needed), and smoke-tests on a fresh Floci: bootstrap, apply the foundation on its S3 backend,
+require a no-changes re-plan, destroy.

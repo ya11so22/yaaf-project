@@ -1,7 +1,7 @@
 # 2026-09-20: Scope refocus — phases that end in a running app
 
 **Phase:** Phase 1 (re-scoped)
-**Related ADRs:** [ADR-0008](../../adr/0008-phase-reslice-cd-and-team-model.md), builds on [ADR-0007](../../adr/0007-ci-split-ghcr-and-floci-scope.md)
+**Related ADRs:** [ADR-0008](../../adr/archive/0008-phase-reslice-cd-and-team-model.md), builds on [ADR-0007](../../adr/archive/0007-ci-split-ghcr-and-floci-scope.md)
 
 ## What happened
 
@@ -27,7 +27,7 @@ Decisions, all in ADR-0008 (five decision questions plus two on CD, all adopted 
 Docs updated: the root README (scope, team model, phases, status), `CONTRIBUTING.md` (working
 model in place of "solo"), `docs/milestones.md` (re-sliced), `CONTEXT.md` (terms), the `infra`,
 `platform`, `pipelines`, `policy` and `aws-milestone` READMEs, and a new
-[`docs/live-infra-gap-analysis.md`](../live-infra-gap-analysis.md) scorecard.
+[`docs/live-infra-gap-analysis.md`] (removed 2026-09-24, see git history) scorecard.
 
 ## Corrections made along the way
 

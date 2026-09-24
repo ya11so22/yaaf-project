@@ -1,206 +1,94 @@
 # Milestones
 
-Tracks progress against the "done" bar from the project brief: each phase is independently
-demoable on its own (README + short recording/GIF), not just a step toward something bigger.
-As of [ADR-0008](../adr/0008-phase-reslice-cd-and-team-model.md) each phase ends with a running
-app, from commit to deployment. Updated as work lands: see `docs/journal/` for the narrative
-behind each checked item, and `docs/live-infra-gap-analysis.md` for how this compares to live
-infrastructure.
+Progress against the finish line in [ADR-0021](../adr/0021-project-purpose-scenario-and-scope.md): each phase is
+demoable on its own. Ticked as work lands; the narrative behind each item is in [`docs/journal/`](journal/). Rewritten
+on 2026-09-24 when the project was reset and the ADRs consolidated; the detailed history of Phase 1 is in the journal
+and in [`adr/archive/`](../adr/archive/).
 
-## Phase 1 — Commit to running app (IaC, CI, minimal CD)
+## Phase 1: commit to running app
 
-### Infrastructure (OpenTofu, against Floci)
+### Done
 
-- [x] Floci running locally, via `compose.yaml` with persistent storage (2026-09-16, reworked
-      2026-09-20)
-- [x] `modules/vpc`: applied and verified against Floci
-- [x] `modules/eks-cluster` (ADR-0003): applied; `kubectl` reaches the cluster on the pinned
-      Kubernetes version
-- [x] `modules/ecr`: applied; an image push and an in-cluster pull verified
-- [x] `modules/github-oidc` (ADR-0006): applied against Floci; the trust conditions can only be
-      proven on real AWS
+- [x] **Infrastructure as code on the local AWS**: VPC, EKS, ECR, IAM (GitHub OIDC roles, the kubectl user) and an
+      ingress ALB as OpenTofu modules, applied to Floci (2026-09-16 to 09-21)
+- [x] **CI**: path-filtered builds to GHCR with content-hash tags and Trivy; an infra pipeline with a plan comment and a
+      Floci smoke test; the shared pre-gate; weekly GHCR cleanup. First green run on PR #1 (2026-09-20)
+- [x] **Repository**: public, history scanned with gitleaks, `main` protected with `build`, `infra` and `check`
+      required, actions pinned to SHAs, GHCR packages public (2026-09-20)
+- [x] **GitOps delivery**: Argo CD installed by OpenTofu reconciles the app, Traefik, Headlamp and ingress rules from
+      git; a GitHub App bot opens image-pin PRs with auto-merge; confirmed end to end (2026-09-21)
+- [x] **Failure exercise and postmortem**: a bad emailservice, recovered; rollback is reverting the source
+      ([postmortem](postmortems/2026-09-21-phase1-bad-emailservice.md), 2026-09-21)
+- [x] **Environment reset** ([ADR-0022](../adr/0022-the-local-aws-environment.md), 2026-09-24): three roots (bootstrap,
+      foundation, cluster) with state in S3 on Floci and native locking; floci-dash; a static portal on S3 and
+      CloudFront; everything on loopback; clean `dev-up` / `dev-down` with `-Reset`. Built from nothing, re-run with no
+      changes, and every endpoint checked
+      ([journal](journal/2026-09-24-reset-and-local-aws-rebuild.md))
 
-### Pipelines (GitHub Actions)
+### Left
 
-- [x] `build.yml`: path-filtered per-service builds to GHCR with cache, Trivy (report-only) and an
-      always-running `build` gate: written, linted, change detection unit-tested (ADR-0007)
-- [x] `infra.yml`: `fmt`/`validate`/`plan` without Floci, sticky plan comment, Floci smoke test
-      (apply, no-diff re-plan, destroy), `infra` gate: written and linted
-- [x] Local pre-gate: `scripts/check`, a pre-commit hook and `check.yml` sharing one script
-      (ADR-0009). Each check proven against a planted fault, and `check` passes on a runner
-- [x] `cleanup.yml` (weekly GHCR retention): verified by a manual run (2026-09-20). The package name
-      `yaaf-project/<service>` is accepted and the built-in token can manage the packages. The
-      action's default of deleting 1 old version per run was raised to 100. Deletion itself is
-      untested until a package exceeds 10 versions.
-- [x] **First real run on GitHub** (PR #1, 2026-09-20): `build` and `infra` green, 12 images pushed
-      to GHCR, Trivy results in code scanning, plan comment posted, Floci smoke test passed (apply,
-      no-diff re-plan, destroy). A later PR confirmed the gates report green when nothing relevant
-      changed.
+- [ ] Threat model (STRIDE) of the pipeline and infrastructure, including the bot App, auto-merge, no-login Headlamp,
+      and floci-dash (becomes part of `06-security-and-compliance.md`)
+- [ ] Pre-merge deploy check: apply the dev roots to a throwaway Floci in the PR, install Argo CD, sync the PR's
+      commit, wait for `Synced` and `Healthy` ([ADR-0023](../adr/0023-build-and-delivery.md) item 8)
+- [ ] Demo: README walkthrough and a short recording
 
-### Repository (agreed sequence, see ADR-0007)
+## Real AWS: the zero-spend lane ([ADR-0020](../adr/0020-zero-spend-real-aws-lane.md), proposed)
 
-- [x] Email in the commits rewritten to the GitHub noreply address and force-pushed; history
-      re-scanned with gitleaks (56 commits including the pre-rewrite copies, no leaks) (2026-09-20)
-- [x] Repository made public; SHA pinning enforced; workflows from all outside contributors need
-      approval; default workflow token read-only (2026-09-20)
-- [x] The branch landed on `main` through PR #1 with a merge commit (2026-09-20)
-- [x] Branch protection on `main` (2026-09-20): PR-only, applies to admins, `build`, `infra` and
-      `check` required, no force-push or deletion; required reviews stay off until a second
-      identity exists (Phase 2)
-- [x] The 12 GHCR packages made public by hand; verified with anonymous pulls (2026-09-20)
+Nothing billable is ever created on real AWS.
 
-### Continuous delivery (ADR-0008, ADR-0010)
+- [ ] Owner, in the console: nothing running or billing in any Region; root MFA on and no root keys; a zero-spend
+      budget ([guide](guides/aws-cost-safety.md))
+- [ ] An IAM-and-STS-only project identity, with a permissions boundary on every role it creates
+- [ ] GitHub OIDC trust proven on real AWS: this repository can assume the role, another repository and another branch
+      cannot, with logs and CloudTrail event history kept
 
-Image identity and scope settled in [ADR-0011](../adr/0011-cd-image-identity-scope-and-state.md):
-content-hash image tags, and 10 services plus `redis-cart` without the load generator. Real AWS is
-deferred by [ADR-0012](../adr/0012-local-first-real-aws-deferred.md).
+## Architecture track
 
-- [x] Spike: a throwaway Floci with EKS starts, and a GHCR image rolls out, on a GitHub-hosted
-      runner (2026-09-20, about 1m50s end to end; multi-service and frontend checks still open)
-- [x] `build.yml` publishes a `content-<hash>` tag per service beside the SHA tag, and skips services
-      whose tag already exists (2026-09-21: 12 built, then 12 skipped on a re-run). The hash is the
-      git tree of the build context, which every service keeps self-contained (amends ADR-0007)
-- [x] `deploy/dev` kustomize overlay on the app's `app/kustomize` base (10 services and `redis-cart`,
-      no load generator), with `render-manifests.sh` pinning each service to its content tag; tested
-      (2026-09-21) and every rendered tag confirmed on GHCR. A `milestone` overlay waits for real
-      AWS (ADR-0012)
-- [x] `deploy.yml`, dev: start a throwaway Floci in the runner, apply the infra, render and deploy
-      the overlay, wait for every rollout, smoke check the frontend (2026-09-21, PR run green in
-      about 2m43s: 11 rollouts, frontend answers). Runs on merge to `main` once merged
-Superseded by [ADR-0013](../adr/0013-gitops-with-argo-cd-on-long-lived-aws.md): pull-based GitOps
-with Argo CD, on the long-lived local AWS. The push-based `deploy.yml` above worked and is replaced
-by the steps below. Build and test each step against the local Floci before pushing.
+The design side, in AWS's terms ([`docs/architecture/`](architecture/README.md)). Ordered by dependency.
 
-- [x] Long-lived AWS operated by one command: `restart: unless-stopped` and pinned images in compose,
-      `scripts/dev-up.ps1` (health check, repair, `tofu apply`, kubeconfig), the `kubectl` IAM key as
-      an OpenTofu resource, a login entry via `-Register` (ADR-0014). Repair path tested (cluster
-      recreated clean in about 19s); the full apply run and a real restart are to be confirmed
-- [x] GitHub App bot identity (manual, owner): `BOT_APP_ID` and `BOT_APP_PRIVATE_KEY` set as
-      repository secrets (2026-09-21), scoped to this repository
-- [x] `argocd` module in `infra/modules/` and a `floci-cluster` root: chart 10.9.2 (Argo CD v3.5.3),
-      Helm provider 3.3.0, and an `Application` for `deploy/dev`; `dev-up.ps1 -Revision <branch>`
-      applies it. Validated and planned; the apply on the long-lived Floci is to be confirmed
-- [x] Image pins committed in `deploy/dev`, written by `bump-images.sh` (tested, with a `--verify`
-      mode that checks each tag is on GHCR); replaces render-time pinning
-- [ ] Argo CD is triggered by a GitHub webhook relayed through smee.io, not by polling (ADR-0015): a relay
-      Deployment in the cluster, and the webhook registered by `dev-up.ps1`. Written and planned, to be
-      applied and confirmed with a real delivery. smee cannot preserve the webhook signature, so no shared
-      secret is set; the real-AWS route (API Gateway or a load balancer in front of Argo) restores it
-- [ ] Ingress instead of port-forwards (ADR-0016): a Floci ALB (listener on `127.0.0.1:8080`) in front of
-      Traefik (Argo CD, chart 41.6.0), with Ingress objects for `argocd.localhost`, `headlamp.localhost` and
-      `shop.localhost`. Spike proved the data path (HTTP 200 through the ALB to the frontend); the ALB module
-      and Traefik are written and planned, to be applied and confirmed in a browser
-- [x] Bump workflow (`bump-images.yml`, `bump-pr.sh` with a dry-run test): after a successful build on
-      `main`, opens or updates one PR as the GitHub App bot and enables auto-merge. Confirmed end to end
-      on 2026-09-21 (see the journal entry): an app change produced a one-line bot PR whose required
-      checks ran and which auto-merged, and Argo CD rolled out the one changed service
-- [x] Argo CD syncs `dev` on the long-lived cluster: `Synced` and `Healthy` (confirmed 2026-09-21).
-      The first apply failed because Helm cannot create an `Application` in the release that
-      installs its CRD; the module now uses a second release (`argocd-apps`)
-- [x] Headlamp, a read-only web UI for the cluster, deployed by Argo CD from its Helm chart
-      (2026-09-21; the chart's default `cluster-admin` binding replaced by a read-only
-      `headlamp-viewer` role from git that excludes secrets)
-- [ ] CI verifies CD on a throwaway Floci: apply, install Argo, sync the PR's commit, wait Healthy
-      (replaces `deploy.yml`)
-- [x] Rollback drill (2026-09-21, see the postmortem): a pin-only revert healed the cluster in 48 s but was
-      undone 78 s later by the bump workflow; reverting the source recovered it durably (2 min 7 s from
-      opening the revert to healthy). Rollback is reverting the source (ADR-0013)
-- [ ] Promotion documented: the image proven in dev is the one a later milestone deploy would use
-      (the milestone itself is deferred with real AWS, ADR-0012)
-
-### Phase 1 close-out (local, free; ADR-0012)
-
-- [ ] Threat model (STRIDE-style pass on pipeline and infra)
-- [x] A simple failure exercise for Phase 1 (a bad image, recovered by rollback) and its postmortem:
-      [`docs/postmortems/2026-09-21-phase1-bad-emailservice.md`](postmortems/2026-09-21-phase1-bad-emailservice.md)
-- [ ] Phase 1 demo: README + short recording/GIF, from a local or runner-hosted cluster
-
-### Real AWS (deferred, optional; ADR-0012)
-
-Not started, and not before local options are exhausted. Free and local first.
-
-- [ ] AWS Budgets + billing alarm, before anything touches real AWS
-- [ ] `environments/aws-milestone` built (local state, ADR-0011) and OIDC federation working from
-      Actions
-- [ ] One real, temporary AWS EKS deploy of the same manifests through the pipeline, with a negative
-      test that a foreign repository cannot assume the roles; then torn down, with evidence kept
-      (logs, screenshots, teardown, a cost note)
-
-## Architecture track (ADR-0017)
-
-The design side, in AWS's terms, beside the running system. Ordered by dependency; each step is useful on its own.
-Index and evidence labels: [`docs/architecture/`](architecture/README.md).
-
-- [ ] Scenario, requirements and constraints (`00-requirements.md`)
+- [x] Scenario chosen: a card-payments retailer, PCI DSS as the control frame (2026-09-24)
+- [ ] Requirements and constraints (`00-requirements.md`)
 - [ ] Architecture views as diagrams in code (`01-views.md`)
-- [ ] Well-Architected review v1 (six pillars; Container Build, DevOps and Financial Services Industry
-      lenses) with a findings register (`02-well-architected-review.md`)
-- [ ] Reliability and DR design with RTO/RPO tiers and cost per tier (`03-reliability-and-dr.md`)
+- [ ] Well-Architected review v1 with a findings register (`02-well-architected-review.md`)
+- [ ] Reliability and DR: RTO/RPO tiers and cost per tier (`03-reliability-and-dr.md`)
 - [ ] Cost model with real pricing (`04-cost-model.md`)
-- [ ] Migration options using the 7 Rs (`05-migration-options.md`)
-- [ ] Security and compliance: the Phase 1 threat model plus a control mapping (`06-security-and-compliance.md`)
-- [ ] Well-Architected review v2 after Phase 2, showing what changed
-- [ ] AI architecture: Bedrock against self-hosted serving, a RAG design (`07-ai-architecture.md`)
-- [ ] Governance: multi-account layout and guardrails (`08-governance.md`)
-- [ ] Customer-facing: a one-page executive summary, the review readout, discovery questions
-- [ ] Interview kit: decisions mapped to pillars and alternatives, and a story bank from real events here
-- [ ] A tally of real US Solutions Architect postings (bands, certifications, requirements), to replace the thin
-      evidence the ADR is built on
+- [ ] Migration options with the 7 Rs (`05-migration-options.md`)
+- [ ] Security and compliance: the threat model and a PCI DSS control mapping (`06-security-and-compliance.md`)
+- [ ] AI architecture: Bedrock against self-hosted serving, the RAG design (`07-ai-architecture.md`)
+- [ ] Governance: multi-account layout and guardrails, on paper (`08-governance.md`)
+- [ ] Well-Architected review v2 after Phase 3
+- [ ] Customer-facing: executive summary, review readout, discovery questions
+- [ ] Interview kit: each decision mapped to a pillar and its alternatives; stories from real events here
+- [ ] A tally of real US postings for the target roles. Started with 8
+      ([research](research/2026-09-24-sa-market-and-project-reality-check.md)); too small to call a tally
 
-## Phase 2 — Operate it (reliability and platform)
+## Phase 2: operate it
 
-Not started. Scope (ADR-0010):
+- [ ] Observability: metrics and dashboards for the app
+- [ ] SLOs and alerts on them
+- [ ] Policy as code: `conftest` on plans (for example, no wildcard OIDC `sub`) and manifests; an IaC security scan
+- [ ] An incident drill with a postmortem
+- [ ] Deferred, optional: DORA metrics; per-PR environments with an Argo CD `ApplicationSet`
 
-- [ ] Observability: a metrics stack and dashboards for the deployed app
-- [ ] SLOs and alerts on them, and an incident drill with a written postmortem
-- [ ] DORA metrics from the pipeline
-- [ ] Per-PR environments get one host each on the ingress from Phase 1 (`pr-<n>.localhost`)
-- [ ] Per-PR environments on the Argo CD from Phase 1 (an `ApplicationSet` with the pull-request
-      generator, a namespace per PR, torn down on close)
-- [ ] Policy-as-code: `conftest` on plans (for example, no wildcard OIDC `sub`) and manifests, and
-      an IaC security scan
-- [ ] Golden-path reusable workflow (`workflow_call`) extracted from `build.yml`, with per-service
-      configuration
-- [ ] Team access model: a bot identity for agents, enforceable required reviews, namespace-per-
-      team RBAC
-- [ ] Failure exercise + postmortem for Phase 2, and a demo
+## Phase 3: replatform the shopping assistant from Google Cloud to AWS
 
-## Phase 3 — AI serving on the platform (LLMOps)
+- [ ] Implementation ADR: the local model or stub, the provider interface, the data layer
+- [ ] `shoppingassistantservice` behind a provider interface: Bedrock (designed) or local (built)
+- [ ] PostgreSQL with pgvector for retrieval, and Secrets Manager for its password, on Floci
+- [ ] Catalogue embeddings loaded by a repeatable job; the assistant works end to end locally
+- [ ] Backup-and-restore drill measured against the scenario's RPO, with a postmortem
+- [ ] README attribution updated: this service is modified from upstream
 
-Not started. Scope (ADR-0010): an open-weight model server on the cluster (CPU-friendly small
-model, so it stays free), model versions promoted through an evaluation gate in CI with canary and
-rollback, latency, cost and token metrics with alerts, and autoscaling. Built on Phase 1 and 2's
-delivery and observability; a short GPU run at the milestone is the fallback if CPU inference cannot
-show autoscaling and latency alerts.
+## Learning guides ([index](guides/README.md))
 
-## Phase 4 — Classic MLOps (optional stretch, ADR-0017)
+- [x] Guide format and index; [staying at $0 on AWS](guides/aws-cost-safety.md) (2026-09-24)
+- [x] [The local AWS environment](guides/local-aws-environment.md) and
+      [Kubernetes probes](guides/kubernetes-probes.md) (2026-09-24)
+- [ ] Backfill: GitHub OIDC, GitOps with Argo CD, content-hash tags
 
-Not started. Scope (ADR-0010): a real recommendation model for `recommendationservice` (the current
-service is not a real ML system), with training and evaluation on PR, a registry, metrics-gated
-promotion and drift monitoring, on Phase 3's platform.
+## Standing goals
 
-## Optional stretch
-
-Distributed tracing (OpenTelemetry) across all five languages; non-blocking for calling the project
-done.
-
-## Standing goals (not phase-scoped)
-
-- [ ] One piece of external validation (Floci upstream contribution, or a public write-up of one
-      hard problem hit along the way). The Floci findings in the journal are candidates.
-- [ ] Deliberate failure exercise + postmortem at the end of each phase (see `docs/postmortems/`)
-
-## Phase 2 stretch candidate: self-hosted OpenTofu state backend
-
-Not committed, not scheduled: a candidate to revisit when Phase 2's platform layer takes shape.
-Running a self-hosted remote-state backend (MinIO + native S3 state locking, or the `pg` backend)
-is its own demonstrable platform-engineering skill, distinct from pointing at a managed SaaS. See
-[ADR-0004](../adr/0004-tfstate-backend-strategy.md).
-
-## Open follow-up: aws-milestone backend needs revisiting post-OpenTofu
-
-ADR-0004 picked HCP Terraform for `environments/aws-milestone`, but HCP Terraform's remote
-execution only runs HashiCorp's own Terraform binary, not OpenTofu (see
-[ADR-0005](../adr/0005-opentofu-over-terraform.md)). Resolved for the milestone by
-[ADR-0011](../adr/0011-cd-image-identity-scope-and-state.md): local state inside one atomic
-job. A remote backend remains only as the Phase 2 stretch above.
+- [ ] One piece of external validation: a Floci upstream contribution. Candidates found on 2026-09-24:
+      CloudFront drops the tags given to `CreateDistributionWithTags`; earlier, the k3s restart failures (ADR-0022)
+- [ ] A deliberate failure exercise and postmortem per phase

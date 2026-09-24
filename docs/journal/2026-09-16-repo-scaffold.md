@@ -1,7 +1,7 @@
 # 2026-09-16: Repo scaffold — ADRs, vendored target app, vendored skills
 
 **Phase:** Pre-Phase-1 (setup)
-**Related ADRs:** [ADR-0001](../../adr/0001-target-application-choice.md), [ADR-0002](../../adr/0002-aws-emulation-strategy.md), [ADR-0003](../../adr/0003-eks-ephemeral-vs-ecs-fargate.md)
+**Related ADRs:** [ADR-0001](../../adr/archive/0001-target-application-choice.md), [ADR-0002](../../adr/archive/0002-aws-emulation-strategy.md), [ADR-0003](../../adr/archive/0003-eks-ephemeral-vs-ecs-fargate.md)
 
 ## What happened
 

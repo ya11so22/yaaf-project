@@ -1,7 +1,7 @@
 # 2026-09-21: The image-bump workflow
 
 **Phase:** Phase 1, GitOps delivery
-**Related ADRs:** [ADR-0013](../../adr/0013-gitops-with-argo-cd-on-long-lived-aws.md), [ADR-0011](../../adr/0011-cd-image-identity-scope-and-state.md)
+**Related ADRs:** [ADR-0013](../../adr/archive/0013-gitops-with-argo-cd-on-long-lived-aws.md), [ADR-0011](../../adr/archive/0011-cd-image-identity-scope-and-state.md)
 
 ## What happened
 
@@ -35,7 +35,8 @@ the next build on `main`, which recomputes the pins from the source; see the fai
 `bump-pr.test.sh` (7 checks) covers: nothing happens when pins are current, no branch is created then; a
 stale pin produces a bump commit on `bot/bump-images` authored by the bot, whose message lists the old pin,
 touching only the kustomization, with nothing pushed in dry run. Two test problems were fixed on the way: a
-Windows working tree has CRLF line endings where the script writes LF, and a `` in a patch was turned into
+Windows working tree has CRLF line endings where the script writes LF, and a `
+` in a patch was turned into
 a real carriage return. `actionlint` passes on the workflow. The GitHub side (token, PR, auto-merge) cannot
 be tried locally and is to be confirmed on the first real run.
 

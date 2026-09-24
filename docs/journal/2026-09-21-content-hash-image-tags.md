@@ -1,7 +1,7 @@
 # 2026-09-21: Content-hash image tags
 
 **Phase:** Phase 1, continuous delivery
-**Related ADRs:** [ADR-0011](../../adr/0011-cd-image-identity-scope-and-state.md), amends [ADR-0007](../../adr/0007-ci-split-ghcr-and-floci-scope.md)
+**Related ADRs:** [ADR-0011](../../adr/archive/0011-cd-image-identity-scope-and-state.md), amends [ADR-0007](../../adr/archive/0007-ci-split-ghcr-and-floci-scope.md)
 
 ## What happened
 
