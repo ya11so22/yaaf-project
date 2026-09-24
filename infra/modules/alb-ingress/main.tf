@@ -1,4 +1,4 @@
-# The entry point in front of the cluster's ingress controller (ADR-0016): an internet-facing ALB whose
+# The entry point in front of the cluster's ingress controller (ADR-0022): an internet-facing ALB whose
 # target group sends HTTP to the controller's NodePort on the cluster node.
 resource "aws_lb" "this" {
   name               = var.name

@@ -17,11 +17,10 @@ agents are the app team, and I am the DevOps engineer who owns the platform.
 - **App change:** branch, PR touching `app/src` only, green `build` check, merge. Agents do not edit
   workflows, infrastructure or policy.
 - **Infra or pipeline change:** branch, PR, plan comment on the PR, green `infra` check, code-owner
-  review, merge. Applying to real AWS is a manual, approval-gated dispatch, never automatic.
+  review, merge. Nothing is applied to real AWS from CI (ADR-0020); the local AWS is applied by `scripts/dev-up.ps1`.
 - **Ownership:** `.github/CODEOWNERS` records who owns what.
-- **Limit:** one GitHub identity does everything until Phase 2, so required reviews cannot be
-  enforced yet. Until then, ownership is a convention the docs and CODEOWNERS state, not a control
-  ([ADR-0008](adr/0008-phase-reslice-cd-and-team-model.md)).
+- **Limit:** one GitHub identity does everything, so required reviews cannot be enforced. Ownership is a
+  convention the docs and CODEOWNERS state, not a control ([ADR-0021](adr/0021-project-purpose-scenario-and-scope.md)).
 
 ## Local checks (pre-gate)
 
@@ -50,6 +49,7 @@ follows every session:
 - Steps → `docs/journal/`, one dated file per session/step
 - Milestones → `docs/milestones.md`, checked off as phases progress
 - Deliberate failure exercises → `docs/postmortems/`
+- How things work, and what to watch out for → `docs/guides/`
 
 ## Practices that run across every phase
 
@@ -57,22 +57,21 @@ follows every session:
   a pod mid-deploy, revoke a Floci-emulated IAM permission, corrupt a model artifact before
   promotion) and write a one-paragraph postmortem: what broke, blast radius, how it was caught,
   what changed as a result.
-- **DORA metrics on the pipeline itself** — instrument GitHub Actions to track deployment
-  frequency, lead time for changes, change failure rate, and MTTR for this project's own
-  pipeline, starting in Phase 2.
 - **Threat model** — a short STRIDE-style pass on the pipeline and infra, done early in Phase 1.
 - **One piece of external validation** — by the end, either a small upstream contribution to
   Floci, or a short public write-up of one specific hard problem hit along the way.
 
 ## Cost guardrail
 
-AWS Budgets + a billing alarm are set up before anything ever touches real AWS. Real-AWS runs
-are milestone validations only (per ADR-0002/0003): spun up briefly, torn down immediately after.
+No billable resource is ever created on real AWS. Anything that would bill runs on Floci or is designed
+with a Pricing Calculator estimate. Real AWS is used only for free-by-construction services (IAM, STS),
+through an identity that cannot create anything else (proposed in ADR-0020; see
+`docs/guides/aws-cost-safety.md`). A zero-spend budget is a tripwire, not a brake: AWS has no hard cap.
 
 ## Definition of done, per phase
 
-Each phase is independently demoable on its own (README + short recording/GIF) — "phase N of 3
-(or 4), complete" rather than perpetually unfinished.
+Each phase is independently demoable on its own (README + short recording/GIF) — "phase N of 3,
+complete" rather than perpetually unfinished.
 
 ## Claude Code workflow
 

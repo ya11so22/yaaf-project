@@ -1,7 +1,7 @@
 # 2026-09-23: Re-scoping toward a Well-Architected reference
 
 **Phase:** direction (all phases)
-**Related ADRs:** [ADR-0017](../../adr/0017-well-architected-architecture-track.md), extends [ADR-0010](../../adr/0010-us-market-positioning-and-ai-phases.md)
+**Related ADRs:** [ADR-0017](../../adr/archive/0017-well-architected-architecture-track.md), extends [ADR-0010](../../adr/archive/0010-us-market-positioning-and-ai-phases.md)
 
 ## What happened
 

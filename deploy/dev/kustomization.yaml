@@ -1,6 +1,6 @@
-# The dev environment: Online Boutique's own base, without the load generator (ADR-0011).
-# The image pins below are committed and written by .github/scripts/bump-images.sh; Argo CD
-# deploys what is here (ADR-0013), so a rollback is reverting the pin commit.
+# The dev environment: Online Boutique's own base, without the load generator (ADR-0023).
+# The image pins below are committed and written by .github/scripts/bump-images.sh; Argo CD deploys what is
+# here. Pins are derived from the source, so a rollback is reverting the source change, not the pin.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
@@ -8,6 +8,23 @@ resources:
   - ingress.yaml
 components:
   - ../../app/kustomize/components/without-loadgenerator
+# emailservice (Python) needs about 15 s to start listening under its 200m CPU limit, but its liveness probe starts
+# at once and kills it after three misses (15 s), so it restarted forever on a fresh cluster. A startup probe gives it
+# up to 60 s to come up; the liveness and readiness probes only begin once it passes. Platform-side: the app's own
+# manifests stay upstream's.
+patches:
+  - target:
+      kind: Deployment
+      name: emailservice
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/startupProbe
+        value:
+          grpc:
+            port: 8080
+          periodSeconds: 2
+          timeoutSeconds: 2
+          failureThreshold: 30
 # BEGIN image pins (written by .github/scripts/bump-images.sh; do not edit by hand)
 images:
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/adservice

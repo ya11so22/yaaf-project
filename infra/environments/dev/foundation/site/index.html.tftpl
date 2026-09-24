@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${project} dev portal</title>
+<style>
+  :root { --bg: #f7f8fa; --card: #ffffff; --text: #16191f; --muted: #545b64; --line: #d5dbdb; --accent: #0972d3; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1419; --card: #192534; --text: #e9ebed; --muted: #a9b3bd; --line: #354150; --accent: #539fe5; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+  main { max-width: 880px; margin: 0 auto; padding: 32px 16px 48px; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  p.lead { color: var(--muted); margin: 0 0 24px; }
+  h2 { font-size: 16px; margin: 28px 0 10px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+  a.card { display: block; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; color: inherit; text-decoration: none; }
+  a.card:hover { border-color: var(--accent); }
+  a.card strong { display: block; color: var(--accent); }
+  a.card span { color: var(--muted); font-size: 13px; }
+  code { font: 13px ui-monospace, SFMono-Regular, Consolas, monospace; background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; }
+  pre { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto; }
+  pre code { border: 0; padding: 0; }
+  footer { margin-top: 32px; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>${project} dev environment</h1>
+  <p class="lead">A local AWS on Floci, region ${region}. This page is itself a static website: a private S3 bucket
+  served through a CloudFront distribution, created by OpenTofu.</p>
+
+  <h2>Consoles</h2>
+  <div class="grid">
+    <a class="card" href="http://localhost:9877"><strong>AWS console (floci-dash)</strong><span>Browse and change S3, EC2, EKS, IAM and more, as in the AWS console</span></a>
+    <a class="card" href="http://argocd.localhost:8080"><strong>Argo CD</strong><span>GitOps: what git says should run, and whether it does</span></a>
+    <a class="card" href="http://headlamp.localhost:8080"><strong>Headlamp</strong><span>Read-only view of the EKS cluster ${cluster_name}</span></a>
+  </div>
+
+  <h2>Workloads</h2>
+  <div class="grid">
+    <a class="card" href="http://shop.localhost:8080"><strong>Online Boutique</strong><span>The shop, through the ALB and Traefik</span></a>
+  </div>
+
+  <h2>From a terminal</h2>
+  <pre><code>aws --profile floci s3 ls
+aws --profile floci eks describe-cluster --name ${cluster_name}
+kubectl get pods -A</code></pre>
+
+  <footer>Loopback only: nothing here is reachable from other machines. Nothing here is real AWS, and nothing here costs money.</footer>
+</main>
+</body>
+</html>

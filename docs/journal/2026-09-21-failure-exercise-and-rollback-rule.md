@@ -1,7 +1,7 @@
 # 2026-09-21: The Phase 1 failure exercise, and the rollback rule it changed
 
 **Phase:** Phase 1, close-out
-**Related ADRs:** [ADR-0013](../../adr/0013-gitops-with-argo-cd-on-long-lived-aws.md)
+**Related ADRs:** [ADR-0013](../../adr/archive/0013-gitops-with-argo-cd-on-long-lived-aws.md)
 **Postmortem:** [2026-09-21-phase1-bad-emailservice](../postmortems/2026-09-21-phase1-bad-emailservice.md)
 
 ## What happened

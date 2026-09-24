@@ -1,7 +1,7 @@
 # 2026-09-21: Decision: GitOps with Argo CD on a long-lived "AWS"
 
 **Phase:** Phase 1, continuous delivery (design)
-**Related ADRs:** [ADR-0013](../../adr/0013-gitops-with-argo-cd-on-long-lived-aws.md), supersedes item 3 of [ADR-0008](../../adr/0008-phase-reslice-cd-and-team-model.md)
+**Related ADRs:** [ADR-0013](../../adr/archive/0013-gitops-with-argo-cd-on-long-lived-aws.md), supersedes item 3 of [ADR-0008](../../adr/archive/0008-phase-reslice-cd-and-team-model.md)
 
 ## What happened
 

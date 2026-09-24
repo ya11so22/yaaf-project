@@ -1,7 +1,7 @@
 # 2026-09-21: deploy.yml: CD to dev
 
 **Phase:** Phase 1, continuous delivery
-**Related ADRs:** [ADR-0008](../../adr/0008-phase-reslice-cd-and-team-model.md), [ADR-0011](../../adr/0011-cd-image-identity-scope-and-state.md), [ADR-0012](../../adr/0012-local-first-real-aws-deferred.md)
+**Related ADRs:** [ADR-0008](../../adr/archive/0008-phase-reslice-cd-and-team-model.md), [ADR-0011](../../adr/archive/0011-cd-image-identity-scope-and-state.md), [ADR-0012](../../adr/archive/0012-local-first-real-aws-deferred.md)
 
 ## What happened
 

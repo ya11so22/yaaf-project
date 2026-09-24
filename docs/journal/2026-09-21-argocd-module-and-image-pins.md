@@ -1,7 +1,7 @@
 # 2026-09-21: Argo CD module and committed image pins
 
 **Phase:** Phase 1, GitOps delivery
-**Related ADRs:** [ADR-0013](../../adr/0013-gitops-with-argo-cd-on-long-lived-aws.md), [ADR-0011](../../adr/0011-cd-image-identity-scope-and-state.md), [ADR-0014](../../adr/0014-operating-the-long-lived-aws.md)
+**Related ADRs:** [ADR-0013](../../adr/archive/0013-gitops-with-argo-cd-on-long-lived-aws.md), [ADR-0011](../../adr/archive/0011-cd-image-identity-scope-and-state.md), [ADR-0014](../../adr/archive/0014-operating-the-long-lived-aws.md)
 
 ## What happened
 

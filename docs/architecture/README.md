@@ -1,6 +1,6 @@
 # Architecture track
 
-The design side of this project, in AWS's terms ([ADR-0017](../../adr/0017-well-architected-architecture-track.md)).
+The design side of this project, in AWS's terms ([ADR-0021](../../adr/0021-project-purpose-scenario-and-scope.md)).
 It sits beside the running system and the ADRs: what should be built and why, reviewed against the
 [AWS Well-Architected Framework](https://docs.aws.amazon.com/wellarchitected/latest/framework/the-pillars-of-the-framework.html)
 (six pillars: operational excellence, security, reliability, performance efficiency, cost optimization,
@@ -9,8 +9,9 @@ sustainability) and the lenses that apply.
 ## The scenario
 
 A **fictional** customer, so the work can show the method as an architect would run it: a mid-size retailer
-moving its storefront from on-premises to AWS. Card payments are in scope, there are availability and RTO/RPO
-targets, a budget, and a small team. The requirements and assumptions are written down first
+that takes card payments, moving its storefront to AWS, written as one engagement from discovery to a second
+review ([ADR-0021](../../adr/0021-project-purpose-scenario-and-scope.md)). PCI DSS is the control frame, used as a
+mapping, never as a claim of compliance. There are availability and RTO/RPO targets, a budget, and a small team. The requirements and assumptions are written down first
 (`00-requirements.md`, not started), and every design choice traces back to one.
 
 ## Evidence labels
@@ -21,7 +22,7 @@ Every claim in this track carries one of three labels. Nothing here is presented
 |---|---|
 | **designed** | Reasoned and written down, not built. |
 | **verified on Floci** | Built and run on the local emulator. Floci proves that tested SDK and IaC scenarios work, not that real AWS behaves the same way; its known gaps are listed in `infra/README.md`. |
-| **verified on real AWS** | Run on real AWS. None yet; real AWS is deferred by [ADR-0012](../../adr/0012-local-first-real-aws-deferred.md). |
+| **verified on real AWS** | Run on real AWS. None yet; only free identity services may be used ([ADR-0020](../../adr/0020-zero-spend-real-aws-lane.md), proposed). |
 
 ## Contents and state
 

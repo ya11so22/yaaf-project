@@ -1,45 +1,47 @@
 <#
 .SYNOPSIS
-  Shuts the local AWS (Floci) down safely, so scripts/dev-up.ps1 can bring everything back (ADR-0014).
+  Stops the local AWS (Floci) safely, or resets it to nothing (ADR-0022).
 
 .DESCRIPTION
-  1. backs up the two OpenTofu state files, which exist only on this machine (they are gitignored)
-  2. stops Floci gracefully, then anything Floci started (the cluster, the registry)
-  3. optionally quits Docker Desktop, to give the memory back
+  Default: backs up the OpenTofu state, stops Floci gracefully (Floci then stops the cluster it started) and stops
+  anything else Floci started. Nothing is deleted: scripts/dev-up.ps1 brings everything back.
 
-  It removes nothing. The Docker volumes (Floci's data, the cluster's datastore, the registry's images)
-  and the state files are kept, so dev-up.ps1 restores the environment: the cluster is recreated and
-  Argo CD redeploys the workloads from git. Never use `docker compose down -v`, `docker volume prune`, or
-  Docker Desktop's "Clean / Purge data" or "Reset to factory defaults" to shut down: those delete the state.
+  With -Reset: deletes everything instead, after a confirmation: Floci's data (every resource and the OpenTofu state
+  in its S3 bucket), the cluster and its volume, the registry, and the bootstrap root's local state. The next dev-up
+  builds the whole environment again from code. Use it for a clean start, or when the environment is beyond repair.
 
+  Do not use Docker Desktop's "Clean / Purge data" or `docker volume prune` instead: they also delete the data, but
+  leave the bootstrap state behind, so the next dev-up is out of step with an empty Floci.
+
+.PARAMETER Reset
+  Delete everything, as described above. Asks for confirmation; add -Force to skip the question.
 .PARAMETER QuitDocker
-  Also quits Docker Desktop (docker desktop stop).
+  Also quit Docker Desktop, to give its memory back.
 .PARAMETER NoBackup
-  Skips the state-file backup.
-.PARAMETER DryRun
-  Shows what would be stopped, and does the backup, but stops nothing.
+  Skip the state backup.
 .PARAMETER BackupRoot
   Where backups go (default $HOME\yaaf-backup). The newest 5 are kept.
 #>
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "High")]
 param(
+    [switch]$Reset,
+    [switch]$Force,
     [switch]$QuitDocker,
     [switch]$NoBackup,
-    [switch]$DryRun,
     [string]$BackupRoot = (Join-Path $HOME "yaaf-backup"),
     [int]$KeepBackups = 5
 )
 
-# Windows PowerShell 5.1 turns any native-command stderr into a terminating error under "Stop".
-# Native calls are checked through their exit codes instead.
+# Windows PowerShell 5.1 turns any native-command stderr into a terminating error under "Stop", so native calls
+# are checked through their exit codes instead.
 $ErrorActionPreference = "Continue"
 
+$Endpoint = "http://localhost:4566"
+$StateBucket = "yaaf-dev-tfstate"
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$ComposeFile = Join-Path $RepoRoot "infra\environments\floci\compose.yaml"
-$StateFiles = @(
-    @{ Name = "floci";         Path = Join-Path $RepoRoot "infra\environments\floci\terraform.tfstate" },
-    @{ Name = "floci-cluster"; Path = Join-Path $RepoRoot "infra\environments\floci-cluster\terraform.tfstate" }
-)
+$DevDir = Join-Path $RepoRoot "infra\environments\dev"
+$ComposeFile = Join-Path $DevDir "compose.yaml"
+$BootstrapDir = Join-Path $DevDir "bootstrap"
 
 function Write-Step([string]$Message) {
     Write-Host ("[{0}] {1}" -f (Get-Date -Format "HH:mm:ss"), $Message)
@@ -51,81 +53,95 @@ function Invoke-Native {
     [pscustomobject]@{ Code = $LASTEXITCODE; Output = ($lines -join "`n") }
 }
 
-# Copies the state files (they hold resource IDs, the emulator's kubectl IAM key and the smee channel ID,
-# and are not on GitHub) into a timestamped folder, and keeps the newest few.
+function Get-Lines([object]$Result) {
+    @($Result.Output -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+}
+
+# Copies the bootstrap root's local state and, while Floci is up, the state bucket (the foundation and cluster
+# state), into a timestamped folder. Keeps the newest few.
 function Backup-State {
-    $present = @($StateFiles | Where-Object { Test-Path $_.Path })
-    if ($present.Count -eq 0) {
-        Write-Step "No OpenTofu state files found; nothing to back up."
-        return $true
-    }
     $dest = Join-Path $BackupRoot (Get-Date -Format "yyyyMMdd-HHmmss")
-    $copied = 0
     try {
         New-Item -ItemType Directory -Force -Path $dest -ErrorAction Stop | Out-Null
-        foreach ($f in $present) {
-            $target = Join-Path $dest $f.Name
-            New-Item -ItemType Directory -Force -Path $target -ErrorAction Stop | Out-Null
-            Copy-Item -Path $f.Path -Destination $target -ErrorAction Stop
-            # Trust the file that is there, not the absence of an error.
-            if (-not (Test-Path (Join-Path $target "terraform.tfstate"))) { throw "copy of $($f.Name) did not produce a file" }
-            $copied++
+        $local = Get-ChildItem -Path $BootstrapDir -Filter "terraform.tfstate*" -ErrorAction SilentlyContinue
+        if ($local) {
+            New-Item -ItemType Directory -Force -Path (Join-Path $dest "bootstrap") -ErrorAction Stop | Out-Null
+            $local | Copy-Item -Destination (Join-Path $dest "bootstrap") -ErrorAction Stop
         }
     } catch {
-        Write-Step "WARNING: the state backup FAILED (backup folder: $BackupRoot): $($_.Exception.Message)"
-        return $false
+        Write-Step "WARNING: the state backup failed: $($_.Exception.Message)"
+        return
     }
-    Write-Step ("Backed up {0} state file(s) to {1}" -f $copied, $dest)
+    $s3 = Invoke-Native aws @("s3", "cp", "s3://$StateBucket", (Join-Path $dest "state-bucket"), "--recursive",
+        "--endpoint-url", $Endpoint, "--region", "us-east-1", "--profile", "floci")
+    if ($s3.Code -ne 0) { Write-Step "Note: the state bucket was not copied (Floci down, or not bootstrapped yet)." }
+    Write-Step "State backed up to $dest"
 
-    $old = Get-ChildItem -Path $BackupRoot -Directory -ErrorAction SilentlyContinue |
-        Sort-Object Name -Descending | Select-Object -Skip $KeepBackups
-    foreach ($d in $old) { Remove-Item -Recurse -Force -Path $d.FullName -ErrorAction SilentlyContinue }
-    return $true
+    Get-ChildItem -Path $BackupRoot -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -match "^\d{8}-\d{6}$" } |
+        Sort-Object Name -Descending | Select-Object -Skip $KeepBackups |
+        ForEach-Object { Remove-Item -Recurse -Force -Path $_.FullName -ErrorAction SilentlyContinue }
+}
+
+# Containers Floci started itself (the k3s cluster, the ECR registry, Lambda and RDS containers) carry this label.
+function Get-FlociChildren {
+    Get-Lines (Invoke-Native docker @("ps", "-aq", "--filter", "label=floci=true"))
 }
 
 function Stop-Environment {
-    $info = Invoke-Native docker @("info")
-    if ($info.Code -ne 0) {
-        Write-Step "Docker is not running, so there is nothing to stop."
-        return
-    }
-
-    if ($DryRun) {
-        $running = (Invoke-Native docker @("ps", "--format", "{{.Names}}")).Output -split "`n" | Where-Object { $_ -match "floci" }
-        Write-Step ("Dry run: would stop Floci gracefully, then: {0}" -f (($running | Where-Object { $_ }) -join ", "))
-        return
-    }
-
-    # Floci stops the cluster's container itself on a graceful shutdown and keeps its data volume.
-    Write-Step "Stopping Floci gracefully"
+    Write-Step "Stopping Floci and floci-dash gracefully"
     $r = Invoke-Native docker @("compose", "-f", $ComposeFile, "stop")
     if ($r.Code -ne 0) { Write-Step "WARNING: docker compose stop reported a problem:"; Write-Host $r.Output }
 
-    # Anything Floci started that is still running (the registry, and the cluster if Floci did not get to it).
-    $left = (Invoke-Native docker @("ps", "-q", "--filter", "label=floci=true")).Output -split "`n" | Where-Object { $_ }
+    $left = Get-Lines (Invoke-Native docker @("ps", "-q", "--filter", "label=floci=true"))
     if ($left) {
-        Write-Step ("Stopping {0} container(s) Floci started" -f @($left).Count)
+        Write-Step ("Stopping {0} container(s) Floci started" -f $left.Count)
         $null = Invoke-Native docker (@("stop") + $left)
     }
-
-    $still = (Invoke-Native docker @("ps", "--format", "{{.Names}}")).Output -split "`n" | Where-Object { $_ -match "floci" }
-    if ($still) { Write-Step ("WARNING: still running: {0}" -f ($still -join ", ")) }
-    else { Write-Step "Floci and everything it started is stopped. Volumes and state are kept." }
+    Write-Step "Stopped. Everything is kept; run scripts\dev-up.ps1 to bring it back."
 }
 
-$backupOk = $true
-if (-not $NoBackup) { $backupOk = Backup-State }
-Stop-Environment
+function Reset-Environment {
+    Write-Step "Removing Floci, floci-dash and Floci's data volume"
+    $r = Invoke-Native docker @("compose", "-f", $ComposeFile, "down", "--volumes", "--remove-orphans")
+    if ($r.Code -ne 0) { Write-Step "WARNING: docker compose down reported a problem:"; Write-Host $r.Output }
 
-if ($QuitDocker -and -not $DryRun) {
+    $children = Get-FlociChildren
+    if ($children) {
+        Write-Step ("Removing {0} container(s) Floci started" -f $children.Count)
+        $null = Invoke-Native docker (@("rm", "-f", "-v") + $children)
+    }
+    # Volumes Floci created: labelled ones (the ECR registry's), and the cluster's datastore, which is not labelled
+    # but is named after its container (floci-eks-<cluster>).
+    $labelled = Get-Lines (Invoke-Native docker @("volume", "ls", "-q", "--filter", "label=floci=true"))
+    $clusters = Get-Lines (Invoke-Native docker @("volume", "ls", "-q")) | Where-Object { $_ -like "floci-eks-*" }
+    foreach ($v in @($labelled) + @($clusters)) { $null = Invoke-Native docker @("volume", "rm", "-f", $v) }
+
+    Get-ChildItem -Path $BootstrapDir -Filter "terraform.tfstate*" -ErrorAction SilentlyContinue | Remove-Item -Force
+    Write-Step "Reset done. The next scripts\dev-up.ps1 builds the environment from scratch."
+}
+
+if ((Invoke-Native docker @("info")).Code -ne 0) {
+    Write-Step "Docker is not running, so there is nothing to stop or reset."
+    exit 0
+}
+
+if (-not $NoBackup) { Backup-State }
+
+if ($Reset) {
+    $what = "Floci's data (every resource and the OpenTofu state), the cluster, and the bootstrap state"
+    if ($Force -or $PSCmdlet.ShouldProcess($what, "Delete permanently")) {
+        Reset-Environment
+    } else {
+        Write-Step "Reset cancelled. Nothing was deleted."
+        Stop-Environment
+    }
+} else {
+    Stop-Environment
+}
+
+if ($QuitDocker) {
     Write-Step "Quitting Docker Desktop"
     $q = Invoke-Native docker @("desktop", "stop")
-    if ($q.Code -ne 0) { Write-Step "WARNING: could not quit Docker Desktop from the command line; quit it from the tray icon."; Write-Host $q.Output }
+    if ($q.Code -ne 0) { Write-Step "WARNING: could not quit Docker Desktop from the command line; quit it from the tray icon." }
 }
-
-if (-not $backupOk) {
-    Write-Host ""
-    Write-Host "WARNING: the state files were NOT backed up. They are still on disk under infra\environments\, and nothing was deleted; keep them."
-}
-Write-Host ""
-Write-Host "To bring everything back: start Docker Desktop, then run  .\scripts\dev-up.ps1"

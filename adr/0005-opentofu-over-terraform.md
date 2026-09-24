@@ -1,6 +1,6 @@
 # ADR-0005: OpenTofu over Terraform as the IaC CLI
 
-**Status:** accepted
+**Status:** accepted (2026-09-24; the state-backend follow-up is settled by [ADR-0022](0022-the-local-aws-environment.md): S3 on Floci)
 **Date:** 2026-09-20
 
 ## Context

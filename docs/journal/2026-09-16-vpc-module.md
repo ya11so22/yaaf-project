@@ -1,7 +1,7 @@
 # 2026-09-16: First Terraform module — VPC, against the Floci environment
 
 **Phase:** Phase 1 — AWS IaC + GitHub Actions foundation
-**Related ADRs:** [ADR-0002](../../adr/0002-aws-emulation-strategy.md), [ADR-0003](../../adr/0003-eks-ephemeral-vs-ecs-fargate.md)
+**Related ADRs:** [ADR-0002](../../adr/archive/0002-aws-emulation-strategy.md), [ADR-0003](../../adr/archive/0003-eks-ephemeral-vs-ecs-fargate.md)
 
 ## What happened
 

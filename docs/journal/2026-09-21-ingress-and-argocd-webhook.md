@@ -1,7 +1,7 @@
 # 2026-09-21: Ingress instead of port-forwards, and a webhook trigger for Argo CD
 
 **Phase:** Phase 1, GitOps delivery (operator experience)
-**Related ADRs:** [ADR-0015](../../adr/0015-argocd-webhook-via-smee-relay.md), [ADR-0016](../../adr/0016-ingress-via-floci-alb-and-traefik.md)
+**Related ADRs:** [ADR-0015](../../adr/archive/0015-argocd-webhook-via-smee-relay.md), [ADR-0016](../../adr/archive/0016-ingress-via-floci-alb-and-traefik.md)
 
 ## What happened
 

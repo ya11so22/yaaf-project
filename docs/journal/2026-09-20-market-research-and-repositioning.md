@@ -1,7 +1,7 @@
 # 2026-09-20: Market research and repositioning for US roles
 
 **Phase:** Phase 1 to 4 roadmap (planning, no infrastructure changed)
-**Related ADRs:** [ADR-0010](../../adr/0010-us-market-positioning-and-ai-phases.md), amends [ADR-0008](../../adr/0008-phase-reslice-cd-and-team-model.md)
+**Related ADRs:** [ADR-0010](../../adr/archive/0010-us-market-positioning-and-ai-phases.md), amends [ADR-0008](../../adr/archive/0008-phase-reslice-cd-and-team-model.md)
 
 ## What happened
 

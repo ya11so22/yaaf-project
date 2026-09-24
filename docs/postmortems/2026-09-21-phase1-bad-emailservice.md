@@ -1,7 +1,7 @@
 # 2026-09-21: A broken emailservice through the delivery pipeline (Phase 1 failure exercise)
 
 **Type:** deliberate failure exercise. **Environment:** `dev` (Argo CD on the long-lived local AWS).
-**Related:** [ADR-0013](../../adr/0013-gitops-with-argo-cd-on-long-lived-aws.md), [ADR-0011](../../adr/0011-cd-image-identity-scope-and-state.md), PRs #17 to #22.
+**Related:** [ADR-0013](../../adr/archive/0013-gitops-with-argo-cd-on-long-lived-aws.md), [ADR-0011](../../adr/archive/0011-cd-image-identity-scope-and-state.md), PRs #17 to #22.
 
 ## What broke, and how it was broken on purpose
 

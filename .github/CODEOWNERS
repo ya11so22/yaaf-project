@@ -1,9 +1,8 @@
 # The platform (DevOps) engineer owns everything that is not application code. Application
 # services under app/src are changed by the app team and need no owner review.
-# Review is requested automatically; it is not yet required by branch protection (ADR-0007).
+# Review is requested automatically; it is not yet required by branch protection (ADR-0021: one GitHub identity).
 /.github/    @ya11so22
 /infra/      @ya11so22
+/deploy/     @ya11so22
+/scripts/    @ya11so22
 /adr/        @ya11so22
-/pipelines/  @ya11so22
-/policy/     @ya11so22
-/platform/   @ya11so22

@@ -1,7 +1,7 @@
 # 2026-09-16: Corrected ADR-0002's EKS-fidelity claim against current Floci docs
 
 **Phase:** Pre-Phase-1 (setup)
-**Related ADRs:** [ADR-0002](../../adr/0002-aws-emulation-strategy.md)
+**Related ADRs:** [ADR-0002](../../adr/archive/0002-aws-emulation-strategy.md)
 
 ## What happened
 

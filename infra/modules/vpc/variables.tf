@@ -34,8 +34,8 @@ variable "private_subnet_cidrs" {
 variable "single_nat_gateway" {
   description = <<-EOT
     true: one NAT gateway shared by all private subnets (cheaper, single point of failure,
-    used for Floci and for the real-AWS milestone runs since they're short-lived).
-    false: one NAT gateway per AZ (real HA posture, not used here yet — see ADR-0003 on why
+    used for the local dev environment).
+    false: one NAT gateway per AZ (real HA posture, not used here yet — see ADR-0022 on why
     cost/simplicity wins for this project).
   EOT
   type        = bool
