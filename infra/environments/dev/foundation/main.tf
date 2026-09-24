@@ -130,3 +130,34 @@ module "portal" {
     }
   }
 }
+
+# A key pair from the public key dev-up generates (~/.ssh/floci-dev). Only the public half ever reaches OpenTofu.
+# Empty (for example in CI): no key pair, and the instance is reachable only through SSM or the console terminal.
+resource "aws_key_pair" "dev" {
+  count = var.ssh_public_key == "" ? 0 : 1
+
+  key_name   = "${local.name}-dev"
+  public_key = var.ssh_public_key
+}
+
+# A small instance to log in to, three ways: the dashboard's terminal, SSH from your own terminal, and SSM Run Command
+# (docs/guides/reaching-an-ec2-instance.md). Real AMIs ship an SSH server; Floci's are minimal container images, so
+# user data installs one, exactly as it would install anything else on first boot.
+module "workstation" {
+  source = "../../../modules/ec2-instance"
+
+  name      = "${local.name}-workstation"
+  vpc_id    = module.vpc.vpc_id
+  subnet_id = module.vpc.public_subnet_ids[0]
+  key_name  = one(aws_key_pair.dev[*].key_name)
+
+  # Floci publishes the SSH port on the host and does not enforce this range (see infra/README.md); real AWS would.
+  ssh_ingress_cidrs = ["127.0.0.1/32"]
+
+  user_data = <<-EOT
+    #!/bin/bash
+    dnf install -y -q openssh-server > /var/log/user-data.log 2>&1
+    ssh-keygen -A
+    /usr/sbin/sshd
+  EOT
+}

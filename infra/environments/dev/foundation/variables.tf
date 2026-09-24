@@ -21,3 +21,9 @@ variable "github_repository" {
   type        = string
   default     = "ya11so22/yaaf-project"
 }
+
+variable "ssh_public_key" {
+  description = "Public key (one line, ssh-ed25519 ...) to import as the workstation's key pair. scripts/dev-up.ps1 passes the one it generates. Empty skips the key pair."
+  type        = string
+  default     = ""
+}

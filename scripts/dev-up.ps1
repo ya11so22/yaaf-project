@@ -8,12 +8,14 @@
   2. starts Floci and its dashboard (infra/environments/dev/compose.yaml) and waits for Floci's health check
   3. applies the bootstrap root: the S3 bucket that holds the other roots' state
   4. applies the foundation root: VPC, EKS, ECR, IAM, the ingress ALB and the portal website
+  3b. creates a dedicated SSH key (~/.ssh/floci-dev) on first run; only its public half goes into the foundation root
   5. writes the `floci` AWS CLI profile and the kubeconfig, and requires the cluster API and every node to be Ready.
      If the cluster is broken (Floci can leave k3s dead after an abrupt stop), removes the k3s container and its
      volume, lets Floci recreate it, and repeats 4 and 5 once. k3s state is disposable: Argo CD restores the
      workloads from git.
   6. applies the cluster root: Argo CD and the Applications it reconciles from git
-  7. waits for Argo CD, checks each URL, and prints where everything is
+  7. waits for Argo CD, checks each URL and the workstation's SSH server, and prints where everything is,
+     including the three ways into the EC2 workstation
 
 .PARAMETER Revision
   The git revision Argo CD tracks (default main). A branch name tries a change before it is merged; run plain
@@ -36,6 +38,7 @@ $Region = "us-east-1"
 $AwsProfile = "floci"
 $Cluster = "yaaf-dev"
 $K3sName = "floci-eks-$Cluster"
+$SshKeyPath = Join-Path $HOME ".ssh\floci-dev"
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $DevDir = Join-Path $RepoRoot "infra\environments\dev"
@@ -95,6 +98,24 @@ function Start-Floci {
     Write-Step "Starting Floci and floci-dash, waiting for Floci's health check"
     # --remove-orphans removes containers from earlier versions of the compose file (for example floci-ui).
     Assert-Ok (Invoke-Native docker @("compose", "-f", $ComposeFile, "up", "-d", "--wait", "--remove-orphans")) "docker compose up"
+}
+
+# A dedicated key pair for the EC2 workstation, created once. No passphrase: it only opens a container on this machine
+# (its private half never leaves ~/.ssh, and OpenTofu only ever sees the public half). Start-Process passes the empty
+# passphrase intact on both Windows PowerShell 5.1 and PowerShell 7, which native calls do not.
+function Initialize-SshKey {
+    if (-not (Get-Command ssh-keygen -ErrorAction SilentlyContinue)) {
+        Write-Step "WARNING: ssh-keygen not found (install the Windows OpenSSH client); the workstation will have no SSH key"
+        return
+    }
+    if (-not (Test-Path $SshKeyPath)) {
+        New-Item -ItemType Directory -Force -Path (Split-Path $SshKeyPath) | Out-Null
+        Write-Step "Creating a dedicated SSH key for the workstation: $SshKeyPath"
+        $p = Start-Process -FilePath "ssh-keygen" -ArgumentList "-q -t ed25519 -N `"`" -C floci-dev -f `"$SshKeyPath`"" -Wait -NoNewWindow -PassThru
+        if ($p.ExitCode -ne 0) { Write-Step "WARNING: ssh-keygen failed; the workstation will have no SSH key"; return }
+    }
+    # TF_VAR_* avoids quoting the key (it contains spaces) on the tofu command line.
+    $env:TF_VAR_ssh_public_key = (Get-Content -Raw "$SshKeyPath.pub").Trim()
 }
 
 # init, then plan or apply, in one root. The bootstrap root keeps local state; the others use the S3 backend.
@@ -187,6 +208,45 @@ function Test-Url([string]$Label, [string]$Url, [string]$HostHeader = "", [strin
     if ($ok) { "OK  " } else { "DOWN" }
 }
 
+# True once the workstation's SSH server answers with its banner. Docker accepts the connection on the published port
+# before sshd is running (user data installs and starts it at first boot), so a connect alone proves nothing.
+function Test-SshBanner([int]$Port, [int]$TimeoutSec = 180) {
+    Wait-Until "the workstation's SSH server" $TimeoutSec {
+        $client = New-Object System.Net.Sockets.TcpClient
+        try {
+            $client.Connect("127.0.0.1", $Port)
+            $client.ReceiveTimeout = 2000
+            $buf = New-Object byte[] 16
+            $n = $client.GetStream().Read($buf, 0, 16)
+            $n -ge 4 -and [System.Text.Encoding]::ASCII.GetString($buf, 0, 4) -eq "SSH-"
+        } catch { $false } finally { $client.Close() }
+    } 3
+}
+
+function Show-Workstation($Out) {
+    if (-not $Out -or -not $Out.workstation_instance_id) { return }
+    $id = $Out.workstation_instance_id.value
+    $c = "floci-ec2-$id"
+    Write-Host ""
+    Write-Host "EC2 workstation $id (Amazon Linux 2023)"
+    Write-Host "  1. Console:  http://localhost:9877/#/services/ec2  -> open the instance -> Terminal"
+
+    $mapping = (Invoke-Native docker @("port", $c, "22/tcp")).Output -split "`n" | Select-Object -First 1
+    if ($env:TF_VAR_ssh_public_key -and $mapping -match ":(\d+)\s*$") {
+        $port = [int]$Matches[1]
+        $up = Test-SshBanner $port
+        Write-Host ("  2. SSH:      ssh -i `"{0}`" -p {1} -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL root@127.0.0.1{2}" -f $SshKeyPath, $port, $(if ($up) { "" } else { "   (sshd is not answering yet; retry in a minute)" }))
+        if ($mapping -match "^(0\.0\.0\.0|\[::\])") {
+            Write-Host "     WARNING: Floci publishes SSH port $port on all network interfaces, not just this machine (key login only)."
+            Write-Host "     To close it to the network: docs/guides/reaching-an-ec2-instance.md, `"Watch out for`"."
+        }
+    } else {
+        Write-Host "  2. SSH:      not set up (no key; see the guide)"
+    }
+    Write-Host "  3. SSM:      aws --profile $AwsProfile ssm send-command --instance-ids $id --document-name AWS-RunShellScript --parameters commands=uptime"
+    Write-Host "               aws --profile $AwsProfile ssm get-command-invocation --command-id <CommandId> --instance-id $id"
+}
+
 function Show-Summary {
     $out = Get-TofuOutputs $Roots.Foundation
     $portalHost = if ($out -and $out.portal_domain_name) { $out.portal_domain_name.value } else { $null }
@@ -206,6 +266,7 @@ function Show-Summary {
         $state = Test-Url $row[0] $row[1] $row[2] $row[4]
         Write-Host ("  {0}  {1,-26} {2}" -f $state, $row[0], $row[3])
     }
+    Show-Workstation $out
     Write-Host ""
     Write-Host "Open the links in a regular browser. Argo CD login: admin, password from"
     Write-Host "  kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}'  (base64)"
@@ -216,6 +277,7 @@ function Invoke-DevUp {
     Assert-Tools
     Start-Docker
     Start-Floci
+    Initialize-SshKey
 
     if ($PlanOnly) {
         Write-Step "Plan only: bootstrap"

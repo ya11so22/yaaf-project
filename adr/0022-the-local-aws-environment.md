@@ -55,14 +55,21 @@ the way real AWS does. This ADR states the environment as it now is.
 7. **Website hosting, the AWS way:** a private S3 bucket behind a CloudFront distribution with origin access
    control, the pattern AWS recommends for static sites. Floci serves it at `http://<id>.cloudfront.localhost:4566/`.
    The first site is a small portal that links to every local endpoint.
-8. **Two scripts operate it**, both idempotent and tested on PowerShell 7 and Windows PowerShell 5.1:
+8. **An EC2 workstation** (`modules/ec2-instance`, Amazon Linux 2023) is created in the foundation root to practise the
+   three ways into an instance, as AWS offers them: the terminal in floci-dash's EC2 page, SSH from the owner's own
+   terminal, and SSM Run Command. `dev-up` creates a dedicated key `~/.ssh/floci-dev` once and passes only its public half to
+   OpenTofu, which imports it as a key pair; user data installs `sshd` because Floci's instance images have none; the
+   instance has an SSM instance profile and requires IMDSv2. The security group allows SSH from `127.0.0.1/32` only, which
+   Floci does not enforce. Session Manager's interactive shell is unsupported by Floci 2.1.0 and is not part of this.
+   The guide is `docs/guides/reaching-an-ec2-instance.md`.
+9. **Two scripts operate it**, both idempotent and tested on PowerShell 7 and Windows PowerShell 5.1:
    - `scripts/dev-up.ps1` starts Docker Desktop if needed, starts Floci and the dashboard, applies the three roots
      in order, checks the cluster (and repairs it if Floci left it broken: the k3s state is disposable, since Argo
      CD restores workloads from git), writes an AWS CLI profile `floci`, and prints every URL.
    - `scripts/dev-down.ps1` stops everything gracefully and keeps all data. `-Reset` deletes everything (Floci's
      data, the cluster, the state) after a confirmation, for a clean start. `-QuitDocker` also quits Docker Desktop.
    The old "run at every login" option is dropped: the owner starts the environment when they want it.
-9. **CI uses a fresh Floci per run** with the same compose file, and swaps in a local backend with an override file,
+10. **CI uses a fresh Floci per run** with the same compose file, and swaps in a local backend with an override file,
    so a pull request never touches the owner's environment.
 
 ## Rationale
@@ -76,8 +83,8 @@ machine; the dashboard's socket access is a known, accepted trade-off for a work
 
 ## Consequences / trade-offs accepted
 
-- Floci proves that tested SDK and IaC scenarios work, not that AWS behaves identically. It does not enforce IAM
-  trust conditions, runs one EKS node, reports load balancer target health as `initial`, and has no TLS on the
+- Floci proves that tested SDK and IaC scenarios work, not that AWS behaves identically. IAM enforcement is off by
+  default (`scripts/drills/iam-trust.sh` shows what it does when on), it runs one EKS node, reports load balancer target health as `initial`, and has no TLS on the
   ingress. These are listed in `infra/README.md`.
 - If Floci's data volume is lost, the state goes with it; the next `dev-up` recreates everything from code. Only
   the tiny bootstrap state is a local file.
@@ -85,5 +92,10 @@ machine; the dashboard's socket access is a known, accepted trade-off for a work
   digest and bumped only after reading its changes. Its terminal WebSocket does not check the page's origin, so a
   malicious site open in the same browser could try to open a shell into an EC2 instance (not the host) if it knew the
   instance ID; reported as an upstream candidate.
+- Floci publishes the workstation's SSH port, and any port a security group opens, on all network interfaces, with no
+  bind-address setting and no enforcement of the source range. Login needs the key, so the SSH port is not an open door, but
+  it is reachable from the local network. The guide gives a Windows Firewall rule that blocks network access and keeps
+  local access; it needs administrator rights and is left to the owner to apply. Reported upstream as a draft
+  (`docs/research/2026-09-24-floci-upstream-findings.md`).
 - Floci's own dashboard and the "run at login" task are gone; both can come back from git history if wanted.
 - The reset path and the bump of the dashboard or Floci are manual, deliberate steps.

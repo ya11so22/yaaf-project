@@ -24,6 +24,14 @@ and in [`adr/archive/`](../adr/archive/).
       CloudFront; everything on loopback; clean `dev-up` / `dev-down` with `-Reset`. Built from nothing, re-run with no
       changes, and every endpoint checked
       ([journal](journal/2026-09-24-reset-and-local-aws-rebuild.md))
+- [x] **EC2 workstation, reached three ways** (2026-09-24): the dashboard's web terminal, SSH with a dedicated key, and SSM
+      Run Command, all tested; created and destroyed cleanly by OpenTofu
+      ([guide](guides/reaching-an-ec2-instance.md)). Session Manager's interactive shell is unsupported by Floci
+- [x] **IAM behaviour shown on demand** (2026-09-24): `scripts/drills/iam-trust.sh` demonstrates policy enforcement, permission
+      boundaries and IRSA trust allow, deny and tamper checks on Floci, and the known gap with forged GitHub tokens
+      ([guide](guides/iam-policies-and-trust.md))
+- [x] **Upstream findings drafted** (2026-09-24): four Floci and two floci-dash items, none filed
+      ([findings](research/2026-09-24-floci-upstream-findings.md))
 
 ### Left
 
@@ -35,7 +43,8 @@ and in [`adr/archive/`](../adr/archive/).
 
 ## Real AWS: the zero-spend lane ([ADR-0020](../adr/0020-zero-spend-real-aws-lane.md), proposed)
 
-Nothing billable is ever created on real AWS.
+Nothing billable is ever created on real AWS. Revised after the IAM drill: policy, boundary and IRSA trust logic are now
+shown locally, so real AWS is needed only to test GitHub's own issuer, and is optional.
 
 - [ ] Owner, in the console: nothing running or billing in any Region; root MFA on and no root keys; a zero-spend
       budget ([guide](guides/aws-cost-safety.md))
@@ -68,6 +77,7 @@ The design side, in AWS's terms ([`docs/architecture/`](architecture/README.md))
 - [ ] Observability: metrics and dashboards for the app
 - [ ] SLOs and alerts on them
 - [ ] Policy as code: `conftest` on plans (for example, no wildcard OIDC `sub`) and manifests; an IaC security scan
+- [ ] IAM negative tests as a CI regression check: run the parts of `scripts/drills/iam-trust.sh` that need no dev cluster on a fresh Floci
 - [ ] An incident drill with a postmortem
 - [ ] Deferred, optional: DORA metrics; per-PR environments with an Argo CD `ApplicationSet`
 
@@ -83,12 +93,14 @@ The design side, in AWS's terms ([`docs/architecture/`](architecture/README.md))
 ## Learning guides ([index](guides/README.md))
 
 - [x] Guide format and index; [staying at $0 on AWS](guides/aws-cost-safety.md) (2026-09-24)
-- [x] [The local AWS environment](guides/local-aws-environment.md) and
-      [Kubernetes probes](guides/kubernetes-probes.md) (2026-09-24)
+- [x] [The local AWS environment](guides/local-aws-environment.md), [Kubernetes probes](guides/kubernetes-probes.md),
+      [Reaching an EC2 instance](guides/reaching-an-ec2-instance.md) and
+      [IAM policies, boundaries and trust](guides/iam-policies-and-trust.md) (2026-09-24)
 - [ ] Backfill: GitHub OIDC, GitOps with Argo CD, content-hash tags
 
 ## Standing goals
 
-- [ ] One piece of external validation: a Floci upstream contribution. Candidates found on 2026-09-24:
-      CloudFront drops the tags given to `CreateDistributionWithTags`; earlier, the k3s restart failures (ADR-0022)
+- [ ] One piece of external validation: a Floci upstream contribution. Drafts are ready in
+      [the findings](research/2026-09-24-floci-upstream-findings.md), led by the CloudFront tag bug, whose cause is a
+      one-line key mismatch in the source (a good first pull request); earlier candidates: the k3s restart failures
 - [ ] A deliberate failure exercise and postmortem per phase

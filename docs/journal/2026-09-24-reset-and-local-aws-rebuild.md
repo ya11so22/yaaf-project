@@ -42,7 +42,8 @@ containers and volumes were deleted by the new `dev-down.ps1 -Reset`.
 
 **floci-dash and the Docker socket.** Built first without the socket, which disables only its in-browser EC2 terminal.
 The owner chose to use the dashboard as intended, so the socket mount is now in `compose.yaml` and the trade-off is
-recorded in ADR-0022. Applying it was stopped by Claude Code's safety check, so the owner applies it (see Next).
+recorded in ADR-0022. Claude Code's safety check stopped Claude applying it; the owner applied it, and the terminal was then
+tested over its WebSocket.
 
 ## Why
 
@@ -70,11 +71,37 @@ and a decision record a reader can follow without tracing amendment chains.
 - A liveness probe without a startup probe kills slow starters ([guide](../guides/kubernetes-probes.md)).
 - State in S3 needs a bootstrap step, and locking is an S3 conditional write.
 
+## Part 2: the PR, EC2 access, and IAM evidence
+
+- **PR #26** opened from `chore/reset-and-refocus`; all checks passed on GitHub, including the new infra smoke test
+  (2m56s). The old smee webhook was deleted from the repository with the owner's approval.
+- **EC2 workstation, three ways in** (ADR-0022 item 8): new `modules/ec2-instance` and a workstation in the foundation
+  root; `dev-up` creates a dedicated key, `~/.ssh/floci-dev`, once, waits for sshd's banner and prints all three
+  commands. Tested: SSH with the exact printed command from Windows PowerShell (key only; password login refused), SSM Run
+  Command (`Success` with output), and the web terminal (a command ran as root over the WebSocket). Destroy and re-create
+  are clean and the plan then shows no changes. `aws ssm start-session` is unsupported by Floci 2.1.0.
+- **Found:** SSH and security-group ports are published on `0.0.0.0` and `[::]` with no setting to change it (confirmed with
+  `netstat`); IMDSv2-required is not enforced (a token-less request returned 200); Floci cannot read IAM instance-profile
+  tags (`ListInstanceProfileTags` unsupported), so that resource gets a narrow `ignore_changes` with a comment.
+- **Upstream findings investigated** (owner's item 3): the CloudFront tag bug is a key mismatch in the source (stored under
+  `distribution/<id>`, read under the ARN), present on `main`; floci-dash's terminal WebSocket accepts a foreign `Origin`
+  (tested); no existing issues found. Drafts only, none filed
+  ([findings](../research/2026-09-24-floci-upstream-findings.md)).
+- **IAM question answered with a drill** (owner's item 4): `scripts/drills/iam-trust.sh` shows enforcement, permission
+  boundaries and IRSA trust working on Floci, and reproduces the forged-GitHub-token gap. ADR-0020 was revised: real AWS is
+  now needed only for GitHub's own issuer ([guide](../guides/iam-policies-and-trust.md)).
+- **Pipeline relevance** (asked mid-session): kept. It is the delivery half (ADR-0023) and still feeds the 12 image pins in
+  `deploy/dev`. The one leftover: no workflow uses AWS, so the ECR module and the OIDC roles are emulated but unused by CI.
+
+## Learn
+
+- Three ways into an instance, and why AWS prefers SSM ([guide](../guides/reaching-an-ec2-instance.md)).
+- Identity policy, permissions boundary and trust policy are three different documents ([guide](../guides/iam-policies-and-trust.md)).
+- A green check on a claim is only as good as the test: the forged token succeeding is the emulator, not the design.
+
 ## Next
 
-1. The owner applies the dashboard's socket mount: `docker compose -f infra/environments/dev/compose.yaml up -d floci-dash`
-   (or `.\scripts\dev-up.ps1`), then tries the EC2 terminal on an instance launched from an image with bash.
-2. Commit, push and open the PR for `chore/reset-and-refocus`; merge brings the emailservice fix to the cluster.
-3. The owner decides on: deleting the old smee webhook on the repository; filing the Floci CloudFront tag bug (and the
-   floci-dash origin check) upstream; accepting ADR-0020.
-4. Optional: EC2 access the AWS way (imported key pair, SSH from `127.0.0.1/32`, SSM Run Command) with a guide.
+1. Decide ADR-0020 (now much smaller), and whether to keep or remove the ECR module and the unused OIDC roles.
+2. File, or not, the upstream findings (Floci issues; floci-dash privately).
+3. Optionally apply the firewall rule from the EC2 guide, in an elevated PowerShell.
+4. Close Phase 1: threat model, pre-merge deploy check, demo; then the requirements document.

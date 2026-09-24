@@ -1,6 +1,6 @@
 # ADR-0020: Real AWS only where it cannot cost money: a zero-spend lane
 
-**Status:** proposed (waits for the owner's approval; replaces the real-AWS milestone of the archived [ADR-0012](archive/0012-local-first-real-aws-deferred.md))
+**Status:** proposed, revised 2026-09-24 after the IAM drill (waits for the owner's approval; replaces the real-AWS milestone of the archived [ADR-0012](archive/0012-local-first-real-aws-deferred.md))
 **Date:** 2026-09-24
 
 ## Context
@@ -15,6 +15,16 @@ At the same time, some claims in this project can only be settled on real AWS. T
 GitHub OIDC trust design (Floci does not enforce trust conditions, so the negative test that a foreign repository
 cannot assume the role has never run). AWS states that IAM, IAM Identity Center and STS "are features of your AWS
 account offered at no additional charge" ([IAM docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction.html)).
+
+**Update, 2026-09-24, after `scripts/drills/iam-trust.sh`.** Much of what this ADR wanted real AWS for can be shown on
+Floci ([guide](../docs/guides/iam-policies-and-trust.md)). With IAM enforcement on, identity policies and permission
+boundaries deny what they should (a user with `AdministratorAccess` and a read-only boundary cannot create an IAM user).
+Floci also hosts each EKS cluster's OIDC issuer and fully enforces IRSA trust: the right service account is allowed, another
+is denied by the `sub` condition, and a token with its subject rewritten fails its signature check. That is the same
+mechanism as the GitHub trust design, with a different issuer. Two things stay unproven locally: GitHub's own tokens are
+accepted blindly with enforcement off, so a forged token from another repository assumes the project's real role
+(reproduced), and rejected outright with it on, because Floci cannot verify GitHub's keys. What only real AWS can show is
+therefore narrow: that AWS accepts GitHub's real signing keys and that Actions' real tokens carry the `sub` this policy expects.
 
 ## Options considered
 
@@ -33,10 +43,20 @@ account offered at no additional charge" ([IAM docs](https://docs.aws.amazon.com
    tied to specific workshops).
    - Pros: real AWS with no risk.
    - Cons: workshop content only; cannot run this repository's code. Useful for learning, not for evidence.
+5. **Prove the trust and boundary logic locally, and use real AWS only for what remains** (added after the drill).
+   - Pros: costs nothing and risks nothing; the drill is repeatable and can become a CI regression check; shrinks the
+     real-AWS question to one test.
+   - Cons: GitHub's issuer is still unproven locally.
 
 ## Decision
 
-Option 3, with option 4 used for learning on the side. Concretely:
+Option 5 first, and option 3 only for the one question that remains. Concretely:
+
+0. **Local proofs are the main evidence, and are done.** `scripts/drills/iam-trust.sh` demonstrates policy enforcement,
+   permission boundaries, and IRSA trust allow, deny and tamper checks, labelled **verified on Floci**. The GitHub trust
+   design is labelled **designed, logic verified locally** until the real-AWS test below is run, if ever.
+
+The zero-spend lane (items 1 to 5) is then optional, and only for GitHub's issuer. Option 4 stays for learning on the side.
 
 1. **Nothing billable is ever created on the owner's account.** Billable work (EKS, load balancers, NAT, RDS,
    Bedrock) stays on Floci or is **designed** with a cost estimate from the AWS Pricing Calculator (free, no

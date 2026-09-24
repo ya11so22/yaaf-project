@@ -25,12 +25,16 @@ Terms are added as they are resolved (via `/domain-modeling`), not written specu
   is created on real AWS. Say "AWS" for the layer, and name the thing when it matters: the **EKS cluster**, a
   **workload** in it, or the **emulator** for Floci's own behaviour (ADR-0022).
 - **Floci**: the local AWS emulator, long-lived on the owner's machine with persistent storage, and fresh in every CI
-  run. It does not enforce IAM policies or trust conditions.
+  run. By default it does not enforce IAM policies or trust conditions; it has an enforcement mode
+  (`docs/guides/iam-policies-and-trust.md`).
 - **floci-dash**: the dashboard for Floci, modelled on the AWS Management Console (ADR-0022).
 - **Environment**: what OpenTofu provisions on top of AWS. **dev** is the only one; there is no production.
 - **Root**: one OpenTofu working directory with its own state. dev has three, applied in order: **bootstrap** (the
   state bucket), **foundation** (the account-level infrastructure), **cluster** (what runs inside EKS).
 - **State bucket**: `yaaf-dev-tfstate` on Floci, holding the foundation and cluster state with an S3 lock file.
+- **Workstation**: the EC2 instance the foundation root creates to log in to; reachable through the dashboard terminal, SSH
+  or SSM Run Command (ADR-0022).
+- **Drill**: a script that shows behaviour on demand and is not a gate, for example `scripts/drills/iam-trust.sh`.
 - **Portal**: the static website (S3 behind CloudFront) that links to every local endpoint.
 - **Zero-spend lane**: the only way real AWS is used: free-by-construction services (IAM, STS), through an identity
   that cannot create anything billable (ADR-0020, proposed).

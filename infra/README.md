@@ -21,6 +21,7 @@ infra/
     ├── ecr/            one repository per app service, lifecycle policy, immutable tags
     ├── github-oidc/    GitHub OIDC provider and three least-privilege roles (ADR-0006)
     ├── alb-ingress/    an ALB forwarding to the ingress controller's NodePort
+    ├── ec2-instance/   an instance with a security group, SSM instance profile and IMDSv2 only (the workstation)
     ├── static-site/    a private S3 bucket behind CloudFront with origin access control
     └── argocd/         Argo CD from its Helm chart, and its Applications
 ```
@@ -32,7 +33,7 @@ after the one before it.
 ## Prerequisites
 
 Docker Desktop, [OpenTofu](https://opentofu.org/docs/intro/install/) 1.10 or later, the AWS CLI v2, `kubectl` and
-`curl` (built into Windows). About 6 GB of free memory for Docker while the cluster runs.
+`curl` (built into Windows), and the Windows OpenSSH client for `ssh` and `ssh-keygen` (an optional Windows feature). About 6 GB of free memory for Docker while the cluster runs.
 
 ## Start and stop
 
@@ -72,6 +73,10 @@ Headlamp as an empty page).
 | http://shop.localhost:8080 | The Online Boutique, through the ALB and Traefik |
 | http://localhost:4566 | Floci's AWS API endpoint |
 
+And an EC2 **workstation** to log in to, three ways ([guide](../docs/guides/reaching-an-ec2-instance.md)): the terminal on
+floci-dash's EC2 page, `ssh -i ~/.ssh/floci-dev -p <port> root@127.0.0.1`, and `aws ssm send-command`. `dev-up` prints the
+exact commands. Floci publishes the SSH port on all network interfaces; the guide has the firewall command that closes that.
+
 Browsers resolve `*.localhost` names to loopback themselves; command-line tools on Windows may not, so use
 `curl.exe -H "Host: shop.localhost" http://127.0.0.1:8080/`.
 
@@ -106,11 +111,19 @@ Floci proves that tested SDK and IaC scenarios work, not that AWS behaves the sa
 - **EKS:** one k3s node whatever the node group asks for. The Kubernetes version follows the pinned k3s image
   (`FLOCI_SERVICES_EKS_DEFAULT_IMAGE` in `compose.yaml`), not the requested version, so the two are kept in step
   by hand. EKS authentication needs a key that exists in Floci's IAM, not the dummy `test` pair.
-- **IAM:** policies and trust conditions are stored but not enforced. ADR-0006's OIDC trust design is therefore
-  unproven here; ADR-0020 proposes proving it on real AWS at no cost.
+- **IAM:** enforcement is off by default, so policies, and trust for tokens from outside, are stored but not enforced.
+  With enforcement on, identity policies and permission boundaries are evaluated, and IRSA tokens that Floci signs itself
+  get full trust checking; GitHub's tokens cannot be verified either way. `scripts/drills/iam-trust.sh` shows all of it
+  ([guide](../docs/guides/iam-policies-and-trust.md)).
 - **Load balancing:** target health stays `initial` although traffic flows, and there is no TLS on the ingress.
 - **CloudFront:** served over plain HTTP at `<id>.cloudfront.localhost:4566`, so the portal allows HTTP; on real
   AWS the module's default redirects to HTTPS.
+- **EC2:** instances are Docker containers from minimal images, so there is no SSH server until user data installs one,
+  login is `root`, and SSM Run Command works but Session Manager (`start-session`) does not. The SSH and security-group ports
+  are published on all interfaces, a security group's source range is not enforced, and IMDSv2-required is not enforced.
+- **Tags:** Floci drops tags on CloudFront distributions at creation and cannot read tags on IAM instance profiles, so the
+  provider sees drift; the code works around each, with a comment
+  ([upstream findings](../docs/research/2026-09-24-floci-upstream-findings.md)).
 - **Restarts:** Floci restores the cluster only when the EKS API is first called, and after an abrupt stop the k3s
   container can die on a stale IP while Floci still reports the cluster `ACTIVE`. That is why `dev-up.ps1` checks the
   cluster itself and repairs it.
