@@ -47,6 +47,11 @@ Piecemeal commands did not fix this. It needs one owned procedure.
    it at logon and logs to `%LOCALAPPDATA%\yaaf\dev-up.log`. After a restart nothing else is needed.
 6. Health of the k3s container is checked by the script because OpenTofu cannot see it: Floci
    reports `ACTIVE` regardless.
+7. **`scripts/dev-down.ps1` is the safe shutdown.** It backs up the two OpenTofu state files (gitignored, so not
+   on GitHub, and needed: without them OpenTofu would try to create what already exists), stops Floci
+   gracefully and then anything it started, and removes nothing. A graceful stop is the recoverable path;
+   an abrupt one is what left the cluster with a stale IP. Reset or prune commands that delete the Docker
+   volumes are the only things that lose state.
 
 ## Options considered
 
