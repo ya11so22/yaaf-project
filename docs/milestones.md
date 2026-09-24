@@ -126,6 +126,27 @@ Not started, and not before local options are exhausted. Free and local first.
       test that a foreign repository cannot assume the roles; then torn down, with evidence kept
       (logs, screenshots, teardown, a cost note)
 
+## Architecture track (ADR-0017)
+
+The design side, in AWS's terms, beside the running system. Ordered by dependency; each step is useful on its own.
+Index and evidence labels: [`docs/architecture/`](architecture/README.md).
+
+- [ ] Scenario, requirements and constraints (`00-requirements.md`)
+- [ ] Architecture views as diagrams in code (`01-views.md`)
+- [ ] Well-Architected review v1 (six pillars; Container Build, DevOps and Financial Services Industry
+      lenses) with a findings register (`02-well-architected-review.md`)
+- [ ] Reliability and DR design with RTO/RPO tiers and cost per tier (`03-reliability-and-dr.md`)
+- [ ] Cost model with real pricing (`04-cost-model.md`)
+- [ ] Migration options using the 7 Rs (`05-migration-options.md`)
+- [ ] Security and compliance: the Phase 1 threat model plus a control mapping (`06-security-and-compliance.md`)
+- [ ] Well-Architected review v2 after Phase 2, showing what changed
+- [ ] AI architecture: Bedrock against self-hosted serving, a RAG design (`07-ai-architecture.md`)
+- [ ] Governance: multi-account layout and guardrails (`08-governance.md`)
+- [ ] Customer-facing: a one-page executive summary, the review readout, discovery questions
+- [ ] Interview kit: decisions mapped to pillars and alternatives, and a story bank from real events here
+- [ ] A tally of real US Solutions Architect postings (bands, certifications, requirements), to replace the thin
+      evidence the ADR is built on
+
 ## Phase 2 — Operate it (reliability and platform)
 
 Not started. Scope (ADR-0010):
@@ -152,7 +173,7 @@ rollback, latency, cost and token metrics with alerts, and autoscaling. Built on
 delivery and observability; a short GPU run at the milestone is the fallback if CPU inference cannot
 show autoscaling and latency alerts.
 
-## Phase 4 — Classic MLOps
+## Phase 4 — Classic MLOps (optional stretch, ADR-0017)
 
 Not started. Scope (ADR-0010): a real recommendation model for `recommendationservice` (the current
 service is not a real ML system), with training and evaluation on PR, a registry, metrics-gated
