@@ -17,7 +17,7 @@ repository is that engagement, designed, built, operated and broken on purpose, 
 |---|---|---|
 | Local AWS (Floci, three OpenTofu roots, EKS on k3s, ALB, Argo CD, portal, EC2 workstation) | built and working on Windows | verified on Floci; never run on the Mac |
 | Delivery (GitHub Actions to GHCR, GitOps with Argo CD, bot PR pins images) | working | Phase 1 end-to-end run and failure drill (`docs/postmortems/`) |
-| Pipeline standard (ADR-0024: provenance, SBOM, digest pins, scan ratchet, zizmor, kubeconform, Scorecard, Dependabot) | merged in PR #26 | gates proven against planted faults locally; **the first `main` run is the real test** (see Next 2) |
+| Pipeline standard (ADR-0024: provenance, SBOM, digest pins, scan ratchet, zizmor, kubeconform, Scorecard, Dependabot) | merged in PR #26 | first `main` run (2026-10-03): all 12 images passed the scan gate, the `pins` job wrote `tag@digest` pins and the bot PR (#27) merged; a squash-only bug in auto-merge was found and fixed (#29). **Not yet exercised:** publishing and attestations, because every image was reused (no service changed) |
 | Architecture track (`docs/architecture/`) | scenario chosen, nothing else written | |
 | Phase 2 (operate it), Phase 3 (assistant replatform) | not started | `docs/milestones.md` |
 
@@ -34,11 +34,11 @@ repository is that engagement, designed, built, operated and broken on purpose, 
 1. **Set up the Mac and rebuild the task interface** (`mise.toml`: `up`, `down`, `reset`, `check`) from
    [`docs/mac-migration.md`](docs/mac-migration.md). Bring the environment up and confirm the endpoints answer. Expect the
    app pods to struggle on Apple Silicon (amd64-only images): that is item 3.
-2. **Watch the first `main` pipeline run after PR #26** (Actions tab). It rebuilds all 12 services (the build workflow
-   changed), so it is the first real test of: push by digest, `actions/attest` provenance and SBOM, the Trivy gate with
-   `.trivyignore.yaml`, and the `pins` job opening a bot PR with `tag@digest` pins. Verify one image:
-   `gh attestation verify oci://ghcr.io/ya11so22/yaaf-project/frontend@<digest> --repo ya11so22/yaaf-project`. Fix what
-   fails; record it in a journal entry. Dependabot will also open its first grouped PRs.
+2. **Exercise publishing and attestations.** The first app change that touches a service (for example the multi-arch work
+   in item 3) builds and pushes a new image on `main`, which runs `actions/attest` for SLSA provenance and the SBOM for the
+   first time. Then verify it:
+   `gh attestation verify oci://ghcr.io/ya11so22/yaaf-project/<service>@<digest> --repo ya11so22/yaaf-project`.
+   Dependabot opens grouped PRs weekly; merge them when green.
 3. **Multi-arch images** (amd64 and arm64, native runners): ADR first, then `reusable-container-image.yml`. Details in
    `docs/mac-migration.md` section 5.
 4. **Finish the Floci upstream fix** (below), then ask the owner before opening anything upstream.
