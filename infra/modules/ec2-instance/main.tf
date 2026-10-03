@@ -27,13 +27,6 @@ resource "aws_iam_instance_profile" "this" {
   name = "${var.name}-instance"
   role = aws_iam_role.this.name
   tags = var.tags
-
-  # Floci does not implement ListInstanceProfileTags (checked with the AWS CLI against 2.1.0), so the provider can
-  # never read this resource's tags back and would report drift on every plan. Tags are still set on create. On
-  # real AWS, delete this block.
-  lifecycle {
-    ignore_changes = [tags, tags_all]
-  }
 }
 
 resource "aws_security_group" "this" {

@@ -51,6 +51,9 @@ module "eks" {
 
   name       = local.name
   subnet_ids = module.vpc.private_subnet_ids
+  # Floci caps the cluster's k3s container at the node type's memory (plus 10%, at most 80% of the Docker VM's) and
+  # vCPUs. A t3.medium (4 GiB) leaves too little for Argo CD, the app and its emulated amd64 images (ADR-0025).
+  node_instance_types = ["t3.large"]
 }
 
 module "ecr" {
@@ -134,7 +137,7 @@ module "portal" {
 # A key pair from the public key the `up` task generates (~/.ssh/floci-dev). Only the public half ever reaches OpenTofu.
 # Empty (for example in CI): no key pair, and the instance is reachable only through SSM or the console terminal.
 resource "aws_key_pair" "dev" {
-  count = var.ssh_public_key == "" ? 0 : 1
+  count = var.workstation && var.ssh_public_key != "" ? 1 : 0
 
   key_name   = "${local.name}-dev"
   public_key = var.ssh_public_key
@@ -142,9 +145,11 @@ resource "aws_key_pair" "dev" {
 
 # A small instance to log in to, three ways: the dashboard's terminal, SSH from your own terminal, and SSM Run Command
 # (docs/guides/reaching-an-ec2-instance.md). Real AMIs ship an SSH server; Floci's are minimal container images, so
-# user data installs one, exactly as it would install anything else on first boot.
+# user data installs one, exactly as it would install anything else on first boot. Opt-in (`mise run up --workstation`):
+# Floci publishes its SSH port on every network interface (ADR-0025).
 module "workstation" {
   source = "../../../modules/ec2-instance"
+  count  = var.workstation ? 1 : 0
 
   name      = "${local.name}-workstation"
   vpc_id    = module.vpc.vpc_id

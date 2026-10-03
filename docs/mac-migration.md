@@ -15,8 +15,23 @@ Principle (the owner's): **minimal scripts, tools do the work.** Prefer a task r
 |---|---|---|
 | Container runtime | Docker Desktop or OrbStack (either; test one) | Floci needs a Docker socket at `/var/run/docker.sock` (it is mounted in `compose.yaml`). Docker Desktop: enable "Allow the default Docker socket" in Settings > Advanced. OrbStack provides it by default. Colima needs `--vz-rosetta` and a socket symlink. Give the VM 8 GB RAM: the cluster plus a Java build ran out at 6.6 GB on Windows. |
 | Tool versions | [mise](https://mise.jdx.dev) with a `mise.toml` at the repo root | One file pins `opentofu` 1.12.x, `kubectl` 1.36.x, `awscli` 2, `gh`; mise tasks give the task interface below. Homebrew is fine for mise itself. |
-| Assistant skills | Install Matt Pocock's skills at user level, not in the repo | They were vendored under `.claude/skills` (removed). Source: github.com/mattpocock/skills at commit `6654f6b60cd9d5be8b54c6fafe44346dabeb3b76` (MIT); copy into `~/.claude/skills/`. |
+| Assistant skills | Three Claude Code plugins at user scope, not in the repo (commands below) | Matt Pocock's skills used to be vendored under `.claude/skills` (removed). Now installed as plugins, so they update with `claude plugin update` and stay out of the repo: `mattpocock-skills` (27 skills: grilling, handoff, TDD, specs, reviews), `andrej-karpathy-skills` (one coding-guidelines skill) and `ponytail` (a "simplest thing that works" mode, with hooks that only write local state files; audited 2026-10-03). |
 | Git hook | `git config core.hooksPath .githooks` | Runs `scripts/check` before each commit. |
+
+Install the assistant plugins once (they land in `~/.claude/settings.json`):
+
+```bash
+claude plugin marketplace add mattpocock/skills
+claude plugin marketplace add multica-ai/andrej-karpathy-skills
+claude plugin marketplace add dietrichgebert/ponytail
+claude plugin install mattpocock-skills@mattpocock --scope user
+claude plugin install andrej-karpathy-skills@karpathy-skills --scope user
+claude plugin install ponytail@ponytail --scope user
+```
+
+Watch out: ponytail is always on, at level `full`, and favours terse, minimal answers. That can clash with "the project is
+also a course" (`CLAUDE.md`). Use `/ponytail lite` for a session, or set `PONYTAIL_DEFAULT_MODE=lite` to make it the
+default.
 
 ## 2. The task interface to build (`mise.toml`)
 

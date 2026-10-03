@@ -27,3 +27,9 @@ variable "ssh_public_key" {
   type        = string
   default     = ""
 }
+
+variable "workstation" {
+  description = "Create the EC2 workstation (and its key pair). Off by default: its SSH port is published on every interface."
+  type        = bool
+  default     = false
+}
