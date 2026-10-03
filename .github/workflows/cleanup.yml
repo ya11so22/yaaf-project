@@ -1,25 +1,28 @@
 name: cleanup
 
-# GHCR has no lifecycle policy (unlike the ECR module), so keep only the newest 10 versions of
-# each service image (ADR-0007). Verified 2026-09-20 by a manual run: the package-name format
-# `yaaf-project/<service>` is accepted and the built-in token may manage the packages. Deletion
-# itself is untested until a package exceeds 10 versions.
+# GHCR has no lifecycle policy (unlike the ECR module), so keep only the newest 10 versions of each service image
+# (ADR-0023). Attestations are kept on GitHub, not in the registry, so they are not pruned here. Verified 2026-09-20 by a
+# manual run: the package-name format `yaaf-project/<service>` is accepted and the built-in token may manage the
+# packages. Deletion itself is untested until a package exceeds 10 versions.
 on:
   schedule:
     - cron: "17 3 * * 0"
   workflow_dispatch:
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   services:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
     outputs:
       matrix: ${{ steps.list.outputs.matrix }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # An empty base makes the script list every service that has a Dockerfile.
       - id: list

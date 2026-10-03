@@ -1,0 +1,27 @@
+# Accepted CRITICAL findings for the build gate (ADR-0024). Each entry is a known, fixable CRITICAL in Google's upstream
+# Online Boutique code, so the gate fails only on NEW criticals. Recorded on 2026-10-01 from a fresh scan of all 12 service
+# images with Trivy v0.74.0 (the version the pipeline pins), not from older Security-tab results.
+# Every entry expires: after its date the build fails again until the finding is fixed (an app-team pull request that
+# updates the dependency) or reviewed and re-accepted. Do not add entries without a statement and an expiry.
+vulnerabilities:
+  - id: CVE-2026-41242
+    statement: protobufjs 6.11.4 (fixed in 7.5.5) in currencyservice and paymentservice (Node.js). Upstream dependency.
+    expired_at: 2026-12-31
+  - id: CVE-2026-59873
+    statement: tar 6.2.1 (fixed in 7.5.19) in currencyservice (Node.js). Upstream dependency.
+    expired_at: 2026-12-31
+  - id: CVE-2026-75595
+    statement: netty-handler 4.2.15.Final (fixed in 4.2.17.Final) in adservice (Java). Upstream dependency.
+    expired_at: 2026-12-31
+  - id: CVE-2026-13221
+    statement: perl-base in shoppingassistantservice's Debian base image. The service is rebuilt by the Phase 3 replatform.
+    expired_at: 2026-12-31
+  - id: CVE-2026-42496
+    statement: perl-base in shoppingassistantservice's Debian base image. The service is rebuilt by the Phase 3 replatform.
+    expired_at: 2026-12-31
+  - id: CVE-2026-8376
+    statement: perl-base in shoppingassistantservice's Debian base image. The service is rebuilt by the Phase 3 replatform.
+    expired_at: 2026-12-31
+  - id: CVE-2026-63374
+    statement: anyio 4.10.0 (fixed in 4.14.2) in shoppingassistantservice (Python). Rebuilt by the Phase 3 replatform.
+    expired_at: 2026-12-31

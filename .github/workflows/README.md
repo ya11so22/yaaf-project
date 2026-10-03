@@ -1,36 +1,31 @@
 # GitHub Actions workflows
 
-Design and reasoning: [ADR-0007](../../adr/0007-ci-split-ghcr-and-floci-scope.md).
+The standard every workflow here follows, and the checklist for writing a new one:
+[ADR-0024](../../adr/0024-ci-cd-pipeline-standard.md) and the [pipeline guide](../../docs/guides/ci-cd-pipeline-standard.md).
+Delivery model (GitOps, content tags, rollback): [ADR-0023](../../adr/0023-build-and-delivery.md).
 
-| Workflow | Required check | What it does |
-|---|---|---|
-| `build.yml` | `build` | Finds changed `app/src/<service>` folders (`.github/scripts/changed-services.sh`, tested by `changed-services.test.sh`), builds each for amd64 with a per-service cache, scans with Trivy (report-only, SARIF to the Security tab) and pushes `ghcr.io/<owner>/<repo>/<service>:<sha>`. Fork PRs build only. No Floci, no `tofu`, no AWS. |
-| `infra.yml` | `infra` | On changes under `infra/`: `fmt`, `validate` and `plan` without Floci, with the plan as one sticky PR comment; then a Floci smoke test that applies `environments/floci` from scratch, requires a no-changes re-plan, and destroys it. Re-runs on `main` after merge. |
-| `check.yml` | `check` | Runs `scripts/check --ci`: `tofu fmt -check`, the change-detection tests, `actionlint`, and a full-history `gitleaks` scan. The same script the local pre-commit hook runs ([ADR-0009](../../adr/0009-local-pre-gate.md)). |
-| `cleanup.yml` | | Weekly: keeps the newest 10 versions of each image on GHCR. Also runnable by hand. |
+| Workflow | Required check | Runs on | What it does |
+|---|---|---|---|
+| `check.yml` | `check` | every PR and `main` | `scripts/check --ci`, the same script as the pre-commit hook ([ADR-0009](../../adr/0009-local-pre-gate.md)): `tofu fmt`, the script tests, Kubernetes schema validation of every `deploy/` directory (kubeconform), workflow security (zizmor, online) and lint (actionlint), full-history secret scan (gitleaks). |
+| `build.yml` | `build` | every PR and `main` | Finds changed services under `app/src` and calls `reusable-container-image.yml` for each. On `main` only, the `pins` job then opens or updates one GitHub App bot PR pinning every service to `tag@digest` in `deploy/dev`. |
+| `reusable-container-image.yml` | | called by `build` | One image: build, scan (HIGH and CRITICAL to the Security tab), gate (fails on a fixable CRITICAL not accepted in `.trivyignore.yaml`). On `main` only: push by digest, attest SLSA provenance and a CycloneDX SBOM. Pull requests never push. |
+| `infra.yml` | `infra` | changes under `infra/` | `fmt`, `validate` of all three dev roots, a `plan` of the foundation (PR comment), an IaC misconfiguration scan (Trivy, report-only), and a smoke test on a fresh Floci: bootstrap, apply on the S3 backend, re-plan must be empty, destroy. |
+| `rescan.yml` | | weekly | Re-scans the deployed images (the digests pinned in `deploy/dev`) for vulnerabilities published since they were built. |
+| `scorecard.yml` | | weekly and `main` | OpenSSF Scorecard: the repository's supply-chain practices, scored and published. |
+| `cleanup.yml` | | weekly | Keeps the newest 10 versions of each image on GHCR. |
 
-Both `build` and `infra` are gate jobs that always run, so a PR that touches nothing relevant
-still reports the required check (a workflow-level `paths:` filter would leave it pending).
+Also in `.github/`: `dependabot.yml` (weekly updates of action SHAs, the compose file's image digests and the OpenTofu
+providers, each with a 7-day cooldown) and `CODEOWNERS`. The accepted-findings baseline for the scan gate is
+`.trivyignore.yaml` at the repository root.
 
-Third-party actions are pinned to full commit SHAs with the version in a comment.
+Verify a published image: `gh attestation verify oci://ghcr.io/ya11so22/yaaf-project/<service>@<digest> --repo ya11so22/yaaf-project`.
 
-Not built yet: the manual, environment-gated apply of `aws-milestone` (needs that environment
-to exist), and pushing to real AWS through the OIDC roles (ADR-0006).
+Not built yet: the pre-merge deploy check (apply the dev roots to a throwaway Floci, load the PR's images, install Argo CD,
+sync the PR's commit, wait for `Synced` and `Healthy`).
 
-## Running locally with act
+## Running locally
 
-`.actrc` maps `ubuntu-latest` to `catthehacker/ubuntu:act-latest` (about 0.6 GB compressed, close
-enough to GitHub's runner for these workflows) so [act](https://github.com/nektos/act) and the
-GitHub Local Actions VS Code extension run without their interactive image prompt. Pull the image
-once first (`docker pull catthehacker/ubuntu:act-latest`), because `.actrc` sets `--pull=false`.
-
-Verified locally: `changes` (both workflows) and `plan`. Do not run these locally:
-
-- `infra.yml` `smoke`: it uses your local Floci's container names, port 4566 and data volume, and
-  ends with `docker compose down -v`, which deletes that volume.
-- `build.yml` `image` with a push-style event: it can log in to GHCR and push. Use a fork-PR event
-  payload and `--matrix service:<name>` to build one image without pushing.
-
-act ignores `concurrency`, `timeout-minutes` and OIDC, and has no Actions cache token, so the
-`type=gha` build cache does not work under it.
-
+`scripts/check` runs the same fast checks as the `check` workflow. To run a whole workflow locally, [act](https://github.com/nektos/act)
+works for `check` and the `plan` job of `infra` (use an image such as `catthehacker/ubuntu:act-latest`). Do not run the
+`infra` smoke test locally: it uses your local Floci's container names and port and ends with `docker compose down -v`,
+which deletes the whole local AWS. Do not run `build.yml` with a push event: it would push images and open the bot PR.

@@ -11,9 +11,13 @@ if [ "${1:-}" = "--ci" ]; then ci=true; fi
 
 cd "$(git rev-parse --show-toplevel)"
 
-# Pinned by digest. Bump deliberately. rhysd/actionlint v1.7.12, gitleaks v8.30.1.
+# Pinned by digest. Bump deliberately. rhysd/actionlint v1.7.12, gitleaks v8.30.1, zizmor v1.30.1, kubeconform v0.8.0.
 ACTIONLINT_IMAGE="rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667"
 GITLEAKS_IMAGE="ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f"
+ZIZMOR_IMAGE="ghcr.io/zizmorcore/zizmor@sha256:a2eb396d886c053073405c7a980f2139ba2248ec172243cfa3841e57196e8101"
+KUBECONFORM_IMAGE="ghcr.io/yannh/kubeconform@sha256:faffaf43f95aa6425306e1ab8d6fcad72acb9049158f38e574c085ea1ec0f64e"
+# The Kubernetes version the manifests are checked against; keep in step with modules/eks-cluster (ADR-0022).
+K8S_VERSION="1.36.0"
 
 failed=0
 
@@ -68,7 +72,32 @@ else
   unavailable "image pin tests" "kubectl not installed"
 fi
 
+# Every kustomize directory under deploy/ renders, and what it renders is valid against the Kubernetes schemas.
+validate_manifests() {
+  local dir rc=0
+  for dir in deploy/*/; do
+    kubectl kustomize "$dir" | env MSYS_NO_PATHCONV=1 docker run -i --rm "$KUBECONFORM_IMAGE"       -strict -summary -kubernetes-version "$K8S_VERSION" - || rc=1
+  done
+  return $rc
+}
+
+# Workflow security (ADR-0024). Online in CI when a token is present, which adds the audits that ask GitHub (impostor
+# commits, actions with known vulnerabilities); offline otherwise.
+zizmor() {
+  if $ci && [ -n "${GH_TOKEN:-}" ]; then
+    docker_run -e GH_TOKEN "$ZIZMOR_IMAGE" --format plain .github
+  else
+    docker_run "$ZIZMOR_IMAGE" --offline --format plain .github
+  fi
+}
+
 if have_docker; then
+  if command -v kubectl >/dev/null 2>&1; then
+    run "manifest schemas" validate_manifests
+  else
+    unavailable "manifest schemas" "kubectl not installed"
+  fi
+  run "zizmor" zizmor
   run "actionlint" docker_run "$ACTIONLINT_IMAGE" -color=false
   if $ci; then
     run "gitleaks (full history)" docker_run "$GITLEAKS_IMAGE" git /repo --no-banner --redact
@@ -76,6 +105,8 @@ if have_docker; then
     run "gitleaks (staged changes)" docker_run "$GITLEAKS_IMAGE" git /repo --pre-commit --staged --no-banner --redact
   fi
 else
+  unavailable "manifest schemas" "docker not available"
+  unavailable "zizmor" "docker not available"
   unavailable "actionlint" "docker not available"
   unavailable "gitleaks" "docker not available"
 fi

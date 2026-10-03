@@ -1,0 +1,204 @@
+diff --git a/src/main/java/io/github/hectorvent/floci/services/cloudfront/CloudFrontController.java b/src/main/java/io/github/hectorvent/floci/services/cloudfront/CloudFrontController.java
+index c1bde59..ddc2eeb 100644
+--- a/src/main/java/io/github/hectorvent/floci/services/cloudfront/CloudFrontController.java
++++ b/src/main/java/io/github/hectorvent/floci/services/cloudfront/CloudFrontController.java
+@@ -7,7 +7,9 @@ import io.github.hectorvent.floci.core.common.XmlParser;
+ import io.github.hectorvent.floci.services.cloudfront.model.*;
+ import jakarta.inject.Inject;
+ import jakarta.ws.rs.*;
++import jakarta.ws.rs.core.Context;
+ import jakarta.ws.rs.core.Response;
++import jakarta.ws.rs.core.UriInfo;
+ import org.jboss.logging.Logger;
+ 
+ import javax.xml.stream.XMLStreamConstants;
+@@ -66,11 +68,11 @@ public class CloudFrontController {
+ 
+     @POST
+     @Path("/distribution")
+-    public Response createDistribution(@QueryParam("WithTags") String withTags, String body) {
++    public Response createDistribution(@Context UriInfo uriInfo, String body) {
+         try {
+             DistributionConfig config = parseDistributionConfig(body);
+             Map<String, String> tags = new LinkedHashMap<>();
+-            if (withTags != null) {
++            if (hasQueryFlag(uriInfo, "WithTags")) {
+                 tags = parseTags(body);
+             }
+             Distribution dist = new Distribution();
+@@ -3837,6 +3839,29 @@ public class CloudFrontController {
+         return sub;
+     }
+ 
++    /**
++     * CreateDistributionWithTags is addressed by the valueless flag {@code ?WithTags}. A flag with no
++     * {@code =} can be absent from the parsed query parameters, so the raw query is checked as well,
++     * as S3RequestParser.hasQueryParam does for S3's subresource flags.
++     */
++    private static boolean hasQueryFlag(UriInfo uriInfo, String name) {
++        if (uriInfo.getQueryParameters().containsKey(name)) {
++            return true;
++        }
++        String query = uriInfo.getRequestUri().getRawQuery();
++        if (query == null) {
++            return false;
++        }
++        for (String pair : query.split("&")) {
++            int eq = pair.indexOf('=');
++            String key = eq >= 0 ? pair.substring(0, eq) : pair;
++            if (key.equals(name)) {
++                return true;
++            }
++        }
++        return false;
++    }
++
+     private Map<String, String> parseTags(String body) {
+         Map<String, String> tags = new LinkedHashMap<>();
+         List<Map<String, String>> groups = XmlParser.extractGroups(body, "Tag");
+diff --git a/src/main/java/io/github/hectorvent/floci/services/cloudfront/CloudFrontService.java b/src/main/java/io/github/hectorvent/floci/services/cloudfront/CloudFrontService.java
+index 545d5f3..2113af3 100644
+--- a/src/main/java/io/github/hectorvent/floci/services/cloudfront/CloudFrontService.java
++++ b/src/main/java/io/github/hectorvent/floci/services/cloudfront/CloudFrontService.java
+@@ -191,7 +191,7 @@ public class CloudFrontService {
+         dist.setEtag(UUID.randomUUID().toString());
+         if (tags != null && !tags.isEmpty()) {
+             dist.setTags(tags);
+-            tagStore.put("distribution/" + id, tags);
++            tagStore.put(dist.getArn(), tags);
+         }
+         distStore.put(id, dist);
+         return dist;
+@@ -282,7 +282,7 @@ public class CloudFrontService {
+         }
+         distStore.delete(id);
+         invalidationStore.delete(id);
+-        tagStore.delete("distribution/" + id);
++        tagStore.delete(existing.getArn());
+     }
+ 
+     /**
+@@ -293,7 +293,7 @@ public class CloudFrontService {
+     public synchronized void removeDistribution(String id) {
+         distStore.delete(id);
+         invalidationStore.delete(id);
+-        tagStore.delete("distribution/" + id);
++        tagStore.delete(arn("distribution/" + id));
+     }
+ 
+     public List<Distribution> listDistributions(String marker, int maxItems) {
+diff --git a/src/test/java/io/github/hectorvent/floci/services/cloudfront/CloudFrontManagementProtocolTest.java b/src/test/java/io/github/hectorvent/floci/services/cloudfront/CloudFrontManagementProtocolTest.java
+index 0331f40..2ce685b 100644
+--- a/src/test/java/io/github/hectorvent/floci/services/cloudfront/CloudFrontManagementProtocolTest.java
++++ b/src/test/java/io/github/hectorvent/floci/services/cloudfront/CloudFrontManagementProtocolTest.java
+@@ -232,6 +232,66 @@ class CloudFrontManagementProtocolTest {
+             .body(hasXPath("//*[local-name()='Code']/text()", equalTo("InvalidArgument")));
+     }
+ 
++    @Test
++    void createDistributionWithTagsIsListedByItsArn() {
++        String callerReference = "tagged-distribution-" + UUID.randomUUID();
++        String id = null;
++        String etag = null;
++        try {
++            Response created = given()
++                    .contentType("application/xml")
++                    .body("""
++                            <DistributionConfigWithTags xmlns="http://cloudfront.amazonaws.com/doc/2020-05-31/">
++                              <DistributionConfig>
++                                <CallerReference>%s</CallerReference>
++                                <Comment>tagged at creation</Comment>
++                                <Enabled>false</Enabled>
++                                <Origins>
++                                  <Quantity>1</Quantity>
++                                  <Items>
++                                    <Origin>
++                                      <Id>origin1</Id>
++                                      <DomainName>example-bucket.s3.us-east-1.amazonaws.com</DomainName>
++                                      <S3OriginConfig><OriginAccessIdentity></OriginAccessIdentity></S3OriginConfig>
++                                    </Origin>
++                                  </Items>
++                                </Origins>
++                                <DefaultCacheBehavior>
++                                  <TargetOriginId>origin1</TargetOriginId>
++                                  <ViewerProtocolPolicy>allow-all</ViewerProtocolPolicy>
++                                </DefaultCacheBehavior>
++                              </DistributionConfig>
++                              <Tags>
++                                <Items>
++                                  <Tag><Key>Project</Key><Value>floci</Value></Tag>
++                                </Items>
++                              </Tags>
++                            </DistributionConfigWithTags>
++                            """.formatted(callerReference))
++                    .when()
++                    .post(API + "distribution?WithTags");
++            created.then().statusCode(201);
++            id = XmlParser.extractFirst(created.asString(), "Id", null);
++            etag = created.header("ETag");
++            String arn = XmlParser.extractFirst(created.asString(), "ARN", null);
++
++            given()
++                    .queryParam("Resource", arn)
++                    .when()
++                    .get(API + "tagging")
++                    .then()
++                    .statusCode(200)
++                    .body(hasXPath("//*[local-name()='Tag']/*[local-name()='Key']/text()", equalTo("Project")))
++                    .body(hasXPath("//*[local-name()='Tag']/*[local-name()='Value']/text()", equalTo("floci")));
++        } finally {
++            if (id != null && etag != null) {
++                given().header("If-Match", etag)
++                        .when().delete(API + "distribution/" + id)
++                        .then().statusCode(204);
++            }
++        }
++    }
++
+     @Test
+     void cachePolicyReadFillsAwsTtlDefaults() {
+         String name = "default-ttl-cache-policy-" + UUID.randomUUID();
+diff --git a/src/test/java/io/github/hectorvent/floci/services/cloudfront/CloudFrontServiceTest.java b/src/test/java/io/github/hectorvent/floci/services/cloudfront/CloudFrontServiceTest.java
+index 37ba1b2..fb7b678 100644
+--- a/src/test/java/io/github/hectorvent/floci/services/cloudfront/CloudFrontServiceTest.java
++++ b/src/test/java/io/github/hectorvent/floci/services/cloudfront/CloudFrontServiceTest.java
+@@ -251,6 +251,39 @@ class CloudFrontServiceTest {
+                 "Expected default suffix, got: " + dist.getDomainName());
+     }
+ 
++    @Test
++    void createDistributionTagsAreListedByTheDistributionArn() {
++        CloudFrontService service = serviceWithDomainSuffix(DEFAULT_DOMAIN_SUFFIX);
++
++        Distribution dist = service.createDistribution(new Distribution(), Map.of("Project", "floci"));
++
++        // ListTagsForResource and TagResource address a distribution by its ARN, so tags given at
++        // creation (CreateDistributionWithTags) must be stored under the same key.
++        assertEquals(Map.of("Project", "floci"), service.listTagsForResource(dist.getArn()));
++    }
++
++    @Test
++    void deleteDistributionRemovesTagsAddedAfterCreation() {
++        CloudFrontService service = serviceWithDomainSuffix(DEFAULT_DOMAIN_SUFFIX);
++        Distribution dist = service.createDistribution(new Distribution(), Map.of());
++        service.tagResource(dist.getArn(), Map.of("Owner", "platform"));
++
++        service.deleteDistribution(dist.getId(), dist.getEtag());
++
++        assertTrue(service.listTagsForResource(dist.getArn()).isEmpty());
++    }
++
++    @Test
++    void removeDistributionRemovesItsTags() {
++        CloudFrontService service = serviceWithDomainSuffix(DEFAULT_DOMAIN_SUFFIX);
++        Distribution dist = service.createDistribution(new Distribution(), Map.of("Project", "floci"));
++        service.tagResource(dist.getArn(), Map.of("Owner", "platform"));
++
++        service.removeDistribution(dist.getId());
++
++        assertTrue(service.listTagsForResource(dist.getArn()).isEmpty());
++    }
++
+     @Test
+     void createPublicKeyIssuesAnAwsShapedId() throws Exception {
+         CloudFrontService service = serviceWithDomainSuffix(DEFAULT_DOMAIN_SUFFIX);

@@ -1,4 +1,4 @@
-# Argo CD, installed from the official chart, plus one Application for the workload (ADR-0013).
+# Argo CD, installed from the official chart, plus one Application for the workload (ADR-0023).
 # Nothing pushes the workload into the cluster: Argo CD reconciles it from git with automated
 # sync, pruning and self-heal.
 #
@@ -25,8 +25,14 @@ resource "helm_release" "argocd" {
     notifications = { enabled = false }
 
     configs = {
+      # Poll git every 60 seconds (the chart's default is 180) so a merge reaches the cluster within about a
+      # minute, without a webhook (ADR-0023).
+      cm = {
+        "timeout.reconciliation" = "60s"
+      }
       params = {
-        # The UI and API are reached with `kubectl port-forward`, not through an ingress.
+        # Plain HTTP inside the cluster: the UI is reached through the loopback-only ingress, which has no TLS
+        # locally (ADR-0022).
         "server.insecure" = true
       }
     }
