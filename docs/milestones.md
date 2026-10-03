@@ -33,6 +33,12 @@ and in [`adr/archive/`](../adr/archive/).
 - [x] **Upstream findings drafted** (2026-09-24): four Floci and two floci-dash items, none filed
       ([findings](research/2026-09-24-floci-upstream-findings.md))
 
+- [x] **Pipeline standard** ([ADR-0024](../adr/0024-ci-cd-pipeline-standard.md), 2026-10-01): researched against GitHub,
+      OpenSSF, SLSA and DORA guidance; PRs no longer push images; `main` publishes by digest with SLSA provenance and an
+      SBOM; pins by digest; a Trivy gate that fails on new criticals (baseline from a fresh scan); zizmor and kubeconform in
+      the pre-gate; IaC scan; weekly rescan of deployed images; Scorecard; Dependabot with a cooldown; the `workflow_run`
+      trigger removed. Gates proven against planted faults ([guide](guides/ci-cd-pipeline-standard.md))
+
 ### Left
 
 - [ ] Threat model (STRIDE) of the pipeline and infrastructure, including the bot App, auto-merge, no-login Headlamp,

@@ -1,0 +1,61 @@
+name: rescan
+
+# Weekly: scan the images that are deployed, by the digests pinned in deploy/dev (ADR-0024). New CVEs are published after
+# an image is built, so a scan at build time alone goes stale. Results replace the build-time results for each service in
+# the Security tab (same category), so the tab always describes what runs. Report-only: the fix is a rebuild, which the
+# build gate then checks.
+on:
+  schedule:
+    - cron: "41 4 * * 1"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  pins:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.list.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Every image Argo CD deploys, as rendered from the committed pins.
+      - id: list
+        run: |
+          matrix="$(kubectl kustomize deploy/dev | grep -o 'image: ghcr.io/[^ ]*' | sed 's/image: //' | sort -u |
+            python3 -c 'import sys,json; print(json.dumps([{"service": l.split("/")[-1].split(":")[0], "ref": l.strip()} for l in sys.stdin if l.strip()]))')"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "$matrix" | python3 -m json.tool >> "$GITHUB_STEP_SUMMARY"
+
+  scan:
+    needs: pins
+    name: scan (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.pins.outputs.matrix) }}
+    steps:
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.74.0
+          image-ref: ${{ matrix.ref }}
+          format: sarif
+          output: trivy.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "0"
+
+      - uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
+        with:
+          sarif_file: trivy.sarif
+          category: trivy-${{ matrix.service }}

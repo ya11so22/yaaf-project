@@ -1,6 +1,6 @@
 # ADR-0023: Build and delivery
 
-**Status:** accepted (consolidates and supersedes ADR-0007, 0008, 0011, 0013 and 0015, now in [`archive/`](archive/))
+**Status:** accepted (consolidates and supersedes ADR-0007, 0008, 0011, 0013 and 0015, now in [`archive/`](archive/); items 1 and 3 refined by [ADR-0024](0024-ci-cd-pipeline-standard.md): PRs no longer push, pins carry digests, the scan gates on new criticals, the bump is part of `build`)
 **Date:** 2026-09-24
 
 ## Context
@@ -65,7 +65,7 @@ archive as a learning.
 - Until the pre-merge check exists, a bad manifest is caught only after merge, by Argo CD reporting it Degraded.
 - The bot's GitHub App key is a repository secret to protect; the bot can only open pull requests, which branch
   protection still gates.
-- Trivy stays report-only until the upstream images' known findings are triaged.
+- Trivy was report-only here; ADR-0024 turns it into a gate on new fixable criticals, with today's findings accepted with an expiry.
 - No workflow uses AWS: images go to GHCR and nothing assumes an AWS role. The ECR module and the GitHub OIDC roles in the
   foundation root are the AWS-shaped design a migration would use (images in ECR, CI federated by OIDC), applied and
   exercised on Floci (`scripts/drills/iam-trust.sh`), not pipeline dependencies. If ADR-0020 is rejected and the

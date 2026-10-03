@@ -25,13 +25,36 @@ if cmp -s "$work/first.yaml" "$work/kustomization.yaml"; then ok "idempotent"; e
 
 if grep -q 'components/without-loadgenerator' "$work/kustomization.yaml"; then ok "content outside the markers untouched"; else fail "content outside the markers changed"; fi
 
+# --verify pins digests, through a stub resolver (no registry needed); a missing image fails.
+printf '#!/bin/sh
+echo sha256:%s
+' "$(printf 'a%.0s' $(seq 1 64))" > "$work/resolver"; chmod +x "$work/resolver"
+cp "$work/first.yaml" "$work/kustomization.yaml"
+DIGEST_RESOLVER="$work/resolver" IMAGE_PREFIX=ghcr.io/example/repo bash "$script" "$work" HEAD --verify
+digests="$(grep -c 'digest: sha256:a\{64\}$' "$work/kustomization.yaml" || true)"
+if [ "$digests" -eq 12 ]; then ok "--verify pins all 12 digests"; else fail "expected 12 digests, got $digests"; fi
+if kubectl kustomize "$work" | grep -q 'image: ghcr.io/example/repo/[a-z]*:content-[0-9a-f]\{12\}@sha256:a\{64\}$'; then
+  ok "digest pins render as name:tag@digest"
+else
+  fail "digest pins render as name:tag@digest"
+fi
+printf '#!/bin/sh
+exit 1
+' > "$work/resolver"
+if DIGEST_RESOLVER="$work/resolver" IMAGE_PREFIX=ghcr.io/example/repo bash "$script" "$work" HEAD --verify 2>/dev/null; then
+  fail "--verify fails when an image is missing"
+else
+  ok "--verify fails when an image is missing"
+fi
+cp "$work/first.yaml" "$work/kustomization.yaml"
+
 rendered="$(kubectl kustomize "$work")"
 if echo "$rendered" | grep -q 'us-central1-docker.pkg.dev'; then fail "no upstream registry images remain"; else ok "no upstream registry images remain"; fi
 if echo "$rendered" | grep 'image:' | grep -q 'loadgenerator'; then fail "load generator excluded"; else ok "load generator excluded"; fi
 
 # The committed pins must be renderable and point only at our registry (or redis-cart's cache).
 committed="$(kubectl kustomize deploy/dev | grep -o 'image: [^ ]*' | sed 's/image: //' | sort -u)"
-if echo "$committed" | grep -v '^ghcr.io/ya11so22/yaaf-project/[a-z]*:content-[0-9a-f]\{12\}$' | grep -qv '^redis:alpine$'; then
+if echo "$committed" | grep -v '^ghcr.io/ya11so22/yaaf-project/[a-z]*:content-[0-9a-f]\{12\}\(@sha256:[0-9a-f]\{64\}\)\?$' | grep -qv '^redis:alpine$'; then
   fail "committed pins: unexpected image"
 else
   ok "committed pins render to our registry images only"

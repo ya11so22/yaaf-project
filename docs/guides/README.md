@@ -29,6 +29,7 @@ Every guide uses the same five parts ([template](_template.md)):
 | [Kubernetes probes](kubernetes-probes.md) | Startup, liveness and readiness, through a service that restarted forever | written |
 | [Reaching an EC2 instance](reaching-an-ec2-instance.md) | SSH, SSM Run Command and the console terminal; key pairs, user data, security groups, instance profiles | written |
 | [IAM policies, boundaries and trust](iam-policies-and-trust.md) | Identity policy vs boundary vs trust policy; what Floci enforces, with a drill | written |
+| [The CI/CD pipeline standard](ci-cd-pipeline-standard.md) | What a good GitHub Actions pipeline does, the checklist for new ones, provenance, the scan ratchet | written |
 | GitHub OIDC to AWS | Federated identity, trust conditions, why no long-lived keys | to write (backfill, ADR-0006) |
 | GitOps with Argo CD | Pull versus push delivery, sync, why rollback means reverting the source | to write (backfill, ADR-0023) |
 | Content-hash image tags | Immutable tags, why a tree hash, how bumps work | to write (backfill, ADR-0023) |

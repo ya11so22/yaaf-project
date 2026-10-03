@@ -1,0 +1,46 @@
+# Keeps pinned dependencies current (ADR-0024). Every action here is pinned to a commit SHA and every image to a digest;
+# without an update tool those pins only age. Dependabot updates the SHA and its version comment together.
+#
+# The 7-day cooldown is a supply-chain control: a release is adopted only after it has been public for a week, which is
+# how long the 2025 tj-actions and 2026 trivy-action compromises took to be found and reverted. Security updates are not
+# delayed by cooldown.
+#
+# Out of scope on purpose: the vendored app's own dependencies (app/src), which are upstream's code; the app team changes
+# them through ordinary pull requests.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
+
+  # Floci and floci-dash, pinned by digest in the local AWS's compose file.
+  - package-ecosystem: docker-compose
+    directory: /infra/environments/dev
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: infra
+
+  # OpenTofu providers (the lock files in each root).
+  - package-ecosystem: opentofu
+    directories:
+      - /infra/environments/dev/*
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      providers:
+        patterns: ["*"]
+    commit-message:
+      prefix: infra

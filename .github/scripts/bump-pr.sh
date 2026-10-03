@@ -24,7 +24,7 @@ if git diff --quiet -- "$dir/kustomization.yaml"; then
   exit 0
 fi
 
-changed="$(git diff --unified=0 -- "$dir/kustomization.yaml" | grep -E '^[+-] +newTag:' | sed 's/^\([+-]\) *newTag: /\1 /')"
+changed="$(git diff --unified=0 -- "$dir/kustomization.yaml" | grep -E '^[+-] +(newTag|digest):' | sed -E 's/^([+-]) *(newTag|digest): /\1 /')"
 
 git checkout -q -B "$branch"
 git add "$dir/kustomization.yaml"

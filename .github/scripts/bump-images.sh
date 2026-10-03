@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Writes the image pins in a kustomization: every service's content-hash tag on GHCR (ADR-0011,
-# ADR-0013). The pins live in git so Argo CD deploys exactly what is committed, and rolling back is
-# reverting the commit.
+# Writes the image pins in a kustomization: every service's content-hash tag on GHCR, and with --verify its digest
+# (ADR-0023, ADR-0024). The pins live in git so Argo CD deploys exactly what is committed.
 #   usage: bump-images.sh <kustomization-dir> [rev] [--verify]
-# rev selects the source revision the tags are computed from (default HEAD). --verify fails if a
-# tag is not on the registry, so a pin can never point at an image that was not built.
+# rev selects the source revision the tags are computed from (default HEAD). --verify looks each tag up on the registry
+# and pins its digest too (rendered as name:tag@sha256:...), so a pin can never point at an image that was not built,
+# and a tag moved later cannot change what runs.
 # IMAGE_PREFIX overrides the registry path (default ghcr.io/ya11so22/yaaf-project).
+# DIGEST_RESOLVER overrides the lookup: a command given image:tag that prints its digest (tests use a stub).
 set -euo pipefail
 
 dir="${1:?usage: bump-images.sh <kustomization-dir> [rev] [--verify]}"
@@ -28,6 +29,17 @@ grep -qF "$begin" "$file" && grep -qF "$end" "$file" || {
   exit 1
 }
 
+digest_of() {
+  local out
+  if [ -n "${DIGEST_RESOLVER:-}" ]; then
+    out="$("$DIGEST_RESOLVER" "$1")"
+  else
+    out="$(docker buildx imagetools inspect "$1" --format '{{json .Manifest.Digest}}' 2>/dev/null | tr -d '"')"
+  fi
+  [[ "$out" =~ ^sha256:[0-9a-f]{64}$ ]] || return 1
+  echo "$out"
+}
+
 block="$begin
 images:"
 # An empty base makes changed-services.sh list every service with its build context.
@@ -35,14 +47,15 @@ while IFS= read -r line; do
   svc="$(echo "$line" | sed 's/.*"service":"\([^"]*\)".*/\1/')"
   ctx="$(echo "$line" | sed 's/.*"context":"\([^"]*\)".*/\1/')"
   tag="$(bash "$here/content-tag.sh" "$ctx" "$rev")"
-  if $verify && ! docker manifest inspect "$prefix/$svc:$tag" >/dev/null 2>&1; then
-    echo "missing on the registry: $prefix/$svc:$tag" >&2
-    exit 1
-  fi
   block="$block
   - name: $upstream/$svc
     newName: $prefix/$svc
     newTag: $tag"
+  if $verify; then
+    digest="$(digest_of "$prefix/$svc:$tag")" || { echo "missing on the registry: $prefix/$svc:$tag" >&2; exit 1; }
+    block="$block
+    digest: $digest"
+  fi
 done < <(bash "$here/changed-services.sh" "" | grep -o '"service":"[^"]*","context":"[^"]*"')
 block="$block
 $end"

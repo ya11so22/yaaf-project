@@ -49,5 +49,10 @@ Terms are added as they are resolved (via `/domain-modeling`), not written specu
   cluster (ADR-0023).
 - **Smoke test**: the infra pipeline's run on a fresh Floci: bootstrap, apply the foundation, a re-plan that must show
   no changes, destroy. It proves the code applies, not that it is secure.
+- **Digest pin**: an image pin written as `tag@sha256:...`, readable and immutable; what the bot writes (ADR-0024).
+- **Attestation**: a Sigstore-signed statement stored on GitHub about an image digest: its SLSA build provenance and its
+  SBOM. Checked with `gh attestation verify` (ADR-0024).
+- **Scan ratchet**: the build fails on a fixable CRITICAL vulnerability unless it is an accepted, unexpired entry in
+  `.trivyignore.yaml`, so new findings fail and known ones are tracked (ADR-0024).
 - **Gate job**: an always-running job (`build`, `infra`, `check`) that is the single required check for its pipeline,
   so PRs that touch nothing relevant still report it.

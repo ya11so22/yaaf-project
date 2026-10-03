@@ -1,14 +1,14 @@
 name: check
 
-# The same fast checks as the local pre-commit hook (ADR-0009), run as the source of truth.
+# The same fast checks as the local pre-commit hook (ADR-0009), run as the source of truth: formatting, the script tests,
+# manifest schemas, workflow security (zizmor, online here) and lint (actionlint), and a full-history secret scan.
 # Always runs, so it can be a required check on every PR.
 on:
   pull_request:
   push:
     branches: [main]
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
   group: check-${{ github.event.pull_request.number || github.ref }}
@@ -18,11 +18,14 @@ jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
       # Full history so gitleaks scans every commit, not just the tip.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
         with:
@@ -30,4 +33,7 @@ jobs:
           tofu_wrapper: false
 
       - name: Run the checks
+        env:
+          # Read-only; lets zizmor ask GitHub about impostor commits and actions with known vulnerabilities.
+          GH_TOKEN: ${{ github.token }}
         run: bash scripts/check --ci
