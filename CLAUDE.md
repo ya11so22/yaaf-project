@@ -52,5 +52,6 @@ unprompted.
 - **Steps**: one short journal entry per session that changed something, `docs/journal/YYYY-MM-DD-<slug>.md` from
   `docs/journal/_template.md`: what happened, why (or the ADR), how it was verified, what to learn, what is next.
 - **Milestones**: tick `docs/milestones.md` as work lands.
-- **Failure exercises**: one per phase, written up in `docs/postmortems/`.
+- **Failure exercises** are scenarios in `docs/scenarios/` (ADR-0028): write the spec first, run it, and write the report
+  in `docs/postmortems/`.
 - **Guides**: `docs/guides/` from `docs/guides/_template.md`, indexed in `docs/guides/README.md`.

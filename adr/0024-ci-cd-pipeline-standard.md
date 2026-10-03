@@ -1,6 +1,6 @@
 # ADR-0024: The CI/CD pipeline standard
 
-**Status:** accepted (refines [ADR-0023](0023-build-and-delivery.md) items 1 and 3; ADR-0023's delivery model is unchanged)
+**Status:** accepted (refines [ADR-0023](0023-build-and-delivery.md) items 1 and 3; ADR-0023's delivery model is unchanged; the Trivy scan runs the locked `trivy` binary instead of `trivy-action` since [ADR-0025](0025-tool-versions-and-tasks-in-mise.md))
 **Date:** 2026-09-24
 
 ## Context

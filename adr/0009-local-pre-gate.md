@@ -1,6 +1,6 @@
 # ADR-0009: A shared local pre-gate, with CI as the source of truth
 
-**Status:** accepted
+**Status:** accepted (amended 2026-10-03 by [ADR-0025](0025-tool-versions-and-tasks-in-mise.md): the checks run binaries installed from a lockfile, not Docker images)
 **Date:** 2026-09-20
 
 ## Context
@@ -42,3 +42,9 @@ CI. Keeping it to seconds-long checks keeps the hook usable; anything slower bel
 - Tool image digests must be bumped deliberately.
 - Deliberately excluded for now: running each app's own tests, an IaC security scan
   (`trivy config`), and policy checks (Phase 2). They are slower or need design of their own.
+
+## Amendment 2026-10-03
+
+[ADR-0025](0025-tool-versions-and-tasks-in-mise.md) replaces "container tools are pinned by digest" with tools installed
+from `mise.toml` and a committed `mise.lock`. The script, the hook and the rule that CI is the gate are unchanged; the
+local check no longer needs Docker, and the Windows path handling is removed.

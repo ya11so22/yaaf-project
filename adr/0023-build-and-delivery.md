@@ -1,6 +1,6 @@
 # ADR-0023: Build and delivery
 
-**Status:** accepted (consolidates and supersedes ADR-0007, 0008, 0011, 0013 and 0015, removed on 2026-10-03, readable at tag `archive/windows-era`; items 1 and 3 refined by [ADR-0024](0024-ci-cd-pipeline-standard.md): PRs no longer push, pins carry digests, the scan gates on new criticals, the bump is part of `build`)
+**Status:** accepted (consolidates and supersedes ADR-0007, 0008, 0011, 0013 and 0015, removed on 2026-10-03, readable at tag `archive/windows-era`; items 1 and 3 refined by [ADR-0024](0024-ci-cd-pipeline-standard.md): PRs no longer push, pins carry digests, the scan gates on new criticals, the bump is part of `build`; further amended 2026-10-03 by [ADR-0026](0026-argo-cd-app-of-apps.md) (Applications in git), [ADR-0027](0027-arm64-only-app-images.md) (arm64 only, content tags carry the architecture) and [ADR-0025](0025-tool-versions-and-tasks-in-mise.md))
 **Date:** 2026-09-24
 
 ## Context
@@ -68,5 +68,5 @@ archive as a learning.
 - Trivy was report-only here; ADR-0024 turns it into a gate on new fixable criticals, with today's findings accepted with an expiry.
 - No workflow uses AWS: images go to GHCR and nothing assumes an AWS role. The ECR module and the GitHub OIDC roles in the
   foundation root are the AWS-shaped design a migration would use (images in ECR, CI federated by OIDC), applied and
-  exercised on Floci (`scripts/drills/iam-trust.sh`), not pipeline dependencies. If ADR-0020 is rejected and the
-  migration story is dropped, they are the first things to remove.
+  exercised on Floci (`scripts/drills/iam-trust.sh`), not pipeline dependencies. The ECR module was
+  deleted on 2026-10-03 (nothing used it); the OIDC roles stay.

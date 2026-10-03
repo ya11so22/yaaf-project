@@ -34,10 +34,11 @@ Terms are added as they are resolved (via `/domain-modeling`), not written specu
 - **State bucket**: `yaaf-dev-tfstate` on Floci, holding the foundation and cluster state with an S3 lock file.
 - **Workstation**: the EC2 instance the foundation root creates to log in to; reachable through the dashboard terminal, SSH
   or SSM Run Command (ADR-0022).
-- **Drill**: a script that shows behaviour on demand and is not a gate, for example `scripts/drills/iam-trust.sh`.
+- **Scenario**: a failure exercise kept as a folder, `docs/scenarios/<name>/`: a spec written before it is run, a script that
+  injects the fault, and a dated report in `docs/postmortems/` for each run (ADR-0028).
 - **Portal**: the static website (S3 behind CloudFront) that links to every local endpoint.
-- **Zero-spend lane**: the only way real AWS is used: free-by-construction services (IAM, STS), through an identity
-  that cannot create anything billable (ADR-0020, proposed).
+- **Real AWS**: not used. The rule is that nothing billable is ever created there; the "zero-spend lane" of ADR-0020 was
+  rejected on 2026-10-03 and anything real waits until the project is complete.
 
 **Build and delivery**
 
@@ -47,6 +48,10 @@ Terms are added as they are resolved (via `/domain-modeling`), not written specu
   the source, so rollback is reverting the source change: a pin-only revert is undone by the next bump.
 - **Argo CD**: runs in the cluster and reconciles workloads from git every 60 seconds; nothing pushes into the
   cluster (ADR-0023).
+- **App-of-apps**: one root Argo CD Application that points at `deploy/apps/`, where each other Application is a file,
+  so platform changes arrive by pull request (ADR-0026).
+- **Gateway API**: the Kubernetes routing API that replaces `Ingress` here: the platform owns a **Gateway**, each team owns
+  **HTTPRoutes** attached to it (ADR-0029, `docs/guides/gateway-api.md` once written).
 - **Smoke test**: the infra pipeline's run on a fresh Floci: bootstrap, apply the foundation, a re-plan that must show
   no changes, destroy. It proves the code applies, not that it is secure.
 - **Digest pin**: an image pin written as `tag@sha256:...`, readable and immutable; what the bot writes (ADR-0024).
