@@ -1,6 +1,6 @@
 # ADR-0020: Real AWS only where it cannot cost money: a zero-spend lane
 
-**Status:** proposed, revised 2026-09-24 after the IAM drill (waits for the owner's approval; replaces the real-AWS milestone of the archived [ADR-0012](archive/0012-local-first-real-aws-deferred.md))
+**Status:** proposed, revised 2026-09-24 after the IAM drill (waits for the owner's approval; replaces the real-AWS milestone of the archived ADR-0012)
 **Date:** 2026-09-24
 
 ## Context
@@ -88,4 +88,4 @@ one claim that most needs real AWS, and least privilege with permissions boundar
   restores stay "verified on Floci" or "designed", and the review says so.
 - Revisit if credits arrive without a new account (AWS Community Builders, next intake about January 2027):
   credits still do not cap spend, so a revisit needs its own guardrail design.
-- `CONTRIBUTING.md`'s cost guardrail already follows this lane; ADR-0022 assumes it for the local environment.
+- `CLAUDE.md`'s standing preferences follow this lane; ADR-0022 assumes it for the local environment.

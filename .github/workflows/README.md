@@ -23,17 +23,9 @@ Verify a published image: `gh attestation verify oci://ghcr.io/ya11so22/yaaf-pro
 Not built yet: the pre-merge deploy check (apply the dev roots to a throwaway Floci, load the PR's images, install Argo CD,
 sync the PR's commit, wait for `Synced` and `Healthy`).
 
-## Running locally with act
+## Running locally
 
-`.actrc` maps `ubuntu-latest` to `catthehacker/ubuntu:act-latest` (about 0.6 GB compressed, close enough to GitHub's runner
-for these workflows) so [act](https://github.com/nektos/act) runs without its interactive image prompt. Pull the image once
-first (`docker pull catthehacker/ubuntu:act-latest`), because `.actrc` sets `--pull=false`.
-
-Do not run these locally:
-
-- `infra.yml` `smoke`: it uses your local Floci's container names, port 4566 and data volume, and ends with
-  `docker compose down -v`, which deletes that volume (the whole local AWS and its state).
-- `build.yml` with a push event: it would push images and try to open the bot PR. Use a pull request event payload.
-
-act ignores `concurrency`, `timeout-minutes` and OIDC, has no Actions cache token (so the `type=gha` build cache does not
-work), and cannot create attestations.
+`scripts/check` runs the same fast checks as the `check` workflow. To run a whole workflow locally, [act](https://github.com/nektos/act)
+works for `check` and the `plan` job of `infra` (use an image such as `catthehacker/ubuntu:act-latest`). Do not run the
+`infra` smoke test locally: it uses your local Floci's container names and port and ends with `docker compose down -v`,
+which deletes the whole local AWS. Do not run `build.yml` with a push event: it would push images and open the bot PR.

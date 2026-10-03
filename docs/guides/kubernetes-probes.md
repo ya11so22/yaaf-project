@@ -1,7 +1,6 @@
 # Guide: Kubernetes probes, and a service that restarted forever
 
-**Related:** [`deploy/dev/kustomization.yaml`](../../deploy/dev/kustomization.yaml),
-[journal](../journal/2026-09-24-reset-and-local-aws-rebuild.md)
+**Related:** [`deploy/dev/kustomization.yaml`](../../deploy/dev/kustomization.yaml)
 **Evidence:** verified on Floci (the fix was applied live and the pod started with no restarts, 2026-09-24)
 
 ## The idea

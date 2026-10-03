@@ -1,7 +1,7 @@
 # Guide: Reaching an EC2 instance three ways
 
 **Related:** [ADR-0022](../../adr/0022-the-local-aws-environment.md), [`infra/modules/ec2-instance`](../../infra/modules/ec2-instance/main.tf),
-[journal](../journal/2026-09-24-reset-and-local-aws-rebuild.md), [upstream findings](../research/2026-09-24-floci-upstream-findings.md)
+[upstream findings](../research/2026-09-24-floci-upstream-findings.md)
 **Evidence:** verified on Floci (all three paths tested on 2026-09-24). Not verified on real AWS, where the details differ as noted.
 
 ## The idea
@@ -20,8 +20,9 @@ you audit trails that SSH keys do not. SSH remains common for tools that need it
 
 ## How it works here
 
-`scripts/dev-up.ps1` builds one instance, the **workstation** (Amazon Linux 2023), from
-[`modules/ec2-instance`](../../infra/modules/ec2-instance/main.tf), and prints the commands to reach it.
+The foundation root builds one instance, the **workstation** (Amazon Linux 2023), from
+[`modules/ec2-instance`](../../infra/modules/ec2-instance/main.tf); the `up` task should print the commands to reach it
+([`docs/mac-migration.md`](../mac-migration.md)).
 
 **1. The console terminal.** Open http://localhost:9877, go to EC2, open the instance, and use the Terminal tab.
 floci-dash runs `docker exec -it <container> /bin/bash` inside the instance's container over the Docker socket. On
@@ -29,12 +30,12 @@ real AWS the equivalent is the console's "Connect" button.
 
 **2. SSH from your own terminal.**
 
-```powershell
-ssh -i "$HOME\.ssh\floci-dev" -p <port> -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL root@127.0.0.1
+```bash
+ssh -i ~/.ssh/floci-dev -p <port> -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@127.0.0.1
 ```
 
-`dev-up` prints the exact line, with the port. What happens behind it:
-1. `dev-up` creates a dedicated key `~/.ssh/floci-dev` once, and OpenTofu imports only the **public** half as an EC2
+The port comes from `docker port floci-ec2-<instance-id> 22`. What happens behind it:
+1. The `up` task creates a dedicated key `~/.ssh/floci-dev` once, and OpenTofu imports only the **public** half as an EC2
    key pair. The private half never leaves your machine.
 2. The instance is launched with that key pair's name. Floci copies the public key into `/root/.ssh/authorized_keys`
    inside the container at boot.
@@ -44,7 +45,7 @@ ssh -i "$HOME\.ssh\floci-dev" -p <port> -o StrictHostKeyChecking=no -o UserKnown
 
 **3. SSM Run Command.**
 
-```powershell
+```bash
 aws --profile floci ssm send-command --instance-ids <id> --document-name AWS-RunShellScript --parameters commands="cat /etc/os-release"
 aws --profile floci ssm get-command-invocation --command-id <CommandId> --instance-id <id>
 ```
@@ -68,27 +69,18 @@ aws --profile floci ssm get-command-invocation --command-id <CommandId> --instan
 
 ## Watch out for
 
-- **Floci publishes the SSH port on every network interface, not just this machine.** `netstat -ano | findstr :2201`
-  shows `0.0.0.0:2201`. Login needs your key, so this is not an open door, but it is a listening port on your LAN, and
-  the same is true of any port a security group opens (Floci publishes those on 30000 to 30999). Floci has no setting
-  for the bind address. To block network access and keep local access, run this once in an **elevated** PowerShell
-  (untested by the project: it needs administrator rights, so it is your decision to apply; Windows Firewall does
-  not filter loopback traffic):
-
-  ```powershell
-  New-NetFirewallRule -DisplayName "Floci EC2 ports: block from network" -Direction Inbound -Protocol TCP -LocalPort 2200-2299,30000-30999 -Action Block -Profile Any
-  # to undo:
-  Remove-NetFirewallRule -DisplayName "Floci EC2 ports: block from network"
-  ```
-
-  Verify from another device on your network that `Test-NetConnection <your-ip> -Port 2201` fails, and from this
-  machine that the `ssh` command still works.
+- **Floci publishes the SSH port on every network interface, not just this machine.** A listener check shows
+  `*:2201` (macOS: `lsof -nP -iTCP:2201 -sTCP:LISTEN`). Login needs your key, so this is not an open door, but it is a
+  listening port on your network, and the same is true of any port a security group opens (Floci publishes those on
+  30000 to 30999). Floci has no setting for the bind address. On a shared network, block those ranges at the host
+  firewall (on Windows this was a `New-NetFirewallRule`; on macOS see [`docs/mac-migration.md`](../mac-migration.md), Q6),
+  then check from another device that the port is closed and from this machine that `ssh` still works.
 - **The security group's source range is not enforced.** The module allows SSH from `127.0.0.1/32`; Floci publishes
   the port regardless. On real AWS the group is the firewall, and this range would be enforced. Never leave `0.0.0.0/0`
   on port 22 on a real account.
 - **IMDSv2 "required" is not enforced by Floci either**: a token-less request to the metadata service returns 200.
   Real AWS returns 401.
-- **`StrictHostKeyChecking=no` and `UserKnownHostsFile=NUL` are for this throwaway target only.** A new instance has
+- **`StrictHostKeyChecking=no` and `UserKnownHostsFile=/dev/null` are for this throwaway target only.** A new instance has
   a new host key, so SSH would warn every time. Turning host-key checking off for a real server would let someone
   impersonate it.
 - **The key has no passphrase.** It opens a container on this machine and nothing else. Do not reuse it anywhere.

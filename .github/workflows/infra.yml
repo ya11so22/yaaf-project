@@ -196,7 +196,7 @@ jobs:
           tofu init -input=false
           tofu apply -input=false -auto-approve
 
-      # The real S3 backend on the fresh Floci, with its lock file, as dev-up uses it.
+      # The real S3 backend on the fresh Floci, with its lock file, as the `up` task uses it.
       - name: Init
         working-directory: ${{ env.ENV_DIR }}
         run: tofu init -input=false

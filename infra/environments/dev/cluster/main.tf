@@ -1,6 +1,6 @@
 # The third dev root (ADR-0022, ADR-0023): what runs inside the EKS cluster that ../foundation creates. A separate
 # root because the Helm provider needs a cluster that already exists to connect to; ../foundation must be applied
-# first and the kubeconfig written (scripts/dev-up.ps1 does both, in order).
+# first and the kubeconfig written (the `up` task does both, in order).
 provider "helm" {
   kubernetes = {
     config_path    = pathexpand(var.kubeconfig_path)

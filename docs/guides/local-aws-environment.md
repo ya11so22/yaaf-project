@@ -1,7 +1,6 @@
 # Guide: The local AWS environment
 
-**Related:** [ADR-0022](../../adr/0022-the-local-aws-environment.md), [`infra/README.md`](../../infra/README.md),
-[journal](../journal/2026-09-24-reset-and-local-aws-rebuild.md)
+**Related:** [ADR-0022](../../adr/0022-the-local-aws-environment.md), [`infra/README.md`](../../infra/README.md)
 **Evidence:** verified on Floci (built from nothing, re-applied with no changes, every endpoint checked, 2026-09-24)
 
 ## The idea
@@ -20,7 +19,7 @@ Docker Desktop
 └── floci-dash   an AWS-console-style dashboard on 127.0.0.1:9877
 ```
 
-OpenTofu builds on it in three **roots**, each with its own state, applied in order by `scripts/dev-up.ps1`:
+OpenTofu builds on it in three **roots**, each with its own state, applied in order by the `up` task ([`docs/mac-migration.md`](../mac-migration.md)):
 
 1. **bootstrap** creates one S3 bucket, `yaaf-dev-tfstate`: versioned, encrypted, public access blocked, and
    protected from deletion. Its own state is a local file, because a bucket cannot store the state of the code that
@@ -57,12 +56,12 @@ bucket policy names the distribution's ARN, so no other distribution (in any acc
 - **Read the docs for your version.** Floci's docs on `main` describe features newer than the pinned release. Check
   the docs at the release tag (`?ref=2.1.0` on GitHub).
 - **A 200 is not proof.** Floci answers HTTP 200 on port 4566 for almost anything (an S3 "list buckets" reply), so a
-  health check must look at the content. `dev-up` checks the portal's page title.
+  health check must look at the content. The `up` task should check the portal's page title.
 - **The provider must know every endpoint.** Each service OpenTofu calls is listed in the provider's `endpoints`
   block. A missing one would send that call to real AWS (where the dummy keys fail), which is also why the dummy keys
   are there: this code cannot reach real AWS by accident.
 - **Resetting the wrong way.** Docker Desktop's "Purge data" deletes Floci's data but leaves the bootstrap state, so
-  the next run believes the bucket exists. Use `dev-down.ps1 -Reset`.
+  the next run believes the bucket exists. Use the `reset` task.
 - **The dashboard holds the Docker socket.** That is what makes its EC2 terminal work, and it means floci-dash can
   control Docker on your machine. Keep it on loopback, read its changelog before bumping the pinned digest, and close
   its tab when you are not using it (its terminal WebSocket does not check which site is asking). On real AWS, the

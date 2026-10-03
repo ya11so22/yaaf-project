@@ -1,42 +1,56 @@
-## Agent skills
+# Working rules
 
-### Issue tracker
+The single source of working rules for this repository, for people and agents. Start with `HANDOFF.md` if it exists.
 
-Issues live in this repo's GitHub Issues (`ya11so22/yaaf-project`), via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+## The owner's standing preferences
 
-### Triage labels
+- **Zero AWS spend, zero accident risk.** Nothing billable is ever created on real AWS; billable designs are written down
+  with a Pricing Calculator estimate. Real AWS only for free-by-construction services (IAM, STS), and only through an
+  identity that cannot create anything else (ADR-0020). The owner's AWS account is old (no new Free Tier credits); never
+  suggest opening a second account.
+- **Simple over complete.** Fewer moving parts, minimal scripts, tools do the real work. Remove what does not earn its
+  place.
+- **The project is also a course.** Explain the *why* in plain words while working, flag traps with a short
+  "Watch out:" line, and write or extend a guide in `docs/guides/` when a concept is new to the project.
+- **Honesty about evidence.** Every claim is *designed*, *verified on Floci* or *verified on real AWS*. Retract claims
+  that turn out wrong. Prove a new check against a planted fault before trusting it.
+- No job-search timeline steering; the project's own quality sets the order of work.
 
-The five canonical labels, unchanged (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+## Branching and merging (GitHub Flow)
 
-### Domain docs
+- `main` is always deployable: Argo CD deploys from it. It is protected: PRs only, required checks `check`, `build`,
+  `infra`, no force pushes.
+- Every change is one short-lived branch from `main`, named `<type>/<slug>` with `type` one of `feat`, `fix`, `docs`,
+  `chore`, `infra`, `ci`, `app` (app-team changes under `app/src`), `drill` (deliberate failure exercises).
+- Open a PR early; **squash-merge**; the branch is deleted on merge. Commit and PR titles are short and imperative.
+- `bot/bump-images` is the only long-running branch: the pins bot reuses it for its one open PR, which auto-merges.
+- Old history lives at tags (`archive/windows-era`), not in old branches. Delete merged branches.
 
-Single-context: root `CONTEXT.md` + ADRs at `/adr` (not the skill default `docs/adr`). See `docs/agents/domain.md`.
+## Working model (simulated team)
+
+- **App team:** Claude agents changing `app/src` only, through PRs, from GitHub Issues labelled `ready-for-agent`.
+- **Platform engineer:** the owner, code owner of everything else (`.github/CODEOWNERS`). One GitHub identity does both,
+  so required reviews cannot be enforced; ownership is a convention.
+- **Issues** live in GitHub Issues (`ya11so22/yaaf-project`), via `gh`. Labels: `needs-triage`, `needs-info`,
+  `ready-for-agent`, `ready-for-human`, `wontfix`. External PRs are not a request surface.
+
+## Checks
+
+`scripts/check` runs the fast checks (fmt, script tests, manifest schemas, zizmor, actionlint, gitleaks). Enable the hook
+once with `git config core.hooksPath .githooks`. CI runs the same script as the required `check`; the hook is a
+convenience, CI is the gate (ADR-0009). New workflows follow ADR-0024 and `docs/guides/ci-cd-pipeline-standard.md`.
 
 ## Documentation practice
 
-This project's stated goal is to have every decision, step, and milestone documented well
-enough to explain and present later, not just to work. This is a standing instruction, not a
-one-off: follow it every session without being asked.
+Every decision, step and milestone is documented well enough to explain later. Do it as part of finishing the work,
+unprompted.
 
-- **Decisions** (options considered, trade-offs, what was picked and why) go in `/adr`, written
-  *before* implementing, per `CONTRIBUTING.md`.
-- **Steps** (what got done in a session, and why, when it doesn't rise to ADR-level) go in
-  `docs/journal/`, one file per session or per distinct step: `YYYY-MM-DD-<slug>.md`, using
-  `docs/journal/_template.md`. Write one at the end of every session that changed something,
-  covering what happened, why (or a link to the ADR that already covers why), how it was
-  verified, and what's next. Don't skip this because the change felt small — a short entry beats
-  none.
-- **Milestones** (phase progress against the brief's "independently demoable" bar) get checked
-  off in `docs/milestones.md` as they land.
-- **Deliberate failure exercises** (one per phase, per the brief) get written up in
-  `docs/postmortems/`.
-- **Learning** (owner's request, 2026-09-24): the project is also a course for the owner.
-  - When a step introduces a concept new to the project, write or extend a guide in `docs/guides/` using
-    `docs/guides/_template.md` (the idea, how it works here, why this way, watch out for, check yourself), and
-    add it to the index in `docs/guides/README.md`.
-  - While working, explain the *why* in plain words as you go, and flag traps as they come up with a short
-    "Watch out:" line in the reply; carry the lasting ones into the guide's "Watch out for".
-  - Each journal entry's "Learn" section links the guides it touched and names what to take away.
-
-Update `docs/journal/` and `docs/milestones.md` at the end of every session, unprompted, the
-same way commits get made — this is part of finishing the work, not a separate ask.
+- **Decisions** go in `adr/`, written *before* implementing (template `adr/0000-template.md`, next number after the
+  highest ever used, including the archived 0001 to 0019). Read the ADRs that touch an area before changing it; if a
+  change contradicts one, say so and amend or supersede it rather than silently overriding.
+- **Domain terms** live in `CONTEXT.md` (single context; `app/` is vendored upstream code, not part of it). Use its terms.
+- **Steps**: one short journal entry per session that changed something, `docs/journal/YYYY-MM-DD-<slug>.md` from
+  `docs/journal/_template.md`: what happened, why (or the ADR), how it was verified, what to learn, what is next.
+- **Milestones**: tick `docs/milestones.md` as work lands.
+- **Failure exercises**: one per phase, written up in `docs/postmortems/`.
+- **Guides**: `docs/guides/` from `docs/guides/_template.md`, indexed in `docs/guides/README.md`.

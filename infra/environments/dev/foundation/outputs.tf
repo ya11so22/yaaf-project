@@ -22,7 +22,7 @@ output "github_oidc_role_arns" {
   }
 }
 
-# Read by scripts/dev-up.ps1 to write the `floci` AWS CLI profile that kubectl uses.
+# Read by the `up` task to write the `floci` AWS CLI profile that kubectl uses.
 output "kubectl_access_key_id" {
   value = aws_iam_access_key.kubectl.id
 }

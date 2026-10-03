@@ -15,7 +15,7 @@ Terms are added as they are resolved (via `/domain-modeling`), not written specu
 - **Evidence label**: every claim is **designed**, **verified on Floci** or **verified on real AWS** (ADR-0021).
 - **Guide**: a `docs/guides/` page that teaches one concept: the idea, how it works here, why this way, what to watch
   out for, and self-check questions. ADRs record decisions; guides teach.
-- **App team**: the Claude agents that change `app/src` and open PRs. A simulated team; see `CONTRIBUTING.md`.
+- **App team**: the Claude agents that change `app/src` and open PRs. A simulated team; see `CLAUDE.md`.
 - **Platform engineer**: the owner of infrastructure, pipelines, delivery and environments; the code owner for
   everything outside `app/src`.
 

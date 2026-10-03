@@ -1,7 +1,6 @@
 # ADR-0022: The local AWS environment
 
-**Status:** accepted (consolidates and supersedes ADR-0002, 0003, 0004, 0012, 0014 and 0016, now in
-[`archive/`](archive/); real AWS is covered by [ADR-0020](0020-zero-spend-real-aws-lane.md))
+**Status:** accepted (consolidates and supersedes ADR-0002, 0003, 0004, 0012, 0014 and 0016, removed on 2026-10-03, readable at tag `archive/windows-era`; real AWS is covered by [ADR-0020](0020-zero-spend-real-aws-lane.md))
 **Date:** 2026-09-24
 
 ## Context
@@ -57,18 +56,18 @@ the way real AWS does. This ADR states the environment as it now is.
    The first site is a small portal that links to every local endpoint.
 8. **An EC2 workstation** (`modules/ec2-instance`, Amazon Linux 2023) is created in the foundation root to practise the
    three ways into an instance, as AWS offers them: the terminal in floci-dash's EC2 page, SSH from the owner's own
-   terminal, and SSM Run Command. `dev-up` creates a dedicated key `~/.ssh/floci-dev` once and passes only its public half to
+   terminal, and SSM Run Command. the `up` task creates a dedicated key `~/.ssh/floci-dev` once and passes only its public half to
    OpenTofu, which imports it as a key pair; user data installs `sshd` because Floci's instance images have none; the
    instance has an SSM instance profile and requires IMDSv2. The security group allows SSH from `127.0.0.1/32` only, which
    Floci does not enforce. Session Manager's interactive shell is unsupported by Floci 2.1.0 and is not part of this.
    The guide is `docs/guides/reaching-an-ec2-instance.md`.
-9. **Two scripts operate it**, both idempotent and tested on PowerShell 7 and Windows PowerShell 5.1:
-   - `scripts/dev-up.ps1` starts Docker Desktop if needed, starts Floci and the dashboard, applies the three roots
-     in order, checks the cluster (and repairs it if Floci left it broken: the k3s state is disposable, since Argo
-     CD restores workloads from git), writes an AWS CLI profile `floci`, and prints every URL.
-   - `scripts/dev-down.ps1` stops everything gracefully and keeps all data. `-Reset` deletes everything (Floci's
-     data, the cluster, the state) after a confirmation, for a clean start. `-QuitDocker` also quits Docker Desktop.
-   The old "run at every login" option is dropped: the owner starts the environment when they want it.
+9. **A small task interface operates it** (`up`, `down`, `reset`, `check`), idempotent, calling `docker compose`, `tofu`,
+   `aws` and `kubectl` directly. `up` starts the runtime and Floci, applies the three roots in order, writes the `floci`
+   AWS CLI profile and the kubeconfig, checks the cluster and repairs it if Floci left it broken (k3s state is disposable:
+   Argo CD restores workloads from git), and prints every URL. `down` stops gracefully and keeps all data; `reset` deletes
+   everything after a confirmation. *Amended 2026-10-03:* on Windows this was two PowerShell scripts; for the move to a
+   Mac they were removed and the behaviour written down as guidelines in `docs/mac-migration.md`, to be rebuilt as
+   `mise` tasks. The originals are at tag `archive/windows-era`.
 10. **CI uses a fresh Floci per run** with the same compose file, and swaps in a local backend with an override file,
    so a pull request never touches the owner's environment.
 
@@ -86,7 +85,7 @@ machine; the dashboard's socket access is a known, accepted trade-off for a work
 - Floci proves that tested SDK and IaC scenarios work, not that AWS behaves identically. IAM enforcement is off by
   default (`scripts/drills/iam-trust.sh` shows what it does when on), it runs one EKS node, reports load balancer target health as `initial`, and has no TLS on the
   ingress. These are listed in `infra/README.md`.
-- If Floci's data volume is lost, the state goes with it; the next `dev-up` recreates everything from code. Only
+- If Floci's data volume is lost, the state goes with it; the next `up` recreates everything from code. Only
   the tiny bootstrap state is a local file.
 - floci-dash is a young third-party project (51 stars at pinning time) holding the Docker socket. It is pinned by
   digest and bumped only after reading its changes. Its terminal WebSocket does not check the page's origin, so a
@@ -94,8 +93,7 @@ machine; the dashboard's socket access is a known, accepted trade-off for a work
   instance ID; reported as an upstream candidate.
 - Floci publishes the workstation's SSH port, and any port a security group opens, on all network interfaces, with no
   bind-address setting and no enforcement of the source range. Login needs the key, so the SSH port is not an open door, but
-  it is reachable from the local network. The guide gives a Windows Firewall rule that blocks network access and keeps
-  local access; it needs administrator rights and is left to the owner to apply. Reported upstream as a draft
+  it is reachable from the local network. Blocking it at the host firewall is left to the owner (`docs/mac-migration.md`, Q6). Reported upstream as a draft
   (`docs/research/2026-09-24-floci-upstream-findings.md`).
 - Floci's own dashboard and the "run at login" task are gone; both can come back from git history if wanted.
 - The reset path and the bump of the dashboard or Floci are manual, deliberate steps.

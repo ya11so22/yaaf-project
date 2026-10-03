@@ -1,6 +1,6 @@
 # Guide: Staying at $0 on AWS
 
-**Related:** [ADR-0020](../../adr/0020-zero-spend-real-aws-lane.md) (proposed), [ADR-0012](../../adr/archive/0012-local-first-real-aws-deferred.md),
+**Related:** [ADR-0020](../../adr/0020-zero-spend-real-aws-lane.md) (proposed), ADR-0012,
 [research](../research/2026-09-24-sa-market-and-project-reality-check.md)
 **Evidence:** designed (the lane is not built yet)
 

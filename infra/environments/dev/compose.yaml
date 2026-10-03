@@ -1,5 +1,5 @@
 # The local AWS (ADR-0022): Floci, and an AWS-console-style dashboard for it.
-# Started by scripts/dev-up.ps1, stopped by scripts/dev-down.ps1, and used as-is by CI for a fresh Floci per run.
+# Started and stopped by the up/down tasks (docs/mac-migration.md), and used as-is by CI for a fresh Floci per run.
 # Images are pinned by digest; bump them deliberately.
 name: floci
 
@@ -22,8 +22,8 @@ services:
       # Every write is saved to the floci-data volume, so the AWS survives restarts (and so does the OpenTofu state
       # kept in its S3 bucket).
       FLOCI_STORAGE_MODE: persistent
-      # Docker Desktop on Windows cannot resolve the default *.localhost registry host names, so ECR uses
-      # localhost:4566/<account>/<region>/<repo> URIs instead.
+      # Added on Windows, where Docker Desktop could not resolve the default *.localhost registry host names, so ECR uses
+      # localhost:4566/<account>/<region>/<repo> URIs instead. Possibly unneeded on a Mac (docs/mac-migration.md).
       FLOCI_SERVICES_ECR_URI_STYLE: path
       # Floci does no Kubernetes version mapping: every EKS cluster runs this k3s image, whatever version is asked
       # for. Keep it in step with kubernetes_version in infra/modules/eks-cluster (1.36, the newest EKS supports).

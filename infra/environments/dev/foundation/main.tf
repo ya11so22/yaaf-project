@@ -86,7 +86,7 @@ module "github_oidc" {
 }
 
 # Floci's EKS authenticator rejects the public test/test key pair and needs a real IAM key, so kubectl (and the
-# AWS CLI profile scripts/dev-up.ps1 writes) authenticate as this user. The secret lives only in the encrypted
+# AWS CLI profile the `up` task writes) authenticate as this user. The secret lives only in the encrypted
 # state in the S3 bucket on Floci.
 resource "aws_iam_user" "kubectl" {
   name = "${var.project}-kubectl"
@@ -131,7 +131,7 @@ module "portal" {
   }
 }
 
-# A key pair from the public key dev-up generates (~/.ssh/floci-dev). Only the public half ever reaches OpenTofu.
+# A key pair from the public key the `up` task generates (~/.ssh/floci-dev). Only the public half ever reaches OpenTofu.
 # Empty (for example in CI): no key pair, and the instance is reachable only through SSM or the console terminal.
 resource "aws_key_pair" "dev" {
   count = var.ssh_public_key == "" ? 0 : 1

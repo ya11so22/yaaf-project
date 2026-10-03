@@ -157,8 +157,8 @@ single account cannot show it).
 
 1. No planned spend and no risk of accidental spend. The capped-budget idea in section 3 is withdrawn; see the
    zero-spend lane in [ADR-0020](../../adr/0020-zero-spend-real-aws-lane.md) (proposed).
-2. Payments retailer: [ADR-0018](../../adr/archive/0018-scenario-card-payments-retailer.md).
-3. Scope cut and replatform accepted: [ADR-0019](../../adr/archive/0019-scope-cut-and-assistant-replatform.md).
+2. Payments retailer: ADR-0018.
+3. Scope cut and replatform accepted: ADR-0019.
 4. The certification is later and out of scope. The project also becomes a learning course, with guides in
    [`docs/guides/`](../guides/README.md).
 

@@ -11,14 +11,11 @@ the difference is written down.
 
 ## Run it
 
-Prerequisites: Docker Desktop, [OpenTofu](https://opentofu.org/docs/intro/install/) 1.10+, the AWS CLI v2, `kubectl`.
+On a Mac with a container runtime, OpenTofu, the AWS CLI and `kubectl`: the environment is brought up and down by four
+small tasks (`up`, `down`, `reset`, `check`) described in [`docs/mac-migration.md`](docs/mac-migration.md), with a manual
+sequence in [`infra/README.md`](infra/README.md). Picking the project up? Start with [`HANDOFF.md`](HANDOFF.md).
 
-```powershell
-.\scripts\dev-up.ps1        # build or repair the whole environment; safe to re-run
-.\scripts\dev-down.ps1      # stop it, keeping everything (-Reset to start from nothing)
-```
-
-`dev-up` prints every URL when it finishes. The main ones, all on loopback:
+Once up, everything is on loopback:
 
 | URL | What |
 |---|---|
@@ -57,28 +54,29 @@ And from a terminal: `aws --profile floci s3 ls`, `kubectl get pods -A`. Details
    designed; PostgreSQL with pgvector and Secrets Manager built), with a backup-and-restore drill.
 5. Cost model, DR design, review v2, an interview kit.
 
-Checklist: [`docs/milestones.md`](docs/milestones.md). Step-by-step narrative: [`docs/journal/`](docs/journal/).
+Checklist: [`docs/milestones.md`](docs/milestones.md). Session notes: [`docs/journal/`](docs/journal/); earlier history at the tag `archive/windows-era`.
 
 ## How the team works (simulated)
 
 The "app team" is a set of Claude agents that change `app/src` through pull requests; I am the platform engineer and
 code owner of everything else. One GitHub identity does both, so required reviews cannot be enforced yet;
-`CODEOWNERS` records the intent. Conventions: [`CONTRIBUTING.md`](CONTRIBUTING.md).
+`CODEOWNERS` records the intent. Working rules: [`CLAUDE.md`](CLAUDE.md).
 
 ## Repository layout
 
 | Path | What lives here |
 |---|---|
-| `adr/` | Decisions, written before the work. [Index](adr/README.md): seven current, sixteen archived |
+| `adr/` | Decisions, written before the work. [Index](adr/README.md) |
 | `infra/` | The local AWS (`environments/dev`: compose file and three OpenTofu roots) and the modules |
 | `deploy/` | What Argo CD deploys: the `dev` overlay with committed image pins, ingress rules, RBAC |
-| `scripts/` | `dev-up.ps1`, `dev-down.ps1`, and `check` (the pre-commit gate) |
+| `scripts/` | `check` (the pre-commit gate, also run by CI) and `drills/` (on-demand demonstrations) |
 | `.github/` | Workflows and their scripts, with tests |
 | `app/` | Vendored Online Boutique (Google's code; see Attribution) |
 | `docs/architecture/` | The architecture track |
 | `docs/guides/` | Explanations for learning and interviews |
 | `docs/journal/`, `docs/milestones.md`, `docs/postmortems/` | What happened, progress, failure write-ups |
-| `docs/research/` | Market research behind the project's direction |
+| `docs/research/` | Research behind the decisions, and the drafted Floci fix |
+| `HANDOFF.md`, `docs/mac-migration.md` | Current state, next steps, and how to rebuild the tooling on the Mac |
 | `CONTEXT.md` | This project's glossary |
 
 ## Attribution
@@ -87,6 +85,4 @@ code owner of everything else. One GitHub identity does both, so required review
   vendored from upstream commit `72ba613a05f7fcee51cf1d0badff401b6ae7074d` and kept to `src/`, `protos/` and
   `kustomize/` (the Google Cloud tooling was removed). **That code is Google's.** Files the simulated app team changed
   carry a modification notice, as Apache-2.0 requires. See `app/LICENSE`.
-- **`.claude/skills/`** vendors skills from [Matt Pocock's `skills` repo](https://github.com/mattpocock/skills) (MIT),
-  pinned at commit `6654f6b60cd9d5be8b54c6fafe44346dabeb3b76`: workflow skills for Claude Code, not this project's work.
 - Everything else is original work for this project.

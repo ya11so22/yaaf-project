@@ -1,6 +1,6 @@
 # ADR-0023: Build and delivery
 
-**Status:** accepted (consolidates and supersedes ADR-0007, 0008, 0011, 0013 and 0015, now in [`archive/`](archive/); items 1 and 3 refined by [ADR-0024](0024-ci-cd-pipeline-standard.md): PRs no longer push, pins carry digests, the scan gates on new criticals, the bump is part of `build`)
+**Status:** accepted (consolidates and supersedes ADR-0007, 0008, 0011, 0013 and 0015, removed on 2026-10-03, readable at tag `archive/windows-era`; items 1 and 3 refined by [ADR-0024](0024-ci-cd-pipeline-standard.md): PRs no longer push, pins carry digests, the scan gates on new criticals, the bump is part of `build`)
 **Date:** 2026-09-24
 
 ## Context

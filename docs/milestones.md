@@ -1,9 +1,8 @@
 # Milestones
 
 Progress against the finish line in [ADR-0021](../adr/0021-project-purpose-scenario-and-scope.md): each phase is
-demoable on its own. Ticked as work lands; the narrative behind each item is in [`docs/journal/`](journal/). Rewritten
-on 2026-09-24 when the project was reset and the ADRs consolidated; the detailed history of Phase 1 is in the journal
-and in [`adr/archive/`](../adr/archive/).
+demoable on its own. Ticked as work lands; the narrative is in [`docs/journal/`](journal/). The detailed history of Phase 1 (journal
+entries, archived ADRs, the Windows scripts) is at the tag `archive/windows-era`.
 
 ## Phase 1: commit to running app
 
@@ -21,9 +20,9 @@ and in [`adr/archive/`](../adr/archive/).
       ([postmortem](postmortems/2026-09-21-phase1-bad-emailservice.md), 2026-09-21)
 - [x] **Environment reset** ([ADR-0022](../adr/0022-the-local-aws-environment.md), 2026-09-24): three roots (bootstrap,
       foundation, cluster) with state in S3 on Floci and native locking; floci-dash; a static portal on S3 and
-      CloudFront; everything on loopback; clean `dev-up` / `dev-down` with `-Reset`. Built from nothing, re-run with no
+      CloudFront; everything on loopback; clean up/down scripts with a reset (Windows; rebuilt on the Mac). Built from nothing, re-run with no
       changes, and every endpoint checked
-      ([journal](journal/2026-09-24-reset-and-local-aws-rebuild.md))
+      (journal)
 - [x] **EC2 workstation, reached three ways** (2026-09-24): the dashboard's web terminal, SSH with a dedicated key, and SSM
       Run Command, all tested; created and destroyed cleanly by OpenTofu
       ([guide](guides/reaching-an-ec2-instance.md)). Session Manager's interactive shell is unsupported by Floci
@@ -38,6 +37,9 @@ and in [`adr/archive/`](../adr/archive/).
       SBOM; pins by digest; a Trivy gate that fails on new criticals (baseline from a fresh scan); zizmor and kubeconform in
       the pre-gate; IaC scan; weekly rescan of deployed images; Scorecard; Dependabot with a cooldown; the `workflow_run`
       trigger removed. Gates proven against planted faults ([guide](guides/ci-cd-pipeline-standard.md))
+
+- [x] **Handoff to the Mac** (2026-10-03): history tagged `archive/windows-era`; Windows scripts replaced by guidelines
+      ([`docs/mac-migration.md`](mac-migration.md)); docs collapsed to the current decisions; [`HANDOFF.md`](../HANDOFF.md)
 
 ### Left
 

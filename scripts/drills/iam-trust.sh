@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # A drill, not a gate: shows what IAM does and does not enforce on the local AWS (Floci), so the claims in ADR-0006 and
 # ADR-0020 rest on evidence you can re-run. Read docs/guides/iam-policies-and-trust.md first. Needs the dev environment
-# up (scripts/dev-up.ps1), Docker, the AWS CLI and Python. Leaves nothing behind.
+# up (the `up` task), Docker, the AWS CLI and Python. Leaves nothing behind.
 #
 #   1. A Floci with IAM enforcement ON (a throwaway on port 4577, not your environment): identity policies and
 #      permission boundaries deny what they should.
@@ -39,7 +39,7 @@ result() { head -c 170 | tr '\n' ' '; echo; }
 oidc_token() { curl -s -X POST "http://localhost:4566/_floci/eks/clusters/$CLUSTER/oidc-token" -H 'Content-Type: application/json' \
   -d "{\"namespace\":\"demo\",\"serviceAccount\":\"$1\"}" | python -c "import sys,json; print(json.load(sys.stdin)['token'])"; }
 
-curl -sf http://localhost:4566/_floci/health >/dev/null || { echo "Your Floci is not running: run scripts/dev-up.ps1 first."; exit 1; }
+curl -sf http://localhost:4566/_floci/health >/dev/null || { echo "Your Floci is not running: run the up task first."; exit 1; }
 
 echo "Starting a throwaway Floci with IAM enforcement on (port 4577)"
 docker rm -f floci-iam-drill >/dev/null 2>&1

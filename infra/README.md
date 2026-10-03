@@ -30,34 +30,25 @@ The roots are split by lifecycle, the way real teams layer infrastructure: the s
 account-level infrastructure changes occasionally, and what runs in the cluster changes most. Each root is applied
 after the one before it.
 
-## Prerequisites
+## Prerequisites and operating it
 
-Docker Desktop, [OpenTofu](https://opentofu.org/docs/intro/install/) 1.10 or later, the AWS CLI v2, `kubectl` and
-`curl` (built into Windows), and the Windows OpenSSH client for `ssh` and `ssh-keygen` (an optional Windows feature). About 6 GB of free memory for Docker while the cluster runs.
+A container runtime with a Docker socket, OpenTofu 1.10+, the AWS CLI v2, `kubectl`, `curl`, `ssh`. About 8 GB of memory
+for the runtime while the cluster runs.
 
-## Start and stop
+The environment is operated by four small tasks, `up`, `down`, `reset` and `check`, which call `docker compose`, `tofu`,
+`aws` and `kubectl` directly. They are rebuilt on the Mac from [`docs/mac-migration.md`](../docs/mac-migration.md), which
+lists exactly what each does, in order, and the Floci quirks they work around. Until then, the manual sequence is:
 
-```powershell
-.\scripts\dev-up.ps1        # start or repair everything; safe to run any number of times
-.\scripts\dev-down.ps1      # stop everything, keep all data
+```bash
+docker compose -f infra/environments/dev/compose.yaml up -d --wait
+tofu -chdir=infra/environments/dev/bootstrap init && tofu -chdir=infra/environments/dev/bootstrap apply
+tofu -chdir=infra/environments/dev/foundation init && tofu -chdir=infra/environments/dev/foundation apply
+# write the `floci` AWS CLI profile and kubeconfig (migration guide, steps 6 and 7), then:
+tofu -chdir=infra/environments/dev/cluster init && tofu -chdir=infra/environments/dev/cluster apply -var kubeconfig_context=<cluster arn>
 ```
 
-`dev-up.ps1` starts Docker Desktop if needed, then Floci and floci-dash, applies the three roots in order, writes the
-`floci` AWS CLI profile and the kubeconfig, checks the cluster (and repairs it if Floci left it broken), waits for
-Argo CD and checks every URL. A first run takes several minutes; later runs mostly report "No changes". Its log is
-`%LOCALAPPDATA%\yaaf\dev-up.log`.
-
-| Option | Does |
-|---|---|
-| `dev-up.ps1 -Revision <branch>` | Argo CD tracks a branch, to try a change before merging. Run plain `dev-up` again once it is merged. |
-| `dev-up.ps1 -PlanOnly` | Plans instead of applying. |
-| `dev-down.ps1 -QuitDocker` | Also quits Docker Desktop, to give its memory back. |
-| `dev-down.ps1 -Reset` | Deletes everything (Floci's data, the state, the cluster) after a confirmation, for a clean start. `-Force` skips the question; `-WhatIf` shows what would happen. |
-
-Both scripts back up the state first, to `$HOME\yaaf-backup\<timestamp>` (the newest five are kept).
-
-Do not use Docker Desktop's "Clean / Purge data" or `docker volume prune` to reset: they delete Floci's data but
-leave the bootstrap state behind. Use `dev-down.ps1 -Reset`.
+To reset, never use the runtime's "purge data" or `docker volume prune`: they delete Floci's data but leave the bootstrap
+state behind. Use the `reset` task.
 
 ## What you can open
 
@@ -66,7 +57,7 @@ Headlamp as an empty page).
 
 | URL | What |
 |---|---|
-| `http://<id>.cloudfront.localhost:4566/` | The portal: a static site in S3 behind CloudFront, linking to everything below. `dev-up` prints the exact URL. |
+| `http://<id>.cloudfront.localhost:4566/` | The portal: a static site in S3 behind CloudFront, linking to everything below: `http://$(tofu -chdir=infra/environments/dev/foundation output -raw portal_domain_name):4566/`. |
 | http://localhost:9877 | floci-dash, a dashboard modelled on the AWS Management Console |
 | http://argocd.localhost:8080 | Argo CD. User `admin`; the password is in the `argocd-initial-admin-secret` secret |
 | http://headlamp.localhost:8080 | Headlamp, a read-only view of the cluster, no login |
@@ -74,17 +65,16 @@ Headlamp as an empty page).
 | http://localhost:4566 | Floci's AWS API endpoint |
 
 And an EC2 **workstation** to log in to, three ways ([guide](../docs/guides/reaching-an-ec2-instance.md)): the terminal on
-floci-dash's EC2 page, `ssh -i ~/.ssh/floci-dev -p <port> root@127.0.0.1`, and `aws ssm send-command`. `dev-up` prints the
-exact commands. Floci publishes the SSH port on all network interfaces; the guide has the firewall command that closes that.
+floci-dash's EC2 page, `ssh -i ~/.ssh/floci-dev -p <port> root@127.0.0.1`, and `aws ssm send-command`. Floci publishes the SSH port
+on all network interfaces; see the guide.
 
-Browsers resolve `*.localhost` names to loopback themselves; command-line tools on Windows may not, so use
-`curl.exe -H "Host: shop.localhost" http://127.0.0.1:8080/`.
+Browsers and `curl` resolve `*.localhost` names to loopback themselves.
 
 ## Using it like AWS
 
 The `floci` profile points the AWS CLI at Floci, so ordinary commands work:
 
-```powershell
+```bash
 aws --profile floci s3 ls
 aws --profile floci s3 cp .\notes.txt s3://my-bucket/          # after: aws --profile floci s3 mb s3://my-bucket
 aws --profile floci eks describe-cluster --name yaaf-dev
@@ -92,10 +82,10 @@ aws --profile floci ec2 describe-vpcs
 kubectl get pods -A
 ```
 
-To change infrastructure, edit the code and run `dev-up.ps1`, or run OpenTofu in one root:
+To change infrastructure, edit the code and run the `up` task, or run OpenTofu in one root:
 
-```powershell
-cd infra\environments\dev\foundation
+```bash
+cd infra/environments/dev/foundation
 tofu init        # connects to the S3 backend on Floci
 tofu plan
 tofu apply
@@ -125,10 +115,10 @@ Floci proves that tested SDK and IaC scenarios work, not that AWS behaves the sa
   provider sees drift; the code works around each, with a comment
   ([upstream findings](../docs/research/2026-09-24-floci-upstream-findings.md)).
 - **Restarts:** Floci restores the cluster only when the EKS API is first called, and after an abrupt stop the k3s
-  container can die on a stale IP while Floci still reports the cluster `ACTIVE`. That is why `dev-up.ps1` checks the
+  container can die on a stale IP while Floci still reports the cluster `ACTIVE`. That is why the `up` task checks the
   cluster itself and repairs it.
 - **State and resources together:** the OpenTofu state is in Floci's S3, so losing Floci's data loses the state
-  with it. The next `dev-up` rebuilds from code, which is the point.
+  with it. The next `up` rebuilds from code, which is the point.
 
 ## CI
 

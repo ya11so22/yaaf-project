@@ -1,6 +1,6 @@
 # ADR-0021: Project purpose, scenario and scope
 
-**Status:** accepted (consolidates and supersedes ADR-0001, 0010, 0017, 0018 and 0019, now in [`archive/`](archive/))
+**Status:** accepted (consolidates and supersedes ADR-0001, 0010, 0017, 0018 and 0019, removed on 2026-10-03, readable at tag `archive/windows-era`)
 **Date:** 2026-09-24
 
 ## Context
