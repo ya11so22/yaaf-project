@@ -5,8 +5,10 @@ name: floci
 
 services:
   floci:
-    # Floci 2.1.0 (MIT, github.com/floci-io/floci). The image ships its own healthcheck, which `up --wait` uses.
-    image: floci/floci@sha256:f5aa8c18302cedb4f2385f5c4e455b3efc77fee6bf7b6e5d1712b2817ba102db
+    # Floci nightly-10022026 (MIT, github.com/floci-io/floci): main at 543f016, after 2.1.0 (ADR-0025). Multi-arch
+    # (amd64, arm64). Move to the next release (2.2.0) once it is cut. The image ships its own healthcheck, which
+    # `up --wait` uses.
+    image: floci/floci@sha256:2a217db4b6788f448ba61efb53619ee8eb0db2b39d3c7d0284361386f84cd375
     container_name: floci
     restart: unless-stopped
     ports:
@@ -22,11 +24,13 @@ services:
       # Every write is saved to the floci-data volume, so the AWS survives restarts (and so does the OpenTofu state
       # kept in its S3 bucket).
       FLOCI_STORAGE_MODE: persistent
-      # Added on Windows, where Docker Desktop could not resolve the default *.localhost registry host names, so ECR uses
-      # localhost:4566/<account>/<region>/<repo> URIs instead. Possibly unneeded on a Mac (docs/mac-migration.md).
+      # ECR uses localhost:4566/<account>/<region>/<repo> URIs, which every Docker runtime resolves; the default
+      # *.localhost registry host names failed on Docker Desktop for Windows. Unverified on a Mac, so kept.
       FLOCI_SERVICES_ECR_URI_STYLE: path
-      # Floci does no Kubernetes version mapping: every EKS cluster runs this k3s image, whatever version is asked
-      # for. Keep it in step with kubernetes_version in infra/modules/eks-cluster (1.36, the newest EKS supports).
+      # Floci maps an EKS version to a k3s image (1.36 -> v1.36.0-k3s1). A template with no %s pins one exact image
+      # instead, whatever version is asked for. Keep it in step with kubernetes_version in infra/modules/eks-cluster
+      # (1.36, the newest EKS supports). The default image covers a cluster created with no version.
+      FLOCI_SERVICES_EKS_IMAGE_TEMPLATE: rancher/k3s:v1.36.4-k3s1
       FLOCI_SERVICES_EKS_DEFAULT_IMAGE: rancher/k3s:v1.36.4-k3s1
       # The cluster containers Floci starts join this network, so the k3s API server can reach Floci's IAM
       # authenticator and the ALB can reach the node.
@@ -35,6 +39,9 @@ services:
       # browsers resolve to this machine by themselves, so a site is reachable at http://<domain>:4566/ with no
       # hosts-file edit. Floci routes viewer requests by that generated domain.
       FLOCI_SERVICES_CLOUDFRONT_DOMAIN_SUFFIX: cloudfront.localhost
+      # Floci's own console (/_floci/ui) is unauthenticated and would publish port 4500 on every interface;
+      # floci-dash below is the console here, so the built-in one is off.
+      FLOCI_SERVICES_UI_ENABLED: "false"
     networks:
       - floci-net
 

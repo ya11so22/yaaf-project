@@ -168,6 +168,9 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+    env:
+      # The workstation is opt-in locally (ADR-0025); CI creates it so the module stays exercised.
+      TF_VAR_workstation: "true"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
