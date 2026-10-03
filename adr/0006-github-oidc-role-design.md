@@ -1,6 +1,6 @@
 # ADR-0006: GitHub Actions federates into AWS via OIDC with three least-privilege roles
 
-**Status:** accepted (2026-09-24; the negative trust test moves to the zero-spend lane, [ADR-0020](0020-zero-spend-real-aws-lane.md), which also adds the permissions boundary this ADR anticipated)
+**Status:** accepted (2026-09-24; the negative trust test moves to the zero-spend lane, [ADR-0020](0020-zero-spend-real-aws-lane.md), which also adds the permissions boundary this ADR anticipated; ADR-0020 was rejected on 2026-10-03 and the trust test is now the overbroad-trust scenario of [ADR-0028](0028-scenario-library.md))
 **Date:** 2026-09-20
 
 ## Context

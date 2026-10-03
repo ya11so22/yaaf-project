@@ -1,6 +1,6 @@
 # ADR-0022: The local AWS environment
 
-**Status:** accepted (consolidates and supersedes ADR-0002, 0003, 0004, 0012, 0014 and 0016, removed on 2026-10-03, readable at tag `archive/windows-era`; real AWS is covered by [ADR-0020](0020-zero-spend-real-aws-lane.md))
+**Status:** accepted (consolidates and supersedes ADR-0002, 0003, 0004, 0012, 0014 and 0016, removed on 2026-10-03, readable at tag `archive/windows-era`; real AWS is rejected by [ADR-0020](0020-zero-spend-real-aws-lane.md); amended 2026-10-03, see the end)
 **Date:** 2026-09-24
 
 ## Context
@@ -97,3 +97,23 @@ machine; the dashboard's socket access is a known, accepted trade-off for a work
   (`docs/research/2026-09-24-floci-upstream-findings.md`).
 - Floci's own dashboard and the "run at login" task are gone; both can come back from git history if wanted.
 - The reset path and the bump of the dashboard or Floci are manual, deliberate steps.
+
+## Amendment 2026-10-03: the Mac
+
+Agreed after the architecture review ([research](../docs/research/2026-10-03-architecture-review.md)):
+
+1. **A dedicated container VM.** The project runs in its own Colima profile, `yaaf` (vz, Rosetta, 4 CPUs, 8 GiB), separate
+   from the owner's default VM and its other containers. Commands select it with `DOCKER_CONTEXT=colima-yaaf`; the
+   global Docker context is never switched (`colima start` does that by default). `down` stops the VM to give the memory
+   back and `reset` deletes it, which removes the old hunt for unlabelled volumes (quirk Q2). *Tested:* an amd64
+   container runs under Rosetta and a Docker-socket mount works. *Not yet tested:* Rosetta inside Floci's nested k3s.
+2. **A lean default `up`.** Floci, the state bucket, VPC, EKS, the ALB, Argo CD, the app, Traefik, Headlamp and the
+   portal. The EC2 workstation (item 8) and floci-dash (item 3), which bring the SSH key, a second Docker-socket holder
+   and the published ports of quirk Q6, move to an opt-in root, `extras`, applied only when asked for.
+3. **Floci's EKS stays**; the repair step in `up` handles the stale-IP failure (quirk Q1).
+4. **The ECR module is deleted**: nothing used it, CI pushes to GHCR, and git history keeps it. ECR is described as a
+   design in the architecture track. The OIDC roles of ADR-0006 stay.
+5. **Item 4's `cluster` root** now installs Argo CD only and the Applications live in git ([ADR-0026](0026-argo-cd-app-of-apps.md)).
+   **Item 6's ingress** is Gateway API instead of Ingress objects ([ADR-0029](0029-gateway-api-for-ingress.md)).
+   **Item 9's tasks** are `mise` tasks ([ADR-0025](0025-tool-versions-and-tasks-in-mise.md)).
+6. `FLOCI_SERVICES_ECR_URI_STYLE: path` is removed with ECR.

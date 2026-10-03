@@ -47,12 +47,16 @@ And from a terminal: `aws --profile floci s3 ls`, `kubectl get pods -A`. Details
 
 ## Where it is going
 
-1. Close Phase 1: threat model, a pre-merge deploy check, a demo.
-2. Requirements, architecture views, Well-Architected review v1.
-3. Phase 2, operate it: observability, SLOs and alerts, policy as code, an incident drill.
-4. Phase 3, a migration: the shopping assistant moves from Google Cloud (Gemini, AlloyDB) to AWS's shape (Bedrock
-   designed; PostgreSQL with pgvector and Secrets Manager built), with a backup-and-restore drill.
-5. Cost model, DR design, review v2, an interview kit.
+1. The Mac era ([ADR-0025](adr/0025-tool-versions-and-tasks-in-mise.md) to
+   [0029](adr/0029-gateway-api-for-ingress.md)): one `mise.toml`, Argo CD Applications in git, Gateway API, arm64-only images.
+2. Close Phase 1: threat model, a pre-merge deploy check, a demo.
+3. A library of failure scenarios, each specified before it is run and reported after
+   ([ADR-0028](adr/0028-scenario-library.md)).
+4. Phase 2, operate it: observability, SLOs and alerts, policy as code, then the scenarios that need monitoring.
+5. Requirements, architecture views, Well-Architected review, cost model, DR design, an interview kit.
+
+The shopping-assistant migration from Google Cloud is a backlog item outside the finish line
+([ADR-0021](adr/0021-project-purpose-scenario-and-scope.md), amended).
 
 Checklist: [`docs/milestones.md`](docs/milestones.md). Session notes: [`docs/journal/`](docs/journal/); earlier history at the tag `archive/windows-era`.
 

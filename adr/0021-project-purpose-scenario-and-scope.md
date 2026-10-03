@@ -1,6 +1,6 @@
 # ADR-0021: Project purpose, scenario and scope
 
-**Status:** accepted (consolidates and supersedes ADR-0001, 0010, 0017, 0018 and 0019, removed on 2026-10-03, readable at tag `archive/windows-era`)
+**Status:** accepted (consolidates and supersedes ADR-0001, 0010, 0017, 0018 and 0019, removed on 2026-10-03, readable at tag `archive/windows-era`; the finish line amended 2026-10-03, see the end)
 **Date:** 2026-09-24
 
 ## Context
@@ -77,3 +77,16 @@ Pruning the vendored app removes Google Cloud material a reviewer would otherwis
 - Bedrock is designed but not run, because nothing billable is created on real AWS (ADR-0020).
 - Pruned upstream files remain in git history; re-vendoring means copying the same paths from the recorded commit.
 - Revisit if a later market check shows a different scenario or scope fits the target roles better.
+
+## Amendment 2026-10-03: the finish line
+
+Agreed with the owner after the architecture review ([research](../docs/research/2026-10-03-architecture-review.md)):
+
+- **The finish line** is: Phase 1 closed (threat model, pre-merge deploy check, README demo); Phase 2 done (observability,
+  SLOs and alerts, policy as code); the **scenario library** with at least six scenarios run and reported
+  ([ADR-0028](0028-scenario-library.md)); and the architecture track. "An incident drill" in item 5.3 is now that library.
+- **Phase 3 (the shopping-assistant replatform, item 5.4) moves out of the finish line to a backlog.** It is mostly
+  application work and adds little to the platform story the scenarios tell. Nothing waits on it.
+- **ADR-0020 is rejected**, so Bedrock stays designed-only for the stronger reason that nothing runs on real AWS at all.
+  The *verified on real AWS* label is unused for now.
+- The ECR module is deleted; OIDC roles stay. The "second review after Phase 3" becomes a second review after Phase 2.

@@ -43,22 +43,24 @@ entries, archived ADRs, the Windows scripts) is at the tag `archive/windows-era`
 
 ### Left
 
+- [ ] **The Mac era** ([review](research/2026-10-03-architecture-review.md), ADR-0025 to 0029), in this order: ADRs written
+      (done 2026-10-03); `mise.toml` and the four tasks, with `up` working end to end; app-of-apps and Gateway API (with
+      the Gateway API guide); the arm64 pipeline with the architecture check; ECR module deleted; `up` made lean with an
+      opt-in `extras` root
+
 - [ ] Threat model (STRIDE) of the pipeline and infrastructure, including the bot App, auto-merge, no-login Headlamp,
       and floci-dash (becomes part of `06-security-and-compliance.md`)
 - [ ] Pre-merge deploy check: apply the dev roots to a throwaway Floci in the PR, install Argo CD, sync the PR's
       commit, wait for `Synced` and `Healthy` ([ADR-0023](../adr/0023-build-and-delivery.md) item 8)
 - [ ] Demo: README walkthrough and a short recording
 
-## Real AWS: the zero-spend lane ([ADR-0020](../adr/0020-zero-spend-real-aws-lane.md), proposed)
+## Real AWS
 
-Nothing billable is ever created on real AWS. Revised after the IAM drill: policy, boundary and IRSA trust logic are now
-shown locally, so real AWS is needed only to test GitHub's own issuer, and is optional.
+Nothing billable is ever created on real AWS. The zero-spend lane ([ADR-0020](../adr/0020-zero-spend-real-aws-lane.md))
+was rejected on 2026-10-03; anything real is decided once the project is complete.
 
-- [ ] Owner, in the console: nothing running or billing in any Region; root MFA on and no root keys; a zero-spend
-      budget ([guide](guides/aws-cost-safety.md))
-- [ ] An IAM-and-STS-only project identity, with a permissions boundary on every role it creates
-- [ ] GitHub OIDC trust proven on real AWS: this repository can assume the role, another repository and another branch
-      cannot, with logs and CloudTrail event history kept
+- [ ] Owner, in the console, whenever convenient: nothing running or billing in any Region; root MFA on and no root keys;
+      a zero-spend budget ([guide](guides/aws-cost-safety.md))
 
 ## Architecture track
 
@@ -74,11 +76,18 @@ The design side, in AWS's terms ([`docs/architecture/`](architecture/README.md))
 - [ ] Security and compliance: the threat model and a PCI DSS control mapping (`06-security-and-compliance.md`)
 - [ ] AI architecture: Bedrock against self-hosted serving, the RAG design (`07-ai-architecture.md`)
 - [ ] Governance: multi-account layout and guardrails, on paper (`08-governance.md`)
-- [ ] Well-Architected review v2 after Phase 3
+- [ ] Well-Architected review v2 after Phase 2
 - [ ] Customer-facing: executive summary, review readout, discovery questions
 - [ ] Interview kit: each decision mapped to a pillar and its alternatives; stories from real events here
 - [ ] A tally of real US postings for the target roles. Started with 8
       ([research](research/2026-09-24-sa-market-and-project-reality-check.md)); too small to call a tally
+
+## Scenario library ([ADR-0028](../adr/0028-scenario-library.md))
+
+- [ ] Library set up: `docs/scenarios/`, a spec template, `iam-trust.sh` moved into its scenario
+- [ ] Scenarios run and reported: configuration drift; losing the platform (recovery time measured); stuck or lost state;
+      a leaked credential; a tag rewrite in the supply chain; overbroad OIDC trust; a mislabelled image
+- [ ] After monitoring: a failing dependency seen as an SLO burn; capacity exhaustion
 
 ## Phase 2: operate it
 
@@ -89,7 +98,7 @@ The design side, in AWS's terms ([`docs/architecture/`](architecture/README.md))
 - [ ] An incident drill with a postmortem
 - [ ] Deferred, optional: DORA metrics; per-PR environments with an Argo CD `ApplicationSet`
 
-## Phase 3: replatform the shopping assistant from Google Cloud to AWS
+## Backlog: replatform the shopping assistant from Google Cloud to AWS (formerly Phase 3; outside the finish line since 2026-10-03)
 
 - [ ] Implementation ADR: the local model or stub, the provider interface, the data layer
 - [ ] `shoppingassistantservice` behind a provider interface: Bedrock (designed) or local (built)

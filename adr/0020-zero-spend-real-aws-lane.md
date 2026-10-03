@@ -1,6 +1,6 @@
 # ADR-0020: Real AWS only where it cannot cost money: a zero-spend lane
 
-**Status:** proposed, revised 2026-09-24 after the IAM drill (waits for the owner's approval; replaces the real-AWS milestone of the archived ADR-0012)
+**Status:** rejected on 2026-10-03 (was: proposed, revised 2026-09-24 after the IAM drill; replaced the real-AWS milestone of the archived ADR-0012). Anything "real" is decided once the project is complete
 **Date:** 2026-09-24
 
 ## Context
@@ -89,3 +89,11 @@ one claim that most needs real AWS, and least privilege with permissions boundar
 - Revisit if credits arrive without a new account (AWS Community Builders, next intake about January 2027):
   credits still do not cap spend, so a revisit needs its own guardrail design.
 - `CLAUDE.md`'s standing preferences follow this lane; ADR-0022 assumes it for the local environment.
+
+## Rejection, 2026-10-03
+
+Rejected for now by the owner: nothing runs on real AWS, and whether any of it should is decided once the project is
+complete. The standing rule is unchanged and needs no ADR: **nothing billable is ever created on real AWS**. What the
+lane would have proved is covered locally by the overbroad-trust scenario ([ADR-0028](0028-scenario-library.md)); the
+*verified on real AWS* evidence label stays defined and unused. The reasoning above is kept as the record of what was
+weighed.
