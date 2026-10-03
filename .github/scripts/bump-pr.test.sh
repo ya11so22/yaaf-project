@@ -34,7 +34,8 @@ if echo "$out" | grep -q "up to date"; then ok "no change when the pins are curr
 if [ "$(git rev-parse --abbrev-ref HEAD)" = "bot/bump-images" ]; then fail "no branch should be created"; else ok "no branch created when nothing changed"; fi
 
 # 2. A stale pin: a bump commit is made by the bot on the bump branch.
-sed -i '0,/newTag: content-[0-9a-f]\{12\}/s//newTag: content-000000000000/' deploy/dev/kustomization.yaml
+# perl, not GNU-only sed: this rewrites the first pin only, and must behave the same on macOS and Linux.
+perl -0pi -e 's/newTag: content-[0-9a-f]{12}/newTag: content-000000000000/' deploy/dev/kustomization.yaml
 git commit -qam "make a pin stale"
 out="$(bash .github/scripts/bump-pr.sh)"
 if [ "$(git rev-parse --abbrev-ref HEAD)" = "bot/bump-images" ]; then ok "bump branch created"; else fail "expected bot/bump-images, on $(git rev-parse --abbrev-ref HEAD)"; fi
