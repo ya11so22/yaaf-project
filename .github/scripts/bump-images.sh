@@ -62,10 +62,11 @@ $end"
 
 # Replace everything between the markers, keeping the rest of the file untouched.
 tmp="$(mktemp)"
-awk -v block="$block" -v begin="$begin" -v end="$end" '
-  index($0, begin) { print block; skipping = 1; next }
-  index($0, end)   { skipping = 0; next }
-  !skipping        { print }
+# The block has newlines, which macOS awk rejects in a -v assignment, so it travels in the environment.
+BLOCK="$block" BEGIN_MARK="$begin" END_MARK="$end" awk '
+  index($0, ENVIRON["BEGIN_MARK"]) { print ENVIRON["BLOCK"]; skipping = 1; next }
+  index($0, ENVIRON["END_MARK"])   { skipping = 0; next }
+  !skipping                        { print }
 ' "$file" > "$tmp"
 cat "$tmp" > "$file"
 rm -f "$tmp"

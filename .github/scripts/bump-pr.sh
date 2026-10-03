@@ -17,7 +17,8 @@ if [ "${VERIFY:-true}" = "false" ]; then verify=(); fi
 cd "$(git rev-parse --show-toplevel)"
 source_sha="$(git rev-parse --short HEAD)"
 
-bash .github/scripts/bump-images.sh "$dir" HEAD "${verify[@]}"
+# ${verify[@]+...} because bash 3.2 (macOS) treats an empty array as unset under `set -u`.
+bash .github/scripts/bump-images.sh "$dir" HEAD ${verify[@]+"${verify[@]}"}
 
 if git diff --quiet -- "$dir/kustomization.yaml"; then
   echo "Image pins are up to date at $source_sha; nothing to do."
