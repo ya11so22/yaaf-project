@@ -51,5 +51,5 @@ else
   echo "Updated pull request #$number"
 fi
 
-# Merges itself when the required checks pass. Needs "Allow auto-merge" in the repository settings.
-gh pr merge "$number" --auto --merge
+# Merges itself when the required checks pass, by squash (the only merge method allowed). Needs "Allow auto-merge" in the repository settings.
+gh pr merge "$number" --auto --squash
