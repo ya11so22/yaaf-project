@@ -88,7 +88,7 @@ Its `cygpath` branch is Windows-only and can be deleted on the Mac.
 - `FLOCI_SERVICES_ECR_URI_STYLE: path` in `compose.yaml` was added because Docker Desktop on Windows could not resolve
   `*.localhost` registry names. Try removing it on the Mac; keep it if image pushes to Floci's ECR fail.
 - PowerShell 5.1 compatibility rules, the login-time registry task, `%LOCALAPPDATA%` logs, `cygpath` in scripts.
-- `act` (`.actrc`, removed): if wanted, install with mise and use `--container-architecture linux/amd64`.
+- `act` (`.actrc`, removed): not needed. `scripts/check` covers the fast checks and CI runs the rest for free.
 
 ## 5. Apple Silicon: the one real porting risk
 
