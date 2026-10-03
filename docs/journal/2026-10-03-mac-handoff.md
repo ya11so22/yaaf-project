@@ -25,6 +25,10 @@ Apple Silicon Kubernetes node needs emulation or multi-arch images (HANDOFF item
 
 ## Verification
 
+First `main` run after the merge: all 12 images passed the scan gate in CI and were reused; the bot opened #27 with
+`tag@digest` pins, which merged. Auto-merge failed because the repository had just become squash-only and the script
+asked for a merge commit; fixed in #29, after which the next `main` run reported the pins up to date.
+
 `scripts/check` passed locally (Docker was down, so the Docker-based checks ran only in CI); CI on PR #26 passed before
 merging; no Markdown link points at a removed file.
 
