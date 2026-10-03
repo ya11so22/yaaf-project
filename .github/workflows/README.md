@@ -25,7 +25,6 @@ sync the PR's commit, wait for `Synced` and `Healthy`).
 
 ## Running locally
 
-`scripts/check` runs the same fast checks as the `check` workflow. To run a whole workflow locally, [act](https://github.com/nektos/act)
-works for `check` and the `plan` job of `infra` (use an image such as `catthehacker/ubuntu:act-latest`). Do not run the
-`infra` smoke test locally: it uses your local Floci's container names and port and ends with `docker compose down -v`,
-which deletes the whole local AWS. Do not run `build.yml` with a push event: it would push images and open the bot PR.
+`scripts/check` runs the same fast checks as the `check` workflow (also from the pre-commit hook). Everything else runs
+on GitHub: the repository is public, so Actions minutes are free, and the workflows depend on things that only exist
+there (the build cache token, OIDC for attestations, the bot's App token).
