@@ -27,3 +27,13 @@ variable "ssh_public_key" {
   type        = string
   default     = ""
 }
+
+variable "kubernetes_version" {
+  description = "Kubernetes version of the EKS cluster. Set once in mise.toml and passed as TF_VAR_kubernetes_version (ADR-0025)."
+  type        = string
+}
+
+variable "ingress_port" {
+  description = "Host port the ingress listener is published on, for the links on the portal page. Set once in mise.toml (INGRESS_PORT)."
+  type        = string
+}

@@ -1,4 +1,4 @@
-# The shop at http://shop.localhost:8080 (ADR-0016). No namespace: Argo CD deploys it into the app's.
+# The shop at http://shop.localhost:18080 (ADR-0016). No namespace: Argo CD deploys it into the app's.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

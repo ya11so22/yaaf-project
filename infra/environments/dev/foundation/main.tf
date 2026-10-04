@@ -49,8 +49,9 @@ module "vpc" {
 module "eks" {
   source = "../../../modules/eks-cluster"
 
-  name       = local.name
-  subnet_ids = module.vpc.private_subnet_ids
+  name               = local.name
+  subnet_ids         = module.vpc.private_subnet_ids
+  kubernetes_version = var.kubernetes_version
 }
 
 module "ecr" {
@@ -126,6 +127,7 @@ module "portal" {
         project      = var.project
         cluster_name = module.eks.cluster_name
         region       = var.region
+        ingress_port = var.ingress_port
       })
     }
   }

@@ -1,5 +1,11 @@
 # Mac migration: guidelines for rebuilding the operator tooling
 
+> **Status 2026-10-04:** rebuilt. The four tasks are `.mise/tasks/up`, `down`, `reset` and the `check` task in
+> [`mise.toml`](../mise.toml) ([ADR-0025](../adr/0025-tool-versions-and-tasks-in-mise.md)), on the project's own Colima VM
+> (`yaaf`, [ADR-0022](../adr/0022-the-local-aws-environment.md) amendment). This file stays as the record of what each step does
+> and why, and of the emulator quirks. Where it names Docker Desktop, a shared VM or the global `~/.kube` and `~/.aws`, the
+> tasks do something stricter; section 6 lists the differences.
+
 The project moved from a Windows PC to a Mac on 2026-10-03. The Windows-only operator scripts (`scripts/dev-up.ps1`,
 `scripts/dev-down.ps1`) were **deleted, not ported**. This file records what they did, which behaviours mattered and
 which emulator quirks they worked around, so the Mac session can rebuild the smallest thing that works and improve it
@@ -98,3 +104,15 @@ with `exec format error`. First thing to try on the Mac: `up`, then `kubectl -n 
 pipeline: build each service natively on `ubuntu-24.04` and the free `ubuntu-24.04-arm` runner and merge into one
 multi-arch index (`docker buildx imagetools create`), attesting the index digest. That is a change to
 `.github/workflows/reusable-container-image.yml`; write an ADR first.
+
+## 6. What the rebuilt tasks do differently (2026-10-04)
+
+- **Their own VM.** `up` starts the Colima profile `yaaf` (vz, Rosetta, 4 CPUs, 8 GiB) without activating its Docker context,
+  and refuses the profile named `default`. `down` stops that VM; `reset` deletes it, so the hunt for unlabelled volumes
+  (Q2) is gone. Nothing here starts, stops or restarts any other profile: other services run in them.
+- **Their own configuration.** `AWS_CONFIG_FILE`, `AWS_SHARED_CREDENTIALS_FILE` and `KUBECONFIG` point at `.aws/` and
+  `.kube/` in the repository (gitignored), so the `floci` profile and the cluster context never touch `~/.aws` or `~/.kube`.
+- **No SSH key by default.** The workstation's key pair is empty unless `TF_VAR_ssh_public_key` is set; the SSH route moves to
+  the opt-in `extras` root.
+- **One source for versions.** The Kubernetes minor and the k3s image come from `mise.toml`.
+

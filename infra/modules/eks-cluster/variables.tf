@@ -4,9 +4,8 @@ variable "name" {
 }
 
 variable "kubernetes_version" {
-  description = "Kubernetes version for the EKS control plane."
+  description = "Kubernetes version for the EKS control plane. No default: the caller passes the one value kept in mise.toml (ADR-0025)."
   type        = string
-  default     = "1.36"
 }
 
 variable "subnet_ids" {

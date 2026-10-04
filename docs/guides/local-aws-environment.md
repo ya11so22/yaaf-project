@@ -14,7 +14,7 @@ stores real files, CloudFront serves real pages). Knowing which is which is most
 
 ```
 Docker Desktop
-├── floci        the AWS API on 127.0.0.1:4566 (and the ALB listener on 127.0.0.1:8080)
+├── floci        the AWS API on 127.0.0.1:4566 (and the ALB listener, published on 127.0.0.1:18080 because 8080 is not free on the owner's Mac)
 │   └── starts, when asked:  floci-eks-yaaf-dev (k3s: the EKS cluster)  ·  floci-ecr-registry (ECR)
 └── floci-dash   an AWS-console-style dashboard on 127.0.0.1:9877
 ```

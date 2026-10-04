@@ -43,11 +43,13 @@ entries, archived ADRs, the Windows scripts) is at the tag `archive/windows-era`
 
 ### Left
 
-- [ ] **The Mac era** ([review](research/2026-10-03-architecture-review.md), ADR-0025 to 0029), in this order: ADRs written
-      (done 2026-10-03); `mise.toml` and the four tasks, with `up` working end to end; app-of-apps and Gateway API (with
-      the Gateway API guide); the arm64 pipeline with the architecture check; ECR module deleted; `up` made lean with an
-      opt-in `extras` root
-
+- [x] **The Mac era, step 2** (2026-10-04): ADRs 0025 to 0029 written (2026-10-03); `mise.toml`, the lockfile and the tasks
+      `up`, `down`, `reset`, `check` built; `up` builds the whole environment from nothing on the project's own Colima VM
+      and every URL answers; `scripts/check` runs the locked binaries; the bump scripts fixed for macOS
+      ([journal](journal/2026-10-04-mise-tasks-and-first-up.md))
+- [ ] **The Mac era, the rest** ([review](research/2026-10-03-architecture-review.md)), in this order: app-of-apps and Gateway
+      API (with the Gateway API guide); the arm64 pipeline with the architecture check, which also fixes the four app pods that
+      crash on emulated amd64; the ECR module deleted; `up` made lean with an opt-in `extras` root
 - [ ] Threat model (STRIDE) of the pipeline and infrastructure, including the bot App, auto-merge, no-login Headlamp,
       and floci-dash (becomes part of `06-security-and-compliance.md`)
 - [ ] Pre-merge deploy check: apply the dev roots to a throwaway Floci in the PR, install Argo CD, sync the PR's

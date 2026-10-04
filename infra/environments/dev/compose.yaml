@@ -14,7 +14,7 @@ services:
       # could reach this port from the network could start containers on this machine.
       - "127.0.0.1:4566:4566"
       # The ingress ALB's listener. Floci binds listener sockets on its own host, so the port is published here.
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:${INGRESS_PORT:?set by mise.toml; run through mise}:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - floci-data:/app/data
@@ -26,8 +26,9 @@ services:
       # localhost:4566/<account>/<region>/<repo> URIs instead. Possibly unneeded on a Mac (docs/mac-migration.md).
       FLOCI_SERVICES_ECR_URI_STYLE: path
       # Floci does no Kubernetes version mapping: every EKS cluster runs this k3s image, whatever version is asked
-      # for. Keep it in step with kubernetes_version in infra/modules/eks-cluster (1.36, the newest EKS supports).
-      FLOCI_SERVICES_EKS_DEFAULT_IMAGE: rancher/k3s:v1.36.4-k3s1
+      # for. It comes from mise.toml (K3S_IMAGE), next to the Kubernetes minor it matches (ADR-0025), so run docker
+      # compose through mise.
+      FLOCI_SERVICES_EKS_DEFAULT_IMAGE: ${K3S_IMAGE:?set by mise.toml; run through mise}
       # The cluster containers Floci starts join this network, so the k3s API server can reach Floci's IAM
       # authenticator and the ALB can reach the node.
       FLOCI_SERVICES_EKS_DOCKER_NETWORK: floci-net

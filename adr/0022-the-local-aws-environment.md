@@ -117,3 +117,8 @@ Agreed after the architecture review ([research](../docs/research/2026-10-03-arc
    **Item 6's ingress** is Gateway API instead of Ingress objects ([ADR-0029](0029-gateway-api-for-ingress.md)).
    **Item 9's tasks** are `mise` tasks ([ADR-0025](0025-tool-versions-and-tasks-in-mise.md)).
 6. `FLOCI_SERVICES_ECR_URI_STYLE: path` is removed with ECR.
+7. **The ingress listener is published on `127.0.0.1:18080`, not 8080** (`INGRESS_PORT` in `mise.toml`, read by
+   `compose.yaml`, the portal page and the `up` checks). Found on the first `up` on the Mac: 8080 belongs to the owner's own
+   qBittorrent, so every `*.localhost:8080` request returned that service's page and the project's listener could not bind.
+   Inside Floci the listener stays on 8080 and only the published port differs. The URLs are now
+   `http://shop.localhost:18080`, `http://argocd.localhost:18080` and `http://headlamp.localhost:18080`.

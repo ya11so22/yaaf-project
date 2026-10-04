@@ -32,18 +32,30 @@ after the one before it.
 
 ## Prerequisites and operating it
 
-A container runtime with a Docker socket, OpenTofu 1.10+, the AWS CLI v2, `kubectl`, `curl`, `ssh`. About 8 GB of memory
-for the runtime while the cluster runs.
+Colima (or another runtime) on a Mac, and [mise](https://mise.jdx.dev), which installs everything else at the versions in
+[`mise.toml`](../mise.toml) (OpenTofu, `kubectl`, the AWS CLI, and the checkers). About 8 GB of memory for the project's own VM
+while the cluster runs.
 
-The environment is operated by four small tasks, `up`, `down`, `reset` and `check`, which call `docker compose`, `tofu`,
-`aws` and `kubectl` directly. They are rebuilt on the Mac from [`docs/mac-migration.md`](../docs/mac-migration.md), which
-lists exactly what each does, in order, and the Floci quirks they work around. Until then, the manual sequence is:
+The environment is operated by four mise tasks (ADR-0025). Run them from the repository root:
+
+| Task | What it does |
+|---|---|
+| `mise run up` | Starts the project's VM (`yaaf`) if it is stopped, then Floci, the three OpenTofu roots in order, the AWS profile and kubeconfig, a cluster repair if Floci left k3s dead, and Argo CD; then checks every URL. Idempotent. `--revision <branch>` tries a branch; `--plan-only` plans instead |
+| `mise run down` | Stops Floci and the cluster gracefully, then the `yaaf` VM. Keeps all data |
+| `mise run reset` | Deletes the `yaaf` VM and the local state files, after asking. Clean start |
+| `mise run check` | The fast checks (`scripts/check`) |
+
+The project runs in its **own** Colima VM, named `yaaf`, and never touches any other profile. `mise.toml` points Docker,
+Colima, the AWS CLI and `kubectl` at the project (`COLIMA_PROFILE`, `DOCKER_CONTEXT`, and `.aws/` and `.kube/` in the
+repository), so commands run here cannot reach other containers, your own `~/.aws` or `~/.kube`, or real AWS. What the tasks do,
+in order, and the Floci quirks they work around, is in [`docs/mac-migration.md`](../docs/mac-migration.md). The manual
+sequence, from inside `mise exec --`, is the same three roots in turn:
 
 ```bash
 docker compose -f infra/environments/dev/compose.yaml up -d --wait
 tofu -chdir=infra/environments/dev/bootstrap init && tofu -chdir=infra/environments/dev/bootstrap apply
 tofu -chdir=infra/environments/dev/foundation init && tofu -chdir=infra/environments/dev/foundation apply
-# write the `floci` AWS CLI profile and kubeconfig (migration guide, steps 6 and 7), then:
+# write the `floci` AWS CLI profile and kubeconfig (what `up` does after the foundation root), then:
 tofu -chdir=infra/environments/dev/cluster init && tofu -chdir=infra/environments/dev/cluster apply -var kubeconfig_context=<cluster arn>
 ```
 
@@ -59,9 +71,9 @@ Headlamp as an empty page).
 |---|---|
 | `http://<id>.cloudfront.localhost:4566/` | The portal: a static site in S3 behind CloudFront, linking to everything below: `http://$(tofu -chdir=infra/environments/dev/foundation output -raw portal_domain_name):4566/`. |
 | http://localhost:9877 | floci-dash, a dashboard modelled on the AWS Management Console |
-| http://argocd.localhost:8080 | Argo CD. User `admin`; the password is in the `argocd-initial-admin-secret` secret |
-| http://headlamp.localhost:8080 | Headlamp, a read-only view of the cluster, no login |
-| http://shop.localhost:8080 | The Online Boutique, through the ALB and Traefik |
+| http://argocd.localhost:18080 | Argo CD. User `admin`; the password is in the `argocd-initial-admin-secret` secret |
+| http://headlamp.localhost:18080 | Headlamp, a read-only view of the cluster, no login |
+| http://shop.localhost:18080 | The Online Boutique, through the ALB and Traefik |
 | http://localhost:4566 | Floci's AWS API endpoint |
 
 And an EC2 **workstation** to log in to, three ways ([guide](../docs/guides/reaching-an-ec2-instance.md)): the terminal on

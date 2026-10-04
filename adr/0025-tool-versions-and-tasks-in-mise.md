@@ -34,7 +34,14 @@ The Windows operator scripts were also removed; the task interface (`up`, `down`
    `kubeconform` and `trivy` (and `conftest` when Phase 2 adds policy as code). **`mise.lock` is committed** with
    URLs and, where the publisher provides them, checksums, for `macos-arm64`, `linux-arm64` and `linux-x64`.
 2. **`[env]` holds the values several files share**: the Kubernetes minor and the k3s image tag. `compose.yaml`,
-   `scripts/check` and the EKS module read them from there (the module through `TF_VAR_kubernetes_version`).
+   `scripts/check` and the EKS module read them from there (the module through `TF_VAR_kubernetes_version`, and its own
+   default is removed so there is no second source). It also isolates the project from the machine: `COLIMA_PROFILE` and
+   `DOCKER_CONTEXT` point every Colima and Docker command at the project's own VM, and `AWS_CONFIG_FILE`,
+   `AWS_SHARED_CREDENTIALS_FILE` and `KUBECONFIG` point at `.aws/` and `.kube/` in the repository, so
+   project commands never touch the owner's other containers, `~/.aws` or `~/.kube`, and cannot pick up real AWS
+   credentials. On a CI runner (`CI` is set) the Docker context falls back to `default`. `AWS_PROFILE` is deliberately not set: the first
+   `up` failed on it, because the AWS provider errors on a named profile that does not exist yet, so commands name
+   `--profile floci` instead.
 3. **`[tasks]` holds `up`, `down`, `reset` and `check`**, behaving as described in `docs/mac-migration.md` section 2, and
    adapted to the decisions of 2026-10-03: `up` is lean (ADR-0022 amendment), the runtime is the `yaaf` Colima VM, and
    `reset` deletes that VM.
@@ -42,7 +49,7 @@ The Windows operator scripts were also removed; the task interface (`up`, `down`
    (`cygpath`, `MSYS_NO_PATHCONV`) is deleted. `--ci` still treats a missing tool as a failure.
 5. **CI installs from the lockfile** with `jdx/mise-action` pinned to a commit SHA and `mise install --locked`, replacing
    the per-workflow version settings (`tofu_version`, `TRIVY_VERSION`) and `opentofu/setup-opentofu`.
-6. **The Trivy scan and the SBOM run the locked `trivy` binary**, not `aquasecurity/trivy-action`. One fewer
+6. **(Done with the pipeline change, ADR-0027's PR, not with the tasks.) The Trivy scan and the SBOM run the locked `trivy` binary**, not `aquasecurity/trivy-action`. One fewer
    third-party action in the trust chain after CVE-2026-33634 (76 of 77 `trivy-action` tags were repointed to a
    credential stealer on 2026-03-19; this repository was not exposed, being pinned by SHA to a later release). The same
    binary runs in the build, the weekly rescan and locally. SARIF still goes to the Security tab through
@@ -63,7 +70,10 @@ the same binaries locally and in CI is the point of ADR-0009 (one definition of 
   name the right release assets; the lockfile checksums catch a changed download, not a wrong source.
 - Nothing bumps `mise.toml` automatically. Bumps are a deliberate `chore/` PR (`mise upgrade --bump`, then `mise lock`),
   the same manual policy as Helm chart versions and compose digests. Written down here as a known gap.
-- Acceptance checks before this is called done: `check` passes in CI from the lockfile; a planted fault is caught by each
-  checker (the owner's rule for new checks); Trivy produces the same SARIF and gate result as `trivy-action` did, with
-  `.trivyignore.yaml` honoured.
+- Acceptance checks before this is called done: `check` passes in CI from the lockfile; Trivy produces the same SARIF and gate
+  result as `trivy-action` did, with `.trivyignore.yaml` honoured. **Tested on the Mac (2026-10-04):** one planted fault per
+  checker. `tofu fmt` (a badly formatted file), actionlint (a job with no `runs-on`), kubeconform (`replicas: "two"`),
+  zizmor (a third-party action pinned by tag) and gitleaks (a staged, random-looking GitHub token) each failed the check, and
+  the clean tree passed. Two first attempts passed for understood reasons and were replanted: zizmor allows GitHub's own
+  `actions/*` by tag, and gitleaks ignores AWS's published `EXAMPLE` keys.
 - The Kubernetes minor still has to be raised by hand when EKS supports a newer one, now in one place.

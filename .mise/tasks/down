@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+#MISE description="Stop everything gracefully and keep all data, then stop the project VM to give its memory back"
+# Graceful on purpose: an abrupt stop is what leaves Floci's k3s cluster broken (quirk Q1).
+set -euo pipefail
+cd "$MISE_PROJECT_ROOT"
+PROFILE="${COLIMA_PROFILE:-yaaf}"
+[ "$PROFILE" != "default" ] || { echo "refusing to touch the default Colima profile; this project uses its own VM" >&2; exit 1; }
+
+if colima status "$PROFILE" >/dev/null 2>&1; then
+  docker compose -f infra/environments/dev/compose.yaml stop
+  ids="$(docker ps -q --filter label=floci=true)"   # the cluster and registry containers Floci started itself
+  [ -z "$ids" ] || docker stop $ids >/dev/null
+  colima stop "$PROFILE"
+  echo "Stopped. Data is kept: run \`mise run up\` to continue where you left off."
+else
+  echo "The $PROFILE VM is not running; nothing to stop."
+fi
