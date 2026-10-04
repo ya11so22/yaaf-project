@@ -16,14 +16,18 @@ variable "namespace" {
   default     = "argocd"
 }
 
-variable "applications" {
-  description = <<-EOT
-    Argo CD Applications to create, keyed by name. Each value has:
-      namespace: the namespace the workload is deployed into (created by Argo CD)
-      source:    the Argo CD source block, either a git path
-                 ({ repoURL, targetRevision, path }) or a Helm chart
-                 ({ repoURL, chart, targetRevision, helm = { valuesObject = { ... } } })
-    Every Application syncs automatically with pruning and self-heal.
-  EOT
-  type        = any
+variable "repo_url" {
+  description = "The git repository Argo CD reconciles from. Its deploy/apps directory holds one Application file per thing Argo CD runs."
+  type        = string
+}
+
+variable "target_revision" {
+  description = "Git revision the root Application tracks, and the one every Application sourced from repo_url is pointed at. A branch name to try a change before it is merged."
+  type        = string
+  default     = "main"
+}
+
+variable "source_repos" {
+  description = "Repositories the dev project may deploy from: repo_url and each Helm chart repository in use."
+  type        = list(string)
 }

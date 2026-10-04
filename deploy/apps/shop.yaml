@@ -1,0 +1,26 @@
+# The workload: Online Boutique and its route, from deploy/dev (ADR-0023). The image pins in deploy/dev are what the bot
+# updates; nothing here changes when a service does.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: online-boutique-dev
+  namespace: argocd
+  labels:
+    yaaf/source: repo
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: dev
+  source:
+    repoURL: https://github.com/ya11so22/yaaf-project.git
+    targetRevision: main
+    path: deploy/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: boutique
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

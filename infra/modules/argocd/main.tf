@@ -1,11 +1,11 @@
-# Argo CD, installed from the official chart, plus one Application for the workload (ADR-0023).
-# Nothing pushes the workload into the cluster: Argo CD reconciles it from git with automated
-# sync, pruning and self-heal.
+# Argo CD, installed from the official chart, plus an AppProject and ONE root Application (ADR-0026).
+# Everything else Argo CD runs is an Application file in git under deploy/apps/, so the platform is delivered by pull request
+# the same way the workload is. Nothing pushes into the cluster: Argo CD reconciles from git with automated sync, pruning and
+# self-heal.
 #
-# Two releases, in order, on purpose: the Application is a custom resource, and Helm cannot create
-# one in the same release that installs its CRD ("no matches for kind Application"). The argo-cd
-# chart installs the CRDs; the companion argocd-apps chart, which Argo's project publishes for this,
-# then creates the Application once they exist.
+# Two releases, in order, on purpose: the project and the Application are custom resources, and Helm cannot create one in the
+# same release that installs its CRD ("no matches for kind Application"). The argo-cd chart installs the CRDs; the companion
+# argocd-apps chart, which Argo's project publishes for this, then creates the project and the root Application once they exist.
 resource "helm_release" "argocd" {
   name             = "argocd"
   namespace        = var.namespace
@@ -39,7 +39,7 @@ resource "helm_release" "argocd" {
   })]
 }
 
-resource "helm_release" "applications" {
+resource "helm_release" "root" {
   name      = "argocd-apps"
   namespace = var.namespace
 
@@ -50,20 +50,57 @@ resource "helm_release" "applications" {
   depends_on = [helm_release.argocd]
 
   values = [yamlencode({
+    # The default project allows any source and any destination. `dev` allows only this repository and the chart
+    # repositories in use, and only this cluster. Cluster-scoped kinds are allowed because the platform installs CRDs,
+    # ClusterRoles and a GatewayClass.
+    projects = {
+      dev = {
+        namespace   = var.namespace
+        description = "The dev environment: the workload and the platform tools"
+        sourceRepos = var.source_repos
+        destinations = [{
+          server    = "https://kubernetes.default.svc"
+          namespace = "*"
+        }]
+        clusterResourceWhitelist = [{
+          group = "*"
+          kind  = "*"
+        }]
+      }
+    }
+
     applications = {
-      for name, app in var.applications : name => {
+      platform = {
         namespace = var.namespace
         # Deleting the Application removes what it deployed.
         finalizers = ["resources-finalizer.argocd.argoproj.io"]
-        project    = "default"
-        source     = app.source
+        project    = "dev"
+        source = {
+          repoURL        = var.repo_url
+          targetRevision = var.target_revision
+          path           = "deploy/apps"
+          # Applications whose source is this repository carry the label yaaf/source=repo. Their targetRevision is set
+          # here to the root's own revision, so `up --revision <branch>` tries a branch end to end (ADR-0026).
+          kustomize = {
+            patches = [{
+              target = {
+                kind          = "Application"
+                labelSelector = "yaaf/source=repo"
+              }
+              patch = <<-EOT
+                - op: replace
+                  path: /spec/source/targetRevision
+                  value: ${var.target_revision}
+              EOT
+            }]
+          }
+        }
         destination = {
           server    = "https://kubernetes.default.svc"
-          namespace = app.namespace
+          namespace = var.namespace
         }
         syncPolicy = {
-          automated   = { prune = true, selfHeal = true }
-          syncOptions = ["CreateNamespace=true"]
+          automated = { prune = true, selfHeal = true }
         }
       }
     }

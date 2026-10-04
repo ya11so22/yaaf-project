@@ -1,0 +1,35 @@
+# The Gateway API CRDs (ADR-0029): the types Gateway, GatewayClass, HTTPRoute and the rest, which Kubernetes does not ship.
+# From Traefik's own CRD chart, so the Gateway API version is the one Traefik's maintainers pair with their chart (1.18.0
+# ships the v1.5.1 standard channel). Only the Gateway API CRDs: the main Traefik chart installs Traefik's own.
+#
+# First in line (wave -2): Traefik and every route need these types to exist. Server-side apply, because the CRDs are
+# larger than client-side apply's 256 KiB annotation limit.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gateway-api-crds
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: dev
+  source:
+    repoURL: https://traefik.github.io/charts
+    chart: traefik-crds
+    targetRevision: 1.18.0
+    helm:
+      valuesObject:
+        gatewayAPI: true
+        traefik: false
+        hub: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system   # the CRDs are cluster-scoped; this is only where Argo CD records the Application
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true

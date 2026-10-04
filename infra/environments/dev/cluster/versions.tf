@@ -6,10 +6,6 @@ terraform {
       source  = "hashicorp/helm"
       version = "~> 3.3"
     }
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "~> 3.2"
-    }
   }
 
   # Same bucket as the foundation root, its own key (ADR-0022).
