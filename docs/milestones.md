@@ -53,7 +53,11 @@ entries, archived ADRs, the Windows scripts) is at the tag `archive/windows-era`
 - [ ] Threat model (STRIDE) of the pipeline and infrastructure, including the bot App, auto-merge, no-login Headlamp,
       and floci-dash (becomes part of `06-security-and-compliance.md`)
 - [ ] Pre-merge deploy check: apply the dev roots to a throwaway Floci in the PR, install Argo CD, sync the PR's
-      commit, wait for `Synced` and `Healthy` ([ADR-0023](../adr/0023-build-and-delivery.md) item 8)
+      commit, wait for `Synced` and `Healthy` ([ADR-0023](../adr/0023-build-and-delivery.md) item 8). The first guardrail
+      for agent pull requests below
+- [ ] **Guardrails for agent pull requests** ([research](research/2026-10-04-reliability-and-ai-change-guardrails.md); ADR first): an agent scope check (only `app/src`), a dependency
+      existence and lockfile gate, a pull-request size limit, and SAST as a ratchet on new high findings. Each proven
+      against a planted fault
 - [ ] Demo: README walkthrough and a short recording
 
 ## Real AWS
@@ -74,6 +78,8 @@ The design side, in AWS's terms ([`docs/architecture/`](architecture/README.md))
 - [ ] Well-Architected review v1 with a findings register (`02-well-architected-review.md`)
 - [ ] Reliability and DR: RTO/RPO tiers and cost per tier (`03-reliability-and-dr.md`)
 - [ ] Cost model with real pricing (`04-cost-model.md`)
+- [ ] Designs only, labelled *designed*: node autoscaling (Karpenter), Spot and Graviton fleets, multi-AZ and
+      multi-Region recovery, OpenTelemetry tail sampling; a cost per reliability tier ([research](research/2026-10-04-reliability-and-ai-change-guardrails.md))
 - [ ] Migration options with the 7 Rs (`05-migration-options.md`)
 - [ ] Security and compliance: the threat model and a PCI DSS control mapping (`06-security-and-compliance.md`)
 - [ ] AI architecture: Bedrock against self-hosted serving, the RAG design (`07-ai-architecture.md`)
@@ -87,14 +93,18 @@ The design side, in AWS's terms ([`docs/architecture/`](architecture/README.md))
 ## Scenario library ([ADR-0028](../adr/0028-scenario-library.md))
 
 - [ ] Library set up: `docs/scenarios/`, a spec template, `iam-trust.sh` moved into its scenario
-- [ ] Scenarios run and reported: configuration drift; losing the platform (recovery time measured); stuck or lost state;
-      a leaked credential; a tag rewrite in the supply chain; overbroad OIDC trust; a mislabelled image
-- [ ] After monitoring: a failing dependency seen as an SLO burn; capacity exhaustion
+- [ ] Scenarios run and reported: configuration drift (in the cluster, and in the cloud layer with
+      `tofu plan -refresh-only -detailed-exitcode`); losing the platform (recovery time measured); stuck or lost state; a
+      leaked credential; a tag rewrite in the supply chain; overbroad OIDC trust; a mislabelled image
+- [ ] After monitoring: a failing dependency seen as an SLO burn; capacity exhaustion; a cascading failure with retries at
+      one layer only (AWS REL05-BP03); a traffic spike absorbed by a HorizontalPodAutoscaler under load ([research](research/2026-10-04-reliability-and-ai-change-guardrails.md))
 
 ## Phase 2: operate it
 
 - [ ] Observability: metrics and dashboards for the app
-- [ ] SLOs and alerts on them
+- [ ] SLOs and alerts on them: multiwindow, multi-burn-rate (Google SRE Workbook), proved against a planted fault under
+      synthetic load ([research](research/2026-10-04-reliability-and-ai-change-guardrails.md))
+- [ ] Canary rollouts with automated analysis (Argo Rollouts and Prometheus): the last line of defence for a bad change
 - [ ] Policy as code: `conftest` on plans (for example, no wildcard OIDC `sub`) and manifests; an IaC security scan
 - [ ] IAM negative tests as a CI regression check: run the parts of `scripts/drills/iam-trust.sh` that need no dev cluster on a fresh Floci
 - [ ] An incident drill with a postmortem
