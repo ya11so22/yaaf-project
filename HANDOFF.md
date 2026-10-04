@@ -31,19 +31,19 @@ repository is that engagement, designed, built, operated and broken on purpose, 
 
 ## Next, in order
 
-1. **Set up the Mac and rebuild the task interface** (`mise.toml`: `up`, `down`, `reset`, `check`) from
-   [`docs/mac-migration.md`](docs/mac-migration.md). Bring the environment up and confirm the endpoints answer. Expect the
-   app pods to struggle on Apple Silicon (amd64-only images): that is item 3.
-2. **Exercise publishing and attestations.** The first app change that touches a service (for example the multi-arch work
-   in item 3) builds and pushes a new image on `main`, which runs `actions/attest` for SLSA provenance and the SBOM for the
-   first time. Then verify it:
-   `gh attestation verify oci://ghcr.io/ya11so22/yaaf-project/<service>@<digest> --repo ya11so22/yaaf-project`.
-   Dependabot opens grouped PRs weekly; merge them when green.
-3. **Multi-arch images** (amd64 and arm64, native runners): ADR first, then `reusable-container-image.yml`. Details in
-   `docs/mac-migration.md` section 5.
+*Updated 2026-10-04. The order below follows [`docs/milestones.md`](docs/milestones.md); the decisions are ADR-0025 to 0029.*
+
+1. ~~**Set up the Mac and rebuild the task interface.**~~ Done: `mise.toml` and `.mise/tasks/` ([ADR-0025](adr/0025-tool-versions-and-tasks-in-mise.md)),
+   on the project's own Colima VM. `up` builds everything; the four app pods that crash on emulated amd64 are fixed by item 3.
+2. **App-of-apps and Gateway API** ([ADR-0026](adr/0026-argo-cd-app-of-apps.md), [ADR-0029](adr/0029-gateway-api-for-ingress.md)),
+   with the Gateway API guide.
+3. **arm64-only images** ([ADR-0027](adr/0027-arm64-only-app-images.md)): native arm runners, explicit build arguments, the
+   architecture check, `-arm64` content tags. This is also the first publish and attestation (verify with
+   `gh attestation verify oci://ghcr.io/ya11so22/yaaf-project/<service>@<digest> --repo ya11so22/yaaf-project`), and moves the Trivy
+   scan to the locked binary. Dependabot opens grouped PRs weekly; merge them when green.
 4. **Finish the Floci upstream fix** (below), then ask the owner before opening anything upstream.
-5. Then the project roadmap: Phase 1 close-out (threat model, pre-merge deploy check, demo), then the architecture track
-   (`00-requirements.md` first). See `docs/milestones.md`.
+5. Then Phase 1 close-out (threat model, pre-merge deploy check, demo), the scenario library ([ADR-0028](adr/0028-scenario-library.md)),
+   Phase 2, and the architecture track (`00-requirements.md` first).
 
 ## The Floci CloudFront fix (not sent upstream)
 

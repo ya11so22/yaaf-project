@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+#MISE description="Delete the project VM and everything in it, and the local state files, for a clean start (asks first)"
+#USAGE flag "--yes" help="Skip the confirmation"
+# Deleting the VM removes Floci and its data (including the OpenTofu state kept in its S3 bucket), the cluster and every
+# volume in one step. The bootstrap root's local state file must go with it, or the next `up` believes the state bucket
+# still exists. Never use a runtime's "purge data" button instead: it leaves that file behind.
+set -euo pipefail
+cd "$MISE_PROJECT_ROOT"
+PROFILE="${COLIMA_PROFILE:-yaaf}"
+[ "$PROFILE" != "default" ] || { echo "refusing to touch the default Colima profile; this project uses its own VM" >&2; exit 1; }
+
+echo "This deletes the '$PROFILE' Colima VM with all its containers and volumes (Floci's data, the cluster),"
+echo "the bootstrap state file and the project's .aws and .kube. Other Colima profiles are not touched."
+if [ "${usage_yes:-false}" != "true" ]; then
+  [ -t 0 ] || { echo "Not a terminal: pass --yes to confirm." >&2; exit 1; }
+  read -r -p "Type the profile name ($PROFILE) to continue: " answer
+  [ "$answer" = "$PROFILE" ] || { echo "Cancelled."; exit 1; }
+fi
+
+colima delete "$PROFILE" --force
+rm -f infra/environments/dev/bootstrap/terraform.tfstate infra/environments/dev/bootstrap/terraform.tfstate.backup
+rm -rf .aws .kube
+echo "Reset. Run \`mise run up\` to build everything from nothing."

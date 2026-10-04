@@ -11,6 +11,10 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 
+# The project's own AWS CLI and kubectl configuration (mise.toml)
+.aws/
+.kube/
+
 # Node
 node_modules/
 npm-debug.log*

@@ -1,0 +1,44 @@
+# One file for tool versions, shared values and tasks (ADR-0025). CI installs the same file from mise.lock.
+# Bump deliberately in a chore/ PR: `mise upgrade --bump`, then `mise lock`.
+
+[tools]
+opentofu = "1.13.1"
+kubectl = "1.36"
+awscli = "2"
+gh = "2"
+actionlint = "1.7.12"
+gitleaks = "8.30.1"
+zizmor = "1.30.1"
+kubeconform = "0.8.0"
+trivy = "0.75.0"
+
+[vars]
+# The Kubernetes minor EKS offers, and the k3s image Floci runs for it (Floci does no version mapping, ADR-0022).
+k8s_version = "1.36"
+k3s_image = "rancher/k3s:v1.36.4-k3s1"
+# The host port of the ingress listener (shop, Argo CD, Headlamp). Not 8080: that port belongs to other software on the
+# owner's Mac. Inside Floci the listener stays on 8080; only the published port differs.
+ingress_port = "18080"
+
+[env]
+# The project has its own container VM. These two make every docker and colima command in this repository target it,
+# so a bare `colima stop` or `docker ps` here can never reach the owner's default VM and the services that run in it.
+# On a CI runner (CI is set) Docker is the runner's own, so the context is the default one there.
+COLIMA_PROFILE = "yaaf"
+DOCKER_CONTEXT = "{% if env.CI is defined %}default{% else %}colima-yaaf{% endif %}"
+K3S_IMAGE = "{{ vars.k3s_image }}"
+K8S_VERSION = "{{ vars.k8s_version }}"
+INGRESS_PORT = "{{ vars.ingress_port }}"
+TF_VAR_ingress_port = "{{ vars.ingress_port }}"
+TF_VAR_kubernetes_version = "{{ vars.k8s_version }}"
+# The project's own AWS CLI and kubectl configuration, so its commands never read or change the owner's ~/.aws or
+# ~/.kube, and can never pick up real AWS credentials by accident (the emulator is the only AWS here). The profile is
+# named on each command (`--profile floci`), not set here: the AWS provider fails if a named profile does not exist yet,
+# and `up` only writes it after the foundation root.
+AWS_CONFIG_FILE = "{{ config_root }}/.aws/config"
+AWS_SHARED_CREDENTIALS_FILE = "{{ config_root }}/.aws/credentials"
+KUBECONFIG = "{{ config_root }}/.kube/config"
+
+[tasks.check]
+description = "The fast checks (ADR-0009); CI runs the same script with --ci"
+run = "bash scripts/check"

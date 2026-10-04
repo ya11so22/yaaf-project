@@ -21,9 +21,9 @@ Once up, everything is on loopback:
 |---|---|
 | `http://<id>.cloudfront.localhost:4566/` | The portal: a static site in S3 behind CloudFront, linking to everything else |
 | http://localhost:9877 | An AWS-console-style dashboard for the local AWS (floci-dash) |
-| http://argocd.localhost:8080 | Argo CD, reconciling the cluster from git |
-| http://headlamp.localhost:8080 | A read-only view of the EKS cluster |
-| http://shop.localhost:8080 | The app: Online Boutique, through an ALB and Traefik |
+| http://argocd.localhost:18080 | Argo CD, reconciling the cluster from git |
+| http://headlamp.localhost:18080 | A read-only view of the EKS cluster |
+| http://shop.localhost:18080 | The app: Online Boutique, through an ALB and Traefik |
 
 And from a terminal: `aws --profile floci s3 ls`, `kubectl get pods -A`. Details: [`infra/README.md`](infra/README.md).
 

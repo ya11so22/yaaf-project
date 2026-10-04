@@ -1,0 +1,158 @@
+#!/usr/bin/env bash
+#MISE description="Bring the local AWS up, idempotently: VM, Floci, the three OpenTofu roots, kubeconfig, Argo CD"
+#USAGE flag "--revision <rev>" default="main" help="Git revision Argo CD tracks. A branch name tries a change before it is merged; run plain `up` again after the branch is deleted"
+#USAGE flag "--plan-only" help="Start Floci, then plan instead of apply"
+# What this does, in order, and why: docs/mac-migration.md section 2 and ADR-0022. Bash 3.2 safe (macOS).
+set -euo pipefail
+cd "$MISE_PROJECT_ROOT"
+
+REVISION="${usage_revision:-main}"
+PLAN_ONLY="${usage_plan_only:-false}"
+PROFILE="${COLIMA_PROFILE:-yaaf}"
+CLUSTER="yaaf-dev"
+K3S_NAME="floci-eks-$CLUSTER"
+DEV="infra/environments/dev"
+COMPOSE="$DEV/compose.yaml"
+
+step() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*"; }
+die() { step "FAILED: $*"; exit 1; }
+wait_until() { # description, timeout seconds, command...
+  local what="$1" end=$((SECONDS + $2)); shift 2
+  until "$@" >/dev/null 2>&1; do
+    [ "$SECONDS" -lt "$end" ] || { step "timed out waiting for: $what"; return 1; }
+    sleep 5
+  done
+}
+
+# The default VM runs other services and is never ours to start, stop or restart.
+[ "$PROFILE" != "default" ] || die "refusing to use the default Colima profile; this project uses its own VM"
+
+mkdir -p .aws .kube
+
+ensure_vm() {
+  if ! colima status "$PROFILE" >/dev/null 2>&1; then
+    step "Starting the $PROFILE VM (4 CPUs, 8 GiB, Rosetta); the global Docker context is left alone"
+    colima start "$PROFILE" --vm-type vz --vz-rosetta --cpu 4 --memory 8 --disk 60 --activate=false
+  fi
+  wait_until "the Docker engine" 120 docker info || die "Docker did not come up in the $PROFILE VM"
+}
+
+start_floci() {
+  step "Starting Floci and floci-dash, waiting for Floci's health check"
+  docker compose -f "$COMPOSE" up -d --wait --remove-orphans
+}
+
+tofu_root() { # root, verb (plan|apply), extra args...
+  local dir="$DEV/$1" verb="$2" out; shift 2
+  local flags=(-input=false -no-color)
+  [ "$verb" != "apply" ] || flags+=(-auto-approve)
+  tofu -chdir="$dir" init -input=false -no-color >/dev/null || die "tofu init ($dir)"
+  if ! out="$(tofu -chdir="$dir" "$verb" "${flags[@]}" "$@" 2>&1)"; then printf '%s\n' "$out"; die "tofu $verb ($dir)"; fi
+  printf '%s\n' "$out" | grep -E '^(Apply complete|No changes|Plan:)' || true
+}
+
+# The `floci` AWS profile (the kubectl IAM user's key) and the kubeconfig. Floci's EKS auth rejects the dummy `test`
+# keys. Re-run on every check: the cluster's host port can change when its container is recreated.
+KUBE_CONTEXT=""
+update_access() {
+  local id secret
+  id="$(tofu -chdir="$DEV/foundation" output -raw kubectl_access_key_id 2>/dev/null)" || return 1
+  secret="$(tofu -chdir="$DEV/foundation" output -raw kubectl_secret_access_key 2>/dev/null)" || return 1
+  aws configure set aws_access_key_id "$id" --profile floci
+  aws configure set aws_secret_access_key "$secret" --profile floci
+  aws configure set region us-east-1 --profile floci
+  aws configure set endpoint_url http://localhost:4566 --profile floci
+  KUBE_CONTEXT="$(aws eks describe-cluster --name "$CLUSTER" --profile floci --query cluster.arn --output text)" || return 1
+  aws eks update-kubeconfig --name "$CLUSTER" --profile floci >/dev/null
+}
+cluster_ready() {
+  kubectl --context "$KUBE_CONTEXT" get --raw=/readyz --request-timeout=8s >/dev/null &&
+    kubectl --context "$KUBE_CONTEXT" wait --for=condition=Ready node --all --timeout=10s >/dev/null
+}
+ready_check() { update_access && cluster_ready; }
+
+# Floci can leave k3s dead after an abrupt stop (quirk Q1) while still reporting the cluster ACTIVE. k3s state is
+# disposable: Argo CD restores every workload from git.
+repair_cluster() {
+  # Evidence for quirk Q1, kept in the output each time it happens.
+  step "k3s before the repair: $(docker inspect -f 'status={{.State.Status}} exit={{.State.ExitCode}} started={{.State.StartedAt}}' "$K3S_NAME" 2>&1)"
+  docker logs --tail 6 "$K3S_NAME" 2>&1 | cut -c1-200 | sed 's/^/    /' || true
+  step "Repairing: removing the k3s container and volume ($K3S_NAME), then restarting Floci (not the VM)"
+  docker rm -f "$K3S_NAME" >/dev/null 2>&1 || true
+  docker volume rm -f "$K3S_NAME" >/dev/null 2>&1 || true
+  docker compose -f "$COMPOSE" restart floci
+  start_floci
+}
+
+argo_ready() {
+  local states
+  states="$(kubectl --context "$KUBE_CONTEXT" -n argocd get applications \
+    -o jsonpath='{range .items[*]}{.status.sync.status}/{.status.health.status}{"\n"}{end}' 2>/dev/null)" || return 1
+  [ -n "$states" ] && ! printf '%s\n' "$states" | grep -qv '^Synced/Healthy$'
+}
+
+# Content and status: Floci answers 200 on port 4566 for almost anything (quirk Q4), and an error page can contain the
+# page's own name (the shop's 500 page says "Online Boutique"), so the text alone proves nothing.
+url_has() { # url, host header (or empty), expected text (or empty: any normal status)
+  local url="$1" host="$2" expect="$3" args=(-s -m 5) reply
+  [ -z "$host" ] || args+=(-H "Host: $host")
+  if [ -n "$expect" ]; then
+    reply="$(curl "${args[@]}" -w '\n%{http_code}' "$url")" || return 1
+    [ "${reply##*$'\n'}" = "200" ] && printf '%s' "$reply" | grep -q "$expect"
+  else
+    curl "${args[@]}" -o /dev/null -w '%{http_code}' "$url" | grep -Eq '^(200|30[0-9]|401|403)$'
+  fi
+}
+check_url() { # label, url, host header, expected text, link to print
+  local state="DOWN"
+  if wait_until "$1" 240 url_has "$2" "$3" "$4"; then state="OK  "; fi
+  printf '  %s  %-26s %s\n' "$state" "$1" "$5"
+}
+
+ensure_vm
+start_floci
+
+if [ "$PLAN_ONLY" = "true" ]; then
+  step "Plan only: bootstrap"; tofu_root bootstrap plan
+  if aws s3api head-bucket --bucket yaaf-dev-tfstate --endpoint-url http://localhost:4566 --no-sign-request >/dev/null 2>&1; then
+    step "Plan only: foundation"; tofu_root foundation plan
+  else
+    step "The state bucket does not exist yet, so foundation cannot be planned until bootstrap is applied."
+  fi
+  exit 0
+fi
+
+step "Applying bootstrap (the state bucket)"
+tofu_root bootstrap apply
+for attempt in 1 2; do
+  step "Applying foundation (attempt $attempt)"
+  tofu_root foundation apply
+  step "Waiting for the cluster API and nodes"
+  if wait_until "the cluster to be Ready" 180 ready_check; then break; fi
+  if [ "$attempt" -eq 2 ]; then
+    step "The cluster is still not healthy after a repair. Last k3s log lines:"
+    docker logs --tail 25 "$K3S_NAME" || true
+    exit 1
+  fi
+  repair_cluster
+done
+kubectl --context "$KUBE_CONTEXT" get nodes
+
+step "Applying cluster (Argo CD, tracking '$REVISION')"
+tofu_root cluster apply -var "target_revision=$REVISION" -var "kubeconfig_context=$KUBE_CONTEXT" -var "kubeconfig_path=$KUBECONFIG"
+
+step "Waiting for the Argo CD applications to be Synced and Healthy"
+wait_until "the applications" 300 argo_ready || step "WARNING: not every application is Synced and Healthy (revision '$REVISION')"
+kubectl --context "$KUBE_CONTEXT" -n argocd get applications
+
+portal_host="$(tofu -chdir="$DEV/foundation" output -raw portal_domain_name 2>/dev/null || true)"
+echo; step "Checking every endpoint"
+[ -z "$portal_host" ] || check_url "Portal (S3 + CloudFront)" "http://127.0.0.1:4566/" "$portal_host" "dev portal" "http://${portal_host}:4566/"
+check_url "AWS console (floci-dash)" "http://localhost:9877" "" "" "http://localhost:9877"
+check_url "Argo CD" "http://127.0.0.1:${INGRESS_PORT}/" "argocd.localhost" "Argo CD" "http://argocd.localhost:${INGRESS_PORT}"
+check_url "Headlamp" "http://127.0.0.1:${INGRESS_PORT}/" "headlamp.localhost" "Headlamp" "http://headlamp.localhost:${INGRESS_PORT}"
+check_url "Shop" "http://127.0.0.1:${INGRESS_PORT}/" "shop.localhost" "Online Boutique" "http://shop.localhost:${INGRESS_PORT}"
+echo
+echo "Argo CD login: admin, password: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
+echo "AWS CLI:       aws --profile floci s3 ls     (the project's own profile; mise points the CLI at .aws/)"
+step "Done."

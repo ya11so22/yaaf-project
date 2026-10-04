@@ -66,11 +66,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+      # OpenTofu at the version and checksum in mise.lock, and the shared environment from mise.toml (ADR-0025).
+      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
         with:
-          tofu_version: 1.12.6
-          # The wrapper only exposes stdout/exit code as step outputs, which no step here uses.
-          tofu_wrapper: false
+          install_args: opentofu
 
       - name: Format
         run: tofu fmt -check -recursive -diff infra
@@ -173,11 +172,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+      # OpenTofu at the version and checksum in mise.lock, and the shared environment from mise.toml (ADR-0025).
+      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
         with:
-          tofu_version: 1.12.6
-          # The wrapper only exposes stdout/exit code as step outputs, which no step here uses.
-          tofu_wrapper: false
+          install_args: opentofu
 
       # Same compose file used locally, so Floci's config has one source of truth. CI starts only Floci.
       - name: Start Floci

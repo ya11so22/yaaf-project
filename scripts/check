@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# The project's fast checks (ADR-0009). One script, used by the pre-commit hook and by CI, so the
-# two cannot drift.
+# The project's fast checks (ADR-0009, ADR-0025). One script, used by the pre-commit hook, `mise run check` and CI, so
+# the three cannot drift. The tools are the locked versions from mise.toml (no Docker needed).
 #
 #   scripts/check         staged-changes secret scan; a missing tool is reported as SKIP
 #   scripts/check --ci    full-history secret scan; a missing tool is a failure
@@ -11,20 +11,15 @@ if [ "${1:-}" = "--ci" ]; then ci=true; fi
 
 cd "$(git rev-parse --show-toplevel)"
 
-# Pinned by digest. Bump deliberately. rhysd/actionlint v1.7.12, gitleaks v8.30.1, zizmor v1.30.1, kubeconform v0.8.0.
-ACTIONLINT_IMAGE="rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667"
-GITLEAKS_IMAGE="ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f"
-ZIZMOR_IMAGE="ghcr.io/zizmorcore/zizmor@sha256:a2eb396d886c053073405c7a980f2139ba2248ec172243cfa3841e57196e8101"
-KUBECONFORM_IMAGE="ghcr.io/yannh/kubeconform@sha256:faffaf43f95aa6425306e1ab8d6fcad72acb9049158f38e574c085ea1ec0f64e"
-# The Kubernetes version the manifests are checked against; keep in step with modules/eks-cluster (ADR-0022).
-K8S_VERSION="1.36.0"
+# Called from a git hook or a plain shell there is no mise environment: run again inside it. In CI jdx/mise-action has
+# already installed the tools and exported the environment, so K8S_VERSION is set and this is skipped.
+if [ -z "${K8S_VERSION:-}" ]; then
+  if command -v mise >/dev/null 2>&1; then exec mise exec -- bash "$0" "$@"; fi
+  echo "K8S_VERSION is not set: run this through mise (mise run check)" >&2
+  exit 1
+fi
 
 failed=0
-
-# Docker on Windows needs a Windows-style path for the bind mount.
-mount_path() {
-  if command -v cygpath >/dev/null 2>&1; then cygpath -m "$PWD"; else printf '%s' "$PWD"; fi
-}
 
 run() {
   local name="$1"; shift
@@ -48,67 +43,50 @@ unavailable() {
   fi
 }
 
-have_docker() { command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; }
-
-docker_run() {
-  env MSYS_NO_PATHCONV=1 docker run --rm \
-    -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo \
-    -v "$(mount_path):/repo" -w /repo "$@"
+# Run a check only if its tool is installed (always installed by mise; this guards a broken install).
+needs() { # tool, name, command...
+  local tool="$1" name="$2"; shift 2
+  if command -v "$tool" >/dev/null 2>&1; then run "$name" "$@"; else unavailable "$name" "$tool not installed"; fi
 }
 
-if command -v tofu >/dev/null 2>&1; then
-  run "tofu fmt" tofu fmt -check -recursive -diff infra
-else
-  unavailable "tofu fmt" "tofu not installed"
-fi
+needs tofu "tofu fmt" tofu fmt -check -recursive -diff infra
 
 run "change-detection tests" bash .github/scripts/changed-services.test.sh
 run "content-tag tests" bash .github/scripts/content-tag.test.sh
 run "bump pull request tests" bash .github/scripts/bump-pr.test.sh
+needs kubectl "image pin tests" bash .github/scripts/bump-images.test.sh
 
-if command -v kubectl >/dev/null 2>&1; then
-  run "image pin tests" bash .github/scripts/bump-images.test.sh
-else
-  unavailable "image pin tests" "kubectl not installed"
-fi
-
-# Every kustomize directory under deploy/ renders, and what it renders is valid against the Kubernetes schemas.
+# Every kustomize directory under deploy/ renders, and what it renders is valid against the Kubernetes schemas of the
+# cluster's version (the minor from mise.toml).
 validate_manifests() {
   local dir rc=0
   for dir in deploy/*/; do
-    kubectl kustomize "$dir" | env MSYS_NO_PATHCONV=1 docker run -i --rm "$KUBECONFORM_IMAGE"       -strict -summary -kubernetes-version "$K8S_VERSION" - || rc=1
+    kubectl kustomize "$dir" | kubeconform -strict -summary -kubernetes-version "$K8S_VERSION.0" - || rc=1
   done
   return $rc
 }
+if command -v kubectl >/dev/null 2>&1; then
+  needs kubeconform "manifest schemas" validate_manifests
+else
+  unavailable "manifest schemas" "kubectl not installed"
+fi
 
 # Workflow security (ADR-0024). Online in CI when a token is present, which adds the audits that ask GitHub (impostor
 # commits, actions with known vulnerabilities); offline otherwise.
-zizmor() {
+zizmor_check() {
   if $ci && [ -n "${GH_TOKEN:-}" ]; then
-    docker_run -e GH_TOKEN "$ZIZMOR_IMAGE" --format plain .github
+    zizmor --format plain .github
   else
-    docker_run "$ZIZMOR_IMAGE" --offline --format plain .github
+    zizmor --offline --format plain .github
   fi
 }
+needs zizmor "zizmor" zizmor_check
+needs actionlint "actionlint" actionlint -color=false
 
-if have_docker; then
-  if command -v kubectl >/dev/null 2>&1; then
-    run "manifest schemas" validate_manifests
-  else
-    unavailable "manifest schemas" "kubectl not installed"
-  fi
-  run "zizmor" zizmor
-  run "actionlint" docker_run "$ACTIONLINT_IMAGE" -color=false
-  if $ci; then
-    run "gitleaks (full history)" docker_run "$GITLEAKS_IMAGE" git /repo --no-banner --redact
-  else
-    run "gitleaks (staged changes)" docker_run "$GITLEAKS_IMAGE" git /repo --pre-commit --staged --no-banner --redact
-  fi
+if $ci; then
+  needs gitleaks "gitleaks (full history)" gitleaks git . --no-banner --redact
 else
-  unavailable "manifest schemas" "docker not available"
-  unavailable "zizmor" "docker not available"
-  unavailable "actionlint" "docker not available"
-  unavailable "gitleaks" "docker not available"
+  needs gitleaks "gitleaks (staged changes)" gitleaks git . --pre-commit --staged --no-banner --redact
 fi
 
 if [ "$failed" -ne 0 ]; then
