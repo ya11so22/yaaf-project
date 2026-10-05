@@ -2,7 +2,7 @@
 
 **Status:** accepted (amends [ADR-0022](0022-the-local-aws-environment.md) item 6)
 **Date:** 2026-10-03
-**Evidence:** designed, with the chart facts checked against the pinned versions on 2026-10-05 (`helm template` of Traefik chart 41.6.0 and `traefik-crds` 1.18.0). Not yet run on the cluster.
+**Evidence:** designed, with the chart facts checked against the pinned versions on 2026-10-05 (`helm template` of Traefik chart 41.6.0 and `traefik-crds` 1.18.0). **Verified on Floci (2026-10-05):** the GatewayClass was Accepted, the Gateway Programmed with address `localhost` and three attached routes, and Argo CD and Headlamp answered through it; the shop's route is attached but the shop returns 500 until the arm64 images land (ADR-0027).
 
 ## Context
 
@@ -52,8 +52,7 @@ limits the change to the routing objects.
 
 ## Consequences / trade-offs accepted
 
-- Argo CD's health check for `Ingress` objects needed an address workaround (a published `localhost` status); Gateway
-  API objects report their own status conditions, which Argo CD reads, so that workaround is expected to go. To confirm.
+- Argo CD's health check for `Ingress` objects needed an address workaround (a published `localhost` status). Gateway API objects report their own status conditions, which Argo CD reads, but a Gateway with no address was expected to stay unprogrammed, so the same `localhost` status address is set on the Gateway (confirmed: it then reports `Programmed=True`).
 - Headlamp, Argo CD and the shop must still work through the Floci ALB with the host header preserved; the acceptance
   check is every URL answering with its own page content (quirk Q4), not a status code.
 - If a pinned Traefik version lags the Gateway API version, the CRD version is chosen to match Traefik's supported
