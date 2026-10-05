@@ -56,8 +56,9 @@ entries, archived ADRs, the Windows scripts) is at the tag `archive/windows-era`
       runners, explicit build arguments, `-arm64` content tags, an architecture check proven on real images, Trivy as the locked
       binary everywhere. First publish and attestation verified (24 attestations); the shop works on the arm64 node
       ([journal](journal/2026-10-05-arm64-pipeline.md))
-- [ ] **The Mac era, the rest** ([review](research/2026-10-03-architecture-review.md)): the ECR module deleted; `up` made lean with
-      an opt-in `extras` root
+- [x] **The Mac era, step 5** (2026-10-05): the ECR module and the `ecr-push` role deleted; `up` is lean, with the workstation and floci-dash in
+      an opt-in `extras` root (`up --extras`); the workstation is arm64 Ubuntu so SSH works; quirk Q1 explained (a ghost node, not a dead cluster)
+      and fixed ([journal](journal/2026-10-05-lean-up-and-extras.md))
 - [ ] Threat model (STRIDE) of the pipeline and infrastructure, including the bot App, auto-merge, no-login Headlamp,
       and floci-dash (becomes part of `06-security-and-compliance.md`)
 - [ ] Pre-merge deploy check: apply the dev roots to a throwaway Floci in the PR, install Argo CD, sync the PR's

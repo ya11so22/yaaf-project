@@ -3,11 +3,6 @@ output "oidc_provider_arn" {
   value       = local.oidc_provider_arn
 }
 
-output "ecr_push_role_arn" {
-  description = "Role for build workflows to push images."
-  value       = aws_iam_role.ecr_push.arn
-}
-
 output "tofu_plan_role_arn" {
   description = "Read-only role for tofu plan on pull requests."
   value       = aws_iam_role.tofu_plan.arn

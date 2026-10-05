@@ -69,3 +69,18 @@ split has to follow it. Making the apply role assumable only from `main` means t
   check (`conftest` on the plan) should also assert that no role trusts a wildcard `sub`.
 - The plan role needs access to wherever state lives; that is unresolved (ADR-0004 follow-up
   on the `aws-milestone` backend) and is not granted here.
+
+## Amendment 2026-10-05: two roles, not three
+
+The ECR module was deleted ([ADR-0022](0022-the-local-aws-environment.md) amendment): nothing used it, and CI pushes to GHCR. The
+`ecr-push` role existed only to push to those repositories, so it goes with them (a role with no resources to grant is not valid
+policy). `ecr:*` also leaves the `tofu-apply` role's infrastructure permissions. What remains:
+
+| Role | May be assumed from | Permissions |
+|---|---|---|
+| `tofu-plan` | `pull_request` | `ReadOnlyAccess` |
+| `tofu-apply` | `refs/heads/main` | EC2 and EKS, plus IAM role management limited to names under the project prefix |
+
+Trust is unchanged: exact-match `StringEquals` on `sub`, no wildcards, plus `aud = sts.amazonaws.com`. The overbroad-trust scenario of
+[ADR-0028](0028-scenario-library.md) still uses the `tofu-apply` role.
+

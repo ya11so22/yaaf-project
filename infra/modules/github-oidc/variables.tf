@@ -19,11 +19,6 @@ variable "apply_branch" {
   default     = "main"
 }
 
-variable "ecr_repository_arns" {
-  description = "ARNs of the ECR repositories the ecr-push role may push to."
-  type        = list(string)
-}
-
 variable "create_oidc_provider" {
   description = "Create the GitHub OIDC provider. AWS allows one per URL per account; set false and pass oidc_provider_arn if it already exists."
   type        = bool

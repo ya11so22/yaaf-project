@@ -21,19 +21,20 @@ Terms are added as they are resolved (via `/domain-modeling`), not written specu
 
 **The environment**
 
-- **AWS**: the cloud layer (IAM, VPC, S3, CloudFront, ELB, ECR, EKS). Backed by the local **Floci**; nothing billable
+- **AWS**: the cloud layer (IAM, VPC, S3, CloudFront, ELB, EKS). Backed by the local **Floci**; nothing billable
   is created on real AWS. Say "AWS" for the layer, and name the thing when it matters: the **EKS cluster**, a
   **workload** in it, or the **emulator** for Floci's own behaviour (ADR-0022).
 - **Floci**: the local AWS emulator, long-lived on the owner's machine with persistent storage, and fresh in every CI
   run. By default it does not enforce IAM policies or trust conditions; it has an enforcement mode
   (`docs/guides/iam-policies-and-trust.md`).
-- **floci-dash**: the dashboard for Floci, modelled on the AWS Management Console (ADR-0022).
+- **floci-dash**: the optional dashboard for Floci, modelled on the AWS Management Console; started by `up --extras` (ADR-0022).
 - **Environment**: what OpenTofu provisions on top of AWS. **dev** is the only one; there is no production.
 - **Root**: one OpenTofu working directory with its own state. dev has three, applied in order: **bootstrap** (the
-  state bucket), **foundation** (the account-level infrastructure), **cluster** (what runs inside EKS).
+  state bucket), **foundation** (the account-level infrastructure), **cluster** (Argo CD inside EKS); and an optional fourth,
+  **extras** (the workstation), applied only by `up --extras`.
 - **State bucket**: `yaaf-dev-tfstate` on Floci, holding the foundation and cluster state with an S3 lock file.
-- **Workstation**: the EC2 instance the foundation root creates to log in to; reachable through the dashboard terminal, SSH
-  or SSM Run Command (ADR-0022).
+- **Workstation**: the EC2 instance the extras root creates to log in to (`up --extras`); reachable through the dashboard terminal,
+  SSH (key in the repository's `.ssh/`) or SSM Run Command (ADR-0022).
 - **Scenario**: a failure exercise kept as a folder, `docs/scenarios/<name>/`: a spec written before it is run, a script that
   injects the fault, and a dated report in `docs/postmortems/` for each run (ADR-0028).
 - **Portal**: the static website (S3 behind CloudFront) that links to every local endpoint.

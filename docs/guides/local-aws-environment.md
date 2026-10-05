@@ -13,10 +13,10 @@ stores real files, CloudFront serves real pages). Knowing which is which is most
 ## How it works here
 
 ```
-Docker Desktop
+The project's Colima VM (`yaaf`)
 ├── floci        the AWS API on 127.0.0.1:4566 (and the ALB listener, published on 127.0.0.1:18080 because 8080 is not free on the owner's Mac)
-│   └── starts, when asked:  floci-eks-yaaf-dev (k3s: the EKS cluster)  ·  floci-ecr-registry (ECR)
-└── floci-dash   an AWS-console-style dashboard on 127.0.0.1:9877
+│   └── starts, when asked:  floci-eks-yaaf-dev (k3s: the EKS cluster)
+└── floci-dash   optional (`up --extras`): an AWS-console-style dashboard on 127.0.0.1:9877
 ```
 
 OpenTofu builds on it in three **roots**, each with its own state, applied in order by the `up` task ([`docs/mac-migration.md`](../mac-migration.md)):
@@ -24,7 +24,7 @@ OpenTofu builds on it in three **roots**, each with its own state, applied in or
 1. **bootstrap** creates one S3 bucket, `yaaf-dev-tfstate`: versioned, encrypted, public access blocked, and
    protected from deletion. Its own state is a local file, because a bucket cannot store the state of the code that
    creates it.
-2. **foundation** holds the account-level infrastructure: VPC, EKS, ECR, IAM, the ALB, and the portal site. Its state
+2. **foundation** holds the account-level infrastructure: VPC, EKS, IAM, the ALB, and the portal site. Its state
    is `foundation/terraform.tfstate` in that bucket.
 3. **cluster** installs Argo CD into EKS, which then deploys everything else from git. State: `cluster/terraform.tfstate`.
 

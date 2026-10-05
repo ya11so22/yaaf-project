@@ -2,12 +2,14 @@
 #MISE description="Bring the local AWS up, idempotently: VM, Floci, the three OpenTofu roots, kubeconfig, Argo CD"
 #USAGE flag "--revision <rev>" default="main" help="Git revision Argo CD tracks. A branch name tries a change before it is merged; run plain `up` again after the branch is deleted"
 #USAGE flag "--plan-only" help="Start Floci, then plan instead of apply"
+#USAGE flag "--extras" help="Also start floci-dash and apply the extras root: a workstation to log in to (SSH key kept in .ssh/)"
 # What this does, in order, and why: docs/mac-migration.md section 2 and ADR-0022. Bash 3.2 safe (macOS).
 set -euo pipefail
 cd "$MISE_PROJECT_ROOT"
 
 REVISION="${usage_revision:-main}"
 PLAN_ONLY="${usage_plan_only:-false}"
+EXTRAS="${usage_extras:-false}"
 PROFILE="${COLIMA_PROFILE:-yaaf}"
 CLUSTER="yaaf-dev"
 K3S_NAME="floci-eks-$CLUSTER"
@@ -38,8 +40,13 @@ ensure_vm() {
 }
 
 start_floci() {
-  step "Starting Floci and floci-dash, waiting for Floci's health check"
-  docker compose -f "$COMPOSE" up -d --wait --remove-orphans
+  if [ "$EXTRAS" = "true" ]; then
+    step "Starting Floci and floci-dash (extras), waiting for Floci's health check"
+    docker compose -f "$COMPOSE" --profile extras up -d --wait --remove-orphans
+  else
+    step "Starting Floci, waiting for its health check"
+    docker compose -f "$COMPOSE" up -d --wait --remove-orphans
+  fi
 }
 
 tofu_root() { # root, verb (plan|apply), extra args...
@@ -65,9 +72,21 @@ update_access() {
   KUBE_CONTEXT="$(aws eks describe-cluster --name "$CLUSTER" --profile floci --query cluster.arn --output text)" || return 1
   aws eks update-kubeconfig --name "$CLUSTER" --profile floci >/dev/null
 }
+# Floci runs ONE node. When its k3s container is recreated, the new node registers under a new name and the old Node object stays
+# NotReady forever, so "every node is Ready" never holds again (quirk Q1, found on 2026-10-05: a healthy new node beside a ghost,
+# and `up` rebuilt a working cluster). Healthy means the API answers and at least one node is Ready.
 cluster_ready() {
   kubectl --context "$KUBE_CONTEXT" get --raw=/readyz --request-timeout=8s >/dev/null &&
-    kubectl --context "$KUBE_CONTEXT" wait --for=condition=Ready node --all --timeout=10s >/dev/null
+    kubectl --context "$KUBE_CONTEXT" get nodes --no-headers 2>/dev/null | awk '$2 == "Ready" { n++ } END { exit n < 1 }'
+}
+
+# Remove the ghosts, so no dashboard shows a dead node.
+prune_stale_nodes() {
+  local node
+  for node in $(kubectl --context "$KUBE_CONTEXT" get nodes --no-headers 2>/dev/null | awk '$2 ~ /^NotReady/ { print $1 }'); do
+    step "Removing stale node $node (left by an earlier k3s container)"
+    kubectl --context "$KUBE_CONTEXT" delete node "$node" --wait=false >/dev/null || true
+  done
 }
 ready_check() { update_access && cluster_ready; }
 
@@ -139,6 +158,7 @@ for attempt in 1 2; do
   fi
   repair_cluster
 done
+prune_stale_nodes
 kubectl --context "$KUBE_CONTEXT" get nodes
 
 step "Applying cluster (Argo CD, tracking '$REVISION')"
@@ -148,13 +168,36 @@ step "Waiting for the Argo CD applications to be Synced and Healthy"
 wait_until "the applications" 300 argo_ready || step "WARNING: not every application is Synced and Healthy (revision '$REVISION')"
 kubectl --context "$KUBE_CONTEXT" -n argocd get applications
 
+if [ "$EXTRAS" = "true" ]; then
+  # A dedicated key for the workstation, kept in the repository's own .ssh/ (gitignored), never in ~/.ssh. No passphrase: it only
+  # opens a container on this machine. OpenTofu only ever sees the public half.
+  if [ ! -f .ssh/floci-dev ]; then
+    step "Creating the workstation's SSH key: .ssh/floci-dev"
+    mkdir -p .ssh && chmod 700 .ssh
+    ssh-keygen -q -t ed25519 -N "" -C floci-dev -f .ssh/floci-dev
+  fi
+  TF_VAR_ssh_public_key="$(cat .ssh/floci-dev.pub)"
+  export TF_VAR_ssh_public_key
+  step "Applying extras (the workstation)"
+  tofu_root extras apply
+  instance="$(tofu -chdir="$DEV/extras" output -raw workstation_instance_id)"
+  port="$(docker port "floci-ec2-$instance" 22/tcp 2>/dev/null | head -1 | sed 's/.*://')"
+fi
+
 portal_host="$(tofu -chdir="$DEV/foundation" output -raw portal_domain_name 2>/dev/null || true)"
 echo; step "Checking every endpoint"
 [ -z "$portal_host" ] || check_url "Portal (S3 + CloudFront)" "http://127.0.0.1:4566/" "$portal_host" "dev portal" "http://${portal_host}:4566/"
-check_url "AWS console (floci-dash)" "http://localhost:9877" "" "" "http://localhost:9877"
+[ "$EXTRAS" != "true" ] || check_url "AWS console (floci-dash)" "http://localhost:9877" "" "" "http://localhost:9877"
 check_url "Argo CD" "http://127.0.0.1:${INGRESS_PORT}/" "argocd.localhost" "Argo CD" "http://argocd.localhost:${INGRESS_PORT}"
 check_url "Headlamp" "http://127.0.0.1:${INGRESS_PORT}/" "headlamp.localhost" "Headlamp" "http://headlamp.localhost:${INGRESS_PORT}"
 check_url "Shop" "http://127.0.0.1:${INGRESS_PORT}/" "shop.localhost" "Online Boutique" "http://shop.localhost:${INGRESS_PORT}"
+if [ "$EXTRAS" = "true" ] && [ -n "${instance:-}" ]; then
+  echo
+  echo "Workstation $instance (extras):"
+  echo "  1. Console:  http://localhost:9877/#/services/ec2  -> open the instance -> Terminal"
+  [ -z "${port:-}" ] || echo "  2. SSH:      ssh -i .ssh/floci-dev -p $port -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@127.0.0.1"
+  echo "  3. SSM:      aws --profile floci ssm send-command --instance-ids $instance --document-name AWS-RunShellScript --parameters commands='uname -m'"
+fi
 echo
 echo "Argo CD login: admin, password: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
 echo "AWS CLI:       aws --profile floci s3 ls     (the project's own profile; mise points the CLI at .aws/)"

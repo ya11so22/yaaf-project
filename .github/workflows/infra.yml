@@ -22,6 +22,7 @@ concurrency:
 env:
   DEV_DIR: infra/environments/dev
   ENV_DIR: infra/environments/dev/foundation
+  EXTRAS_DIR: infra/environments/dev/extras
   COMPOSE_FILE: infra/environments/dev/compose.yaml
 
 jobs:
@@ -76,7 +77,7 @@ jobs:
 
       - name: Validate every root
         run: |
-          for root in bootstrap foundation cluster; do
+          for root in bootstrap foundation extras cluster; do
             echo "::group::$root"
             (cd "$DEV_DIR/$root" && tofu init -input=false -backend=false && tofu validate)
             echo "::endgroup::"
@@ -161,7 +162,9 @@ jobs:
   smoke:
     needs: changes
     if: needs.changes.outputs.infra == 'true'
-    runs-on: ubuntu-latest
+    # arm64, like everything else that runs this project's containers (ADR-0027): the workstation is an arm64 image, which cannot
+    # start on an amd64 runner (the instance goes straight to "terminated").
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 15
     permissions:
       contents: read
@@ -213,6 +216,18 @@ jobs:
       - name: Re-plan must show no changes
         working-directory: ${{ env.ENV_DIR }}
         run: tofu plan -input=false -detailed-exitcode
+
+      # The optional extras root (a workstation), which reads the foundation's state: it must apply, be idempotent, and go.
+      - name: Apply the extras root
+        working-directory: ${{ env.EXTRAS_DIR }}
+        run: |
+          tofu init -input=false
+          tofu apply -input=false -auto-approve
+          tofu plan -input=false -detailed-exitcode
+
+      - name: Destroy the extras root
+        working-directory: ${{ env.EXTRAS_DIR }}
+        run: tofu destroy -input=false -auto-approve
 
       # The state bucket is protected by prevent_destroy on purpose; it goes with Floci's volume below.
       - name: Destroy

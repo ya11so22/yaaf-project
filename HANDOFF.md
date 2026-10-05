@@ -15,7 +15,7 @@ repository is that engagement, designed, built, operated and broken on purpose, 
 
 | Area | State | Evidence |
 |---|---|---|
-| Local AWS (Floci, three OpenTofu roots, EKS on k3s, ALB, Argo CD, portal, EC2 workstation) | built and working on Windows | verified on Floci; never run on the Mac |
+| Local AWS (Floci, three OpenTofu roots plus an optional extras root, EKS on k3s, ALB, Argo CD, portal) | built and working | verified on Floci, on the Mac (2026-10-04 to 05) |
 | Delivery (GitHub Actions to GHCR, GitOps with Argo CD, bot PR pins images) | working | Phase 1 end-to-end run and failure drill (`docs/postmortems/`) |
 | Pipeline standard (ADR-0024: provenance, SBOM, digest pins, scan ratchet, zizmor, kubeconform, Scorecard, Dependabot) | merged in PR #26 | first `main` run (2026-10-03): all 12 images passed the scan gate, the `pins` job wrote `tag@digest` pins and the bot PR (#27) merged; a squash-only bug in auto-merge was found and fixed (#29). **Not yet exercised:** publishing and attestations, because every image was reused (no service changed) |
 | Architecture track (`docs/architecture/`) | scenario chosen, nothing else written | |
@@ -72,7 +72,6 @@ The owner's rule: **do not open the upstream PR until the fix is proven end to e
 ## Open decisions for the owner
 
 - ADR-0020 (real AWS only for free identity services): proposed, now optional after the IAM drill.
-- Keep or drop the ECR module and GitHub OIDC roles (applied on Floci, unused by CI; ADR-0023).
-- Whether the learning extras (EC2 workstation, portal, Headlamp, IAM drill) stay in the default `up` or move to an
-  opt-in root.
+- ~~Keep or drop the ECR module and OIDC roles~~ Decided 2026-10-05: ECR deleted, with the `ecr-push` role; `tofu-plan` and `tofu-apply` stay.
+- ~~Whether the learning extras stay in the default `up`~~ Decided 2026-10-05: the workstation and floci-dash are opt-in (`up --extras`).
 - Filing the other upstream findings (Floci F2 to F5 as issues; the floci-dash WebSocket origin issue privately).

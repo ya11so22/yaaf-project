@@ -16,7 +16,6 @@ resource "aws_iam_openid_connect_provider" "github" {
 
 data "aws_iam_policy_document" "trust" {
   for_each = {
-    ecr_push   = [local.sub_pull_request, local.sub_apply_branch]
     tofu_plan  = [local.sub_pull_request]
     tofu_apply = [local.sub_apply_branch]
   }
@@ -43,12 +42,6 @@ data "aws_iam_policy_document" "trust" {
   }
 }
 
-resource "aws_iam_role" "ecr_push" {
-  name               = "${var.name_prefix}-gha-ecr-push"
-  assume_role_policy = data.aws_iam_policy_document.trust["ecr_push"].json
-  tags               = var.tags
-}
-
 resource "aws_iam_role" "tofu_plan" {
   name               = "${var.name_prefix}-gha-tofu-plan"
   assume_role_policy = data.aws_iam_policy_document.trust["tofu_plan"].json
@@ -61,37 +54,6 @@ resource "aws_iam_role" "tofu_apply" {
   tags               = var.tags
 }
 
-data "aws_iam_policy_document" "ecr_push" {
-  statement {
-    sid       = "AuthToken"
-    actions   = ["ecr:GetAuthorizationToken"]
-    resources = ["*"]
-  }
-
-  statement {
-    sid = "PushPull"
-    actions = [
-      "ecr:BatchCheckLayerAvailability",
-      "ecr:BatchGetImage",
-      "ecr:CompleteLayerUpload",
-      "ecr:DescribeImages",
-      "ecr:DescribeRepositories",
-      "ecr:GetDownloadUrlForLayer",
-      "ecr:InitiateLayerUpload",
-      "ecr:ListImages",
-      "ecr:PutImage",
-      "ecr:UploadLayerPart",
-    ]
-    resources = var.ecr_repository_arns
-  }
-}
-
-resource "aws_iam_role_policy" "ecr_push" {
-  name   = "ecr-push"
-  role   = aws_iam_role.ecr_push.id
-  policy = data.aws_iam_policy_document.ecr_push.json
-}
-
 resource "aws_iam_role_policy_attachment" "tofu_plan_read_only" {
   role       = aws_iam_role.tofu_plan.name
   policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
@@ -100,7 +62,7 @@ resource "aws_iam_role_policy_attachment" "tofu_plan_read_only" {
 data "aws_iam_policy_document" "tofu_apply" {
   statement {
     sid       = "Infrastructure"
-    actions   = ["ec2:*", "eks:*", "ecr:*"]
+    actions   = ["ec2:*", "eks:*"]
     resources = ["*"]
   }
 

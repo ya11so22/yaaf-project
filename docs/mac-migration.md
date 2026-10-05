@@ -35,7 +35,7 @@ What the Windows `dev-up` did, in order. Keep the order; it matters.
 1. **Start the runtime if needed**, wait for `docker info`.
 2. `docker compose -f infra/environments/dev/compose.yaml up -d --wait --remove-orphans` (waits on Floci's own health
    check).
-3. **SSH key for the EC2 workstation**: create `~/.ssh/floci-dev` (ed25519, no passphrase) once if missing, and pass only
+3. **SSH key for the EC2 workstation** (now only with `up --extras`, and kept in the repository's `.ssh/`): create `floci-dev` (ed25519, no passphrase) once if missing, and pass only
    the public half as `TF_VAR_ssh_public_key`. Never let the private key reach OpenTofu.
 4. `tofu -chdir=infra/environments/dev/bootstrap init && apply -auto-approve` (the state bucket; local state).
 5. `tofu -chdir=infra/environments/dev/foundation init && apply -auto-approve` (S3 backend on Floci).
@@ -45,7 +45,8 @@ What the Windows `dev-up` did, in order. Keep the order; it matters.
 7. `aws eks update-kubeconfig --name yaaf-dev --profile floci`, and take the context name from
    `aws eks describe-cluster --name yaaf-dev --query cluster.arn` (do not hard-code it). Run this on every `up`: the
    cluster's host port can change when its container is recreated.
-8. **Wait for the cluster**: `kubectl get --raw=/readyz` and `kubectl wait --for=condition=Ready node --all`. Up to ~3 min.
+8. **Wait for the cluster**: `kubectl get --raw=/readyz` and **at least one node Ready** (not `--all`: see Q1). Up to ~3 min. Then remove any
+   stale `NotReady` nodes.
 9. **Repair if it does not become ready** (see quirk Q1): `docker rm -f floci-eks-yaaf-dev`,
    `docker volume rm floci-eks-yaaf-dev`, restart Floci, then repeat steps 5 to 8 once. Safe because the cluster's
    state is disposable: Argo CD restores every workload from git.
@@ -80,19 +81,19 @@ Its `cygpath` branch is Windows-only and can be deleted on the Mac.
 
 | | Quirk (Floci 2.1.0) | Handling |
 |---|---|---|
-| Q1 | After an abrupt stop the k3s container comes back on a stale IP and exits, while Floci still reports the cluster `ACTIVE`; OpenTofu sees no drift. Floci also only restores the cluster when the EKS API is first called. | `up` checks the cluster itself and repairs it (step 9). |
+| Q1 | Two causes seen. **Windows era:** after an abrupt stop the k3s container comes back on a stale IP and exits, while Floci still reports the cluster `ACTIVE`; OpenTofu sees no drift. **Mac, 2026-10-05 (evidence from `up`'s diagnostics):** when Floci recreates its k3s container (for example after the compose file changes), the new node registers under a new name and the **old Node object stays `NotReady` forever**; the cluster is healthy but "every node Ready" never holds, and the old `up` rebuilt a working cluster. Floci also only restores the cluster when the EKS API is first called. | `up` treats the cluster as healthy when the API answers and at least one node is Ready, prunes the stale nodes, and still repairs a cluster that really is dead (step 9). The planted-ghost-node test is in the journal. |
 | Q2 | The cluster's datastore volume `floci-eks-<name>` carries no `floci=true` label. | `reset` matches it by name. |
 | Q3 | CloudFront drops tags given at creation, so the first re-apply "changes" the distribution; `ListInstanceProfileTags` is unsupported. | First is a known one-apply convergence (CI applies twice); second has `ignore_changes` in `modules/ec2-instance`. A fix for the first is drafted for upstream (`HANDOFF.md`). |
 | Q4 | Port 4566 answers HTTP 200 for unknown hosts (an S3 list). | URL checks look for page content. |
 | Q5 | CloudFront viewer requests route only by the generated domain. | `FLOCI_SERVICES_CLOUDFRONT_DOMAIN_SUFFIX=cloudfront.localhost` in `compose.yaml`. |
-| Q6 | EC2 SSH (2200-2299) and security-group ports (30000-30999) are published on all interfaces, and the source CIDR is not enforced. | On Windows this needed a firewall rule. On macOS, check with `lsof -nP -iTCP -sTCP:LISTEN | grep -E ':22[0-9]{2}'`; block with the application firewall or `pf` if on a shared network. |
+| Q6 | EC2 SSH (2200-2299) and security-group ports (30000-30999) are published on all interfaces, and the source CIDR is not enforced. | On Windows this needed a firewall rule. On macOS, check with `lsof -nP -iTCP -sTCP:LISTEN | grep -E ':22[0-9]{2}'`; block with the application firewall or `pf` if on a shared network. **Checked on the Mac, 2026-10-05:** Colima's tunnel binds `4566`, `18080` and `9877` to loopback, but the workstation's SSH port is `*:2200` (all interfaces). It exists only after `up --extras`; block it at the application firewall or `pf` on a shared network. |
 | Q7 | IAM is not enforced by default; IMDSv2-required is not enforced. | Documented; `scripts/drills/iam-trust.sh` shows enforcement mode. |
 
 ## 4. Windows-specific things that should simply disappear
 
 - `curl.exe` and Host-header workarounds: macOS resolves `*.localhost` in `curl` too.
 - `FLOCI_SERVICES_ECR_URI_STYLE: path` in `compose.yaml` was added because Docker Desktop on Windows could not resolve
-  `*.localhost` registry names. Try removing it on the Mac; keep it if image pushes to Floci's ECR fail.
+  `*.localhost` registry names. Removed on 2026-10-05 together with the ECR module, which nothing used.
 - PowerShell 5.1 compatibility rules, the login-time registry task, `%LOCALAPPDATA%` logs, `cygpath` in scripts.
 - `act` (`.actrc`, removed): not needed. `scripts/check` covers the fast checks and CI runs the rest for free.
 
@@ -114,7 +115,7 @@ multi-arch index (`docker buildx imagetools create`), attesting the index digest
   (Q2) is gone. Nothing here starts, stops or restarts any other profile: other services run in them.
 - **Their own configuration.** `AWS_CONFIG_FILE`, `AWS_SHARED_CREDENTIALS_FILE` and `KUBECONFIG` point at `.aws/` and
   `.kube/` in the repository (gitignored), so the `floci` profile and the cluster context never touch `~/.aws` or `~/.kube`.
-- **No SSH key by default.** The workstation's key pair is empty unless `TF_VAR_ssh_public_key` is set; the SSH route moves to
-  the opt-in `extras` root.
+- **A lean default.** The workstation and floci-dash are only in `up --extras` (the `extras` root and a compose profile). The
+  workstation's SSH key is created in the repository's `.ssh/`, not `~/.ssh`, and only then.
 - **One source for versions.** The Kubernetes minor and the k3s image come from `mise.toml`.
 

@@ -14,6 +14,7 @@ override.tf.json
 # The project's own AWS CLI and kubectl configuration (mise.toml)
 .aws/
 .kube/
+.ssh/
 
 # Node
 node_modules/
