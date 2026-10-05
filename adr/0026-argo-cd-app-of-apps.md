@@ -2,7 +2,7 @@
 
 **Status:** accepted (amends [ADR-0022](0022-the-local-aws-environment.md) item 4 and [ADR-0023](0023-build-and-delivery.md) item 2)
 **Date:** 2026-10-03
-**Evidence:** designed. The pattern is Argo CD's documented one ([declarative setup](https://argo-cd.readthedocs.io/en/release-3.2/operator-manual/declarative-setup/)); the patch mechanism in item 3 is untested.
+**Evidence:** designed. The pattern is Argo CD's documented one ([declarative setup](https://argo-cd.readthedocs.io/en/release-3.2/operator-manual/declarative-setup/)); inline `kustomize.patches` on an Application is documented ([Argo CD](https://argo-cd.readthedocs.io/en/stable/user-guide/kustomize/)). The files validate against the Argo CD and Gateway API schemas in `check`. **Verified on Floci (2026-10-05):** a fresh cluster reached all seven Applications Synced (six Healthy; the shop is held back by the amd64 images, ADR-0027), the repo-sourced Applications tracked the branch given to `up --revision` while the chart-sourced ones kept their chart versions, and a label merged through git reached the live Application in 54 seconds with no `tofu apply`.
 
 ## Context
 
@@ -35,8 +35,8 @@ shop is. Every Application also sits in Argo CD's unrestricted `default` project
 4. **An `AppProject` named `dev` replaces `default`**: allowed sources are this repository and the chart repositories
    in use; the only destination is the local cluster. Least privilege for what Argo CD may deploy and from where.
 5. **Order is explicit** with sync waves (CRDs before the resources that use them).
-6. The `argocd-apps` chart is kept only if it is the simplest way to create the root Application; otherwise the root is
-   one `kubernetes_manifest`. Decided when implementing, by whichever has fewer parts.
+6. The `argocd-apps` chart is kept: it creates the `AppProject` and the root Application from one values block, which is fewer
+   parts than adding a second provider for `kubernetes_manifest`. The unused `kubernetes` provider is removed from the cluster root.
 
 ## Rationale
 
@@ -51,5 +51,6 @@ benefit and is what platform interviews ask about.
   catch that before merge.
 - The branch patch is a small amount of cleverness. If it proves fragile, the fallback is documented as "edit the
   `targetRevision` values on the branch", not a second mechanism.
-- Acceptance: a fresh `up` reaches all Applications `Synced` and `Healthy` from the files in git, and a Traefik change
-  merged as a PR reaches the cluster without `tofu apply`.
+- Acceptance, met 2026-10-05 except for the shop's health: a fresh `up` reaches all Applications `Synced` from the files in git
+  and a Traefik-Application change in git reaches the cluster without `tofu apply`. The shop reaches `Healthy` when the arm64
+  images land.

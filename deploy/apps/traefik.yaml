@@ -1,0 +1,59 @@
+# Traefik, the gateway controller behind the ALB (ADR-0022, ADR-0029), from its official Helm chart. A NodePort service on
+# 30080, which is what the ALB's target group points at. After the Gateway API CRDs (wave -1).
+#
+# The chart creates the GatewayClass `traefik` and the Gateway `traefik-gateway`: one HTTP listener on Traefik's `web` entry
+# point (port 8000, the container port behind NodePort 30080) that accepts routes from every namespace, so each service owns
+# its own HTTPRoute. The Ingress provider is off: nothing uses Ingress objects any more. The Gateway's status address is set to
+# "localhost": with a NodePort service there is no load-balancer address for Traefik to copy, and a Gateway without an
+# address is not reported as Programmed.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: traefik
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: dev
+  source:
+    repoURL: https://traefik.github.io/charts
+    chart: traefik
+    targetRevision: 41.6.0
+    helm:
+      valuesObject:
+        service:
+          spec:
+            type: NodePort
+        ports:
+          web:
+            nodePort: 30080
+          websecure:
+            expose:
+              default: false
+        providers:
+          kubernetesIngress:
+            enabled: false
+          kubernetesGateway:
+            enabled: true
+            statusAddress:
+              hostname: localhost
+              service:
+                enabled: false
+        gateway:
+          listeners:
+            web:
+              port: 8000
+              protocol: HTTP
+              namespacePolicy:
+                from: All
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: traefik
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

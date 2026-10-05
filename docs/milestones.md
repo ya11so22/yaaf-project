@@ -47,9 +47,14 @@ entries, archived ADRs, the Windows scripts) is at the tag `archive/windows-era`
       `up`, `down`, `reset`, `check` built; `up` builds the whole environment from nothing on the project's own Colima VM
       and every URL answers; `scripts/check` runs the locked binaries; the bump scripts fixed for macOS
       ([journal](journal/2026-10-04-mise-tasks-and-first-up.md))
-- [ ] **The Mac era, the rest** ([review](research/2026-10-03-architecture-review.md)), in this order: app-of-apps and Gateway
-      API (with the Gateway API guide); the arm64 pipeline with the architecture check, which also fixes the four app pods that
-      crash on emulated amd64; the ECR module deleted; `up` made lean with an opt-in `extras` root
+- [x] **The Mac era, step 3** (2026-10-05): Argo CD Applications in git as an app-of-apps with a least-privilege project
+      ([ADR-0026](../adr/0026-argo-cd-app-of-apps.md)); Gateway API instead of Ingress, with its CRDs from Traefik's chart and
+      [a guide](guides/gateway-api.md) ([ADR-0029](../adr/0029-gateway-api-for-ingress.md)); `check` validates both against
+      their schemas. Verified on the cluster: a change merged through git reached the live Application in 54 s with no
+      `tofu apply` ([journal](journal/2026-10-05-app-of-apps-and-gateway-api.md))
+- [ ] **The Mac era, the rest** ([review](research/2026-10-03-architecture-review.md)), in this order: the arm64 pipeline
+      with the architecture check, which also fixes the five app pods that fail on emulated amd64; the ECR module deleted;
+      `up` made lean with an opt-in `extras` root
 - [ ] Threat model (STRIDE) of the pipeline and infrastructure, including the bot App, auto-merge, no-login Headlamp,
       and floci-dash (becomes part of `06-security-and-compliance.md`)
 - [ ] Pre-merge deploy check: apply the dev roots to a throwaway Floci in the PR, install Argo CD, sync the PR's

@@ -1,0 +1,25 @@
+# The HTTPRoutes for the platform tools (Argo CD and Headlamp), from deploy/routes. The shop's own route is part of deploy/dev.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-routes
+  namespace: argocd
+  labels:
+    yaaf/source: repo
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: dev
+  source:
+    repoURL: https://github.com/ya11so22/yaaf-project.git
+    targetRevision: main
+    path: deploy/routes
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: traefik   # the routes carry their own namespaces; this is only where Argo CD records the Application
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -57,11 +57,14 @@ run "bump pull request tests" bash .github/scripts/bump-pr.test.sh
 needs kubectl "image pin tests" bash .github/scripts/bump-images.test.sh
 
 # Every kustomize directory under deploy/ renders, and what it renders is valid against the Kubernetes schemas of the
-# cluster's version (the minor from mise.toml).
+# cluster's version (the minor from mise.toml). Argo CD Applications and Gateway API routes are custom resources, so their
+# schemas come from the datreeio CRD catalog, pinned to a commit (a schema, never code that runs).
+CRD_SCHEMAS='https://raw.githubusercontent.com/datreeio/CRDs-catalog/4c8dc296d32b06d15ccde9668ff136c951f4d539/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
 validate_manifests() {
   local dir rc=0
   for dir in deploy/*/; do
-    kubectl kustomize "$dir" | kubeconform -strict -summary -kubernetes-version "$K8S_VERSION.0" - || rc=1
+    kubectl kustomize "$dir" | kubeconform -strict -summary -kubernetes-version "$K8S_VERSION.0" \
+      -schema-location default -schema-location "$CRD_SCHEMAS" - || rc=1
   done
   return $rc
 }

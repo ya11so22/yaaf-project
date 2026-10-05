@@ -1,0 +1,22 @@
+# Argo CD's UI and API at http://argocd.localhost:18080 (ADR-0029). Argo CD serves plain HTTP on port 80 because the chart
+# sets server.insecure; there is no TLS between Traefik and it locally.
+#
+# A route lives in the namespace of the service it sends traffic to and attaches to the platform's Gateway: the platform team
+# owns the Gateway (deploy/apps/traefik.yaml), the owner of each service owns its route. No hostname port: Traefik matches the
+# name, and the browser's :18080 is only where the ALB listens.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: argocd
+  namespace: argocd
+spec:
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik
+      sectionName: web
+  hostnames:
+    - argocd.localhost
+  rules:
+    - backendRefs:
+        - name: argocd-server
+          port: 80

@@ -77,6 +77,9 @@ repair_cluster() {
   # Evidence for quirk Q1, kept in the output each time it happens.
   step "k3s before the repair: $(docker inspect -f 'status={{.State.Status}} exit={{.State.ExitCode}} started={{.State.StartedAt}}' "$K3S_NAME" 2>&1)"
   docker logs --tail 6 "$K3S_NAME" 2>&1 | cut -c1-200 | sed 's/^/    /' || true
+  # Hypothesis to settle: a stale Node object from an earlier container id stays NotReady, so "all nodes Ready" never holds.
+  step "nodes before the repair:"
+  kubectl --context "$KUBE_CONTEXT" get nodes --request-timeout=8s 2>&1 | sed 's/^/    /' || true
   step "Repairing: removing the k3s container and volume ($K3S_NAME), then restarting Floci (not the VM)"
   docker rm -f "$K3S_NAME" >/dev/null 2>&1 || true
   docker volume rm -f "$K3S_NAME" >/dev/null 2>&1 || true
