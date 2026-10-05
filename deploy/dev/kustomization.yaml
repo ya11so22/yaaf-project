@@ -29,50 +29,50 @@ patches:
 images:
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/adservice
     newName: ghcr.io/ya11so22/yaaf-project/adservice
-    newTag: content-2b278d0390f3
-    digest: sha256:3bb4c243394bcb1e8e671b9e38cb6b09af1ecdb08f2962a5a83dfbcd5efdeee7
+    newTag: content-2b278d0390f3-arm64
+    digest: sha256:dcef76983b278e685bcab3d260e525d87d42b77fe31e33f681804abeae59b713
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/cartservice
     newName: ghcr.io/ya11so22/yaaf-project/cartservice
-    newTag: content-5accb8fc294f
-    digest: sha256:c96e586b3c89597ad7d8891fb899263eed72bab404a0ebf26e44d129037f285c
+    newTag: content-5accb8fc294f-arm64
+    digest: sha256:5edeea8935fce3e5849aa3dc23ac137f71f13fcb02d2889c49976509c2011268
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/checkoutservice
     newName: ghcr.io/ya11so22/yaaf-project/checkoutservice
-    newTag: content-98fa30d9f986
-    digest: sha256:5f2499a217fe86fe0145e2189f90e564ed8c27db9aa93293c9835b1ad53f0a0d
+    newTag: content-98fa30d9f986-arm64
+    digest: sha256:a27cf432d0aa2a282337a28362b3a47a35117ccd818026393124ec874fce378d
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/currencyservice
     newName: ghcr.io/ya11so22/yaaf-project/currencyservice
-    newTag: content-582b4fbdc66b
-    digest: sha256:e9255b172a235baf536b0b7091842d936457bf0634c763c1c98c5e4041eaa37f
+    newTag: content-582b4fbdc66b-arm64
+    digest: sha256:fa446628eb8fa917a43ab5ec1e296df206e83c07fa4d71f2a25e874e8c979328
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/emailservice
     newName: ghcr.io/ya11so22/yaaf-project/emailservice
-    newTag: content-7e1d31f58204
-    digest: sha256:11a25bd6d86e670067429a18e8452531ba9b8e1ff39e89665ec2e751f0a8a028
+    newTag: content-7e1d31f58204-arm64
+    digest: sha256:50b75d2a23064d63a4261b27ef774dd83107cd2d9d7c655cefdcb1b94ac54248
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/frontend
     newName: ghcr.io/ya11so22/yaaf-project/frontend
-    newTag: content-f5bead46a4e4
-    digest: sha256:36f1bc26f724d465a31fe15d3ced2b8c8ffcfc3fde3aba096a5f4e736be66b83
+    newTag: content-f5bead46a4e4-arm64
+    digest: sha256:685d9230b08850a396ae9d694342a7a2af9b6de9f139177ba37257be9e985515
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/loadgenerator
     newName: ghcr.io/ya11so22/yaaf-project/loadgenerator
-    newTag: content-01428054871b
-    digest: sha256:7cbfc8712d73a6aac549b36ac2239b4dd411414064e0896ed59605f403bbbcfd
+    newTag: content-01428054871b-arm64
+    digest: sha256:40f2dc88d85be1c7e17bfa27f8fe56e180bff117676ff52761dcb02d6f626500
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/paymentservice
     newName: ghcr.io/ya11so22/yaaf-project/paymentservice
-    newTag: content-510987408aa9
-    digest: sha256:dd359e73b2aadc7c6a1827ee03df87ed17d1f3b68cd3acfc272955a07250ccda
+    newTag: content-510987408aa9-arm64
+    digest: sha256:78dd57191f0619ab91eb8b59c78c2283a27128b988860fd3db6ecf2861149b70
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/productcatalogservice
     newName: ghcr.io/ya11so22/yaaf-project/productcatalogservice
-    newTag: content-0ede80f056b9
-    digest: sha256:56574cb33530629ea6b2fa3e738c4daf95971336bddecbbebe0d0c72ce05a88a
+    newTag: content-0ede80f056b9-arm64
+    digest: sha256:17b6ff452c7cb8604068872c3846b2f62c95ce440c2da0bc0d8446ebbff8aaff
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/recommendationservice
     newName: ghcr.io/ya11so22/yaaf-project/recommendationservice
-    newTag: content-7dfce87c6712
-    digest: sha256:a684669c8c908819e28da1f6714dae0899fbd308671d11956a6781a8bd802024
+    newTag: content-7dfce87c6712-arm64
+    digest: sha256:56598158bdcdf986d68ec71c9a7357c219b323bf33facbf35e9c153093c6ac4d
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/shippingservice
     newName: ghcr.io/ya11so22/yaaf-project/shippingservice
-    newTag: content-0eaeaf515e46
-    digest: sha256:8e5203ec9b9342fd56598077d40d6565447c929c8976650785a2efc6c57a9998
+    newTag: content-0eaeaf515e46-arm64
+    digest: sha256:408ddae8b8b18c650c1911ebbb86c46bc73bd1dc8282d48ef530e159edab103f
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/shoppingassistantservice
     newName: ghcr.io/ya11so22/yaaf-project/shoppingassistantservice
-    newTag: content-032bb90c833c
-    digest: sha256:35ac605290e50ca1ad21e82bad85b4f845ff5b50a35b2ea5e9dabc0d67e7edf1
+    newTag: content-032bb90c833c-arm64
+    digest: sha256:137b3ce165a9ed32393c5d962cecb2c9a111b4f5a1cc2953f83e1ea7ca51ecfe
 # END image pins
