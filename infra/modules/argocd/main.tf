@@ -55,8 +55,9 @@ resource "helm_release" "root" {
     # ClusterRoles and a GatewayClass.
     projects = {
       dev = {
-        namespace   = var.namespace
-        description = "The dev environment: the workload and the platform tools"
+        namespace = var.namespace
+        # No colon-space in it: the chart prints the description unquoted, and YAML would read it as a mapping.
+        description = "The dev environment, the workload and the platform tools"
         sourceRepos = var.source_repos
         destinations = [{
           server    = "https://kubernetes.default.svc"
