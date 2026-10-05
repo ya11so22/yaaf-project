@@ -29,7 +29,9 @@ differs() {
 a1="$("$script" app/src/a)"
 b1="$("$script" app/src/b/src)"
 
-case "$a1" in content-????????????) echo "ok   - tag format" ;; *) echo "FAIL - tag format: $a1"; failures=$((failures + 1)) ;; esac
+case "$a1" in content-????????????-arm64) echo "ok   - tag format carries the architecture" ;; *) echo "FAIL - tag format: $a1"; failures=$((failures + 1)) ;; esac
+case "$(IMAGE_ARCH=amd64 "$script" app/src/a)" in content-????????????-amd64) echo "ok   - architecture can be overridden" ;; *) echo "FAIL - IMAGE_ARCH override"; failures=$((failures + 1)) ;; esac
+differs "another architecture gives another tag" "$a1" "$(IMAGE_ARCH=amd64 "$script" app/src/a)"
 check "trailing slash accepted" "$a1" "$("$script" app/src/a/)"
 
 echo two > app/src/b/src/file

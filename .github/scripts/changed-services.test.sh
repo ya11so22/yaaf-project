@@ -14,7 +14,8 @@ git config core.autocrlf false
 
 mkdir -p app/src/a app/src/b app/src/cart/src app/src/nodocker docs .github/workflows .github/scripts
 touch app/src/a/Dockerfile app/src/b/Dockerfile app/src/cart/src/Dockerfile app/src/nodocker/file docs/x
-touch .github/workflows/build.yml .github/scripts/changed-services.sh
+touch .github/workflows/build.yml .github/workflows/reusable-container-image.yml .github/scripts/changed-services.sh
+touch .github/scripts/content-tag.sh .github/scripts/check-image-arch.sh
 git add -A
 git commit -qm base
 base="$(git rev-parse HEAD)"
@@ -57,6 +58,12 @@ check "folder without a Dockerfile is ignored" \
 before_wf="$(git rev-parse HEAD)"
 commit_change .github/workflows/build.yml
 check "workflow change builds everything" "$ALL" "$(bash "$script" "$before_wf" HEAD)"
+
+for f in .github/workflows/reusable-container-image.yml .github/scripts/content-tag.sh .github/scripts/check-image-arch.sh; do
+  before="$(git rev-parse HEAD)"
+  commit_change "$f"
+  check "a change to $f builds everything" "$ALL" "$(bash "$script" "$before" HEAD)"
+done
 
 before_sc="$(git rev-parse HEAD)"
 commit_change .github/scripts/changed-services.sh
