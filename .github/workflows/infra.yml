@@ -162,7 +162,9 @@ jobs:
   smoke:
     needs: changes
     if: needs.changes.outputs.infra == 'true'
-    runs-on: ubuntu-latest
+    # arm64, like everything else that runs this project's containers (ADR-0027): the workstation is an arm64 image, which cannot
+    # start on an amd64 runner (the instance goes straight to "terminated").
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 15
     permissions:
       contents: read
