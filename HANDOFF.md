@@ -34,13 +34,12 @@ repository is that engagement, designed, built, operated and broken on purpose, 
 *Updated 2026-10-04. The order below follows [`docs/milestones.md`](docs/milestones.md); the decisions are ADR-0025 to 0029.*
 
 1. ~~**Set up the Mac and rebuild the task interface.**~~ Done: `mise.toml` and `.mise/tasks/` ([ADR-0025](adr/0025-tool-versions-and-tasks-in-mise.md)),
-   on the project's own Colima VM. `up` builds everything; the five app pods that fail on emulated amd64 are fixed by item 3.
+   on the project's own Colima VM. `up` builds everything, and with item 3 the shop works.
 2. ~~**App-of-apps and Gateway API**~~ Done 2026-10-05 ([ADR-0026](adr/0026-argo-cd-app-of-apps.md), [ADR-0029](adr/0029-gateway-api-for-ingress.md),
    [guide](docs/guides/gateway-api.md)).
-3. **arm64-only images** ([ADR-0027](adr/0027-arm64-only-app-images.md)): native arm runners, explicit build arguments, the
-   architecture check, `-arm64` content tags. This is also the first publish and attestation (verify with
-   `gh attestation verify oci://ghcr.io/ya11so22/yaaf-project/<service>@<digest> --repo ya11so22/yaaf-project`), and moves the Trivy
-   scan to the locked binary. Dependabot opens grouped PRs weekly; merge them when green.
+3. ~~**arm64-only images**~~ Done 2026-10-05 ([ADR-0027](adr/0027-arm64-only-app-images.md)), including the first publish and
+   attestation (verified with `gh attestation verify oci://ghcr.io/ya11so22/yaaf-project/<service>@<digest> --repo ya11so22/yaaf-project`;
+   add `--predicate-type https://cyclonedx.org/bom` for the SBOM). Dependabot opens grouped PRs weekly; merge them when green.
 4. **Finish the Floci upstream fix** (below), then ask the owner before opening anything upstream.
 5. Then Phase 1 close-out (threat model, pre-merge deploy check, demo), the scenario library ([ADR-0028](adr/0028-scenario-library.md)),
    Phase 2, and the architecture track (`00-requirements.md` first).

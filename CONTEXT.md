@@ -42,7 +42,7 @@ Terms are added as they are resolved (via `/domain-modeling`), not written specu
 
 **Build and delivery**
 
-- **Content tag**: an image tag `content-<hash>`, the git tree hash of a service's build context, so unchanged
+- **Content tag**: an image tag `content-<hash>-arm64`, the git tree hash of a service's build context plus the architecture (ADR-0027), so unchanged
   services keep their tag (ADR-0023).
 - **Image pin**: the committed content tag for a service in `deploy/dev`; what Argo CD deploys. Pins are derived from
   the source, so rollback is reverting the source change: a pin-only revert is undone by the next bump.

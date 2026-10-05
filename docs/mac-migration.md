@@ -98,7 +98,9 @@ Its `cygpath` branch is Windows-only and can be deleted on the Mac.
 
 ## 5. Apple Silicon: the one real porting risk
 
-Floci, floci-dash, k3s and redis publish arm64 images. **The 12 app images are amd64-only.** The k3s node on a Mac is
+*Resolved 2026-10-05 ([ADR-0027](../adr/0027-arm64-only-app-images.md)): the app images are now arm64-only, built on native arm runners; this section records the risk as it was.*
+
+Floci, floci-dash, k3s and redis publish arm64 images. **The 12 app images were amd64-only.** The k3s node on a Mac is
 arm64, so pods either run under the runtime's Rosetta/QEMU emulation (slow, sometimes broken for JVM and .NET) or fail
 with `exec format error`. First thing to try on the Mac: `up`, then `kubectl -n boutique get pods`. The proper fix is in the
 pipeline: build each service natively on `ubuntu-24.04` and the free `ubuntu-24.04-arm` runner and merge into one

@@ -74,6 +74,13 @@ label, is the lesson of the test above.
 - Existing pins in `deploy/dev` point at amd64 digests until the first arm64 build lands. Because the tag now differs,
   that first `main` build publishes all twelve services and the bot re-pins them in one pull request. The old amd64
   images age out through the GHCR cleanup (newest 10 versions per service).
-- Acceptance: all twelve services build on the arm runner; the architecture check fails on a planted amd64 image;
-  `gh attestation verify` passes for one published digest (the first real exercise of publishing and attestations,
-  HANDOFF item 2).
+- Acceptance, **met 2026-10-05** (verified on real GitHub Actions and on Floci):
+  - all twelve services built on `ubuntu-24.04-arm` in the pull request and again on `main`;
+  - the architecture check failed a planted mislabelled image (114 of 114 files x86-64) and passed the real ones, with the same
+    counts in CI as locally (114 for `emailservice`, 1 for `productcatalogservice`, 29 for `cartservice`);
+  - `main` published all twelve `-arm64` images; each pinned digest reads `arm64/linux` in GHCR;
+  - `gh attestation verify` passed for all twelve digests for both SLSA provenance and the CycloneDX SBOM, signed by
+    `reusable-container-image.yml` of this repository, with subject digests matching the pins (24 attestations);
+  - the bot's pin pull request merged by itself, and Argo CD rolled the arm64 images out: the five pods that failed on emulated
+    amd64 all run (11 of 11 `Running`, 0 restarts), `online-boutique-dev` is Synced and Healthy, and the shop's home, product
+    and cart pages return HTTP 200.
