@@ -11,6 +11,8 @@ kind: Application
 metadata:
   name: traefik
   namespace: argocd
+  labels:
+    yaaf/acceptance-test: from-git
   annotations:
     argocd.argoproj.io/sync-wave: "-1"
   finalizers:
