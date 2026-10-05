@@ -2,7 +2,7 @@
 
 **Status:** accepted (amends [ADR-0022](0022-the-local-aws-environment.md) item 6)
 **Date:** 2026-10-03
-**Evidence:** designed. The Gateway API and Traefik facts below come from their documentation and are to be confirmed on the pinned versions when implementing.
+**Evidence:** designed, with the chart facts checked against the pinned versions on 2026-10-05 (`helm template` of Traefik chart 41.6.0 and `traefik-crds` 1.18.0). Not yet run on the cluster.
 
 ## Context
 
@@ -24,14 +24,22 @@ learn the API, so the change comes with a guide.
 
 1. **Gateway API replaces the `Ingress` objects** for the shop, Argo CD and Headlamp. The ALB in front, its target group
    and Traefik's NodePort stay as they are.
-2. **The Gateway API CRDs** (the standard channel, version pinned) are installed by an Argo CD Application at an earlier
-   sync wave than anything that uses them (ADR-0026).
-3. **Traefik** enables its Kubernetes Gateway provider; one `GatewayClass` and one `Gateway` (HTTP listener) live in
-   the `traefik` namespace.
-4. **Each hostname is an `HTTPRoute`** in the namespace of the service it routes to (`shop`, `argocd`, `headlamp`;
-   `grafana` later), attached to the shared Gateway, with a `ReferenceGrant` where a route crosses namespaces. This
-   is the namespace-ownership split the API is designed for: the platform owns the Gateway, application teams own
-   their routes.
+2. **The Gateway API CRDs** are installed by an Argo CD Application (`deploy/apps/gateway-api-crds.yaml`) from Traefik's own
+   `traefik-crds` chart, pinned (1.18.0, which ships the Gateway API **v1.5.1** standard channel, with `gatewayAPI: true` and
+   Traefik's and Hub's CRDs off), at an earlier sync wave than anything that uses them (ADR-0026), with server-side apply because
+   the CRDs exceed client-side apply's 256 KiB annotation limit. Traefik v3.7 documents support for Gateway API v1.6.2; the chart
+   pairs v1.5.1 with it, and the resources used here (`GatewayClass`, `Gateway`, `HTTPRoute`) are stable in both. A first draft
+   vendored the 1.1 MB (20,000-line) upstream bundle into the repository; it was replaced by the chart because nobody can review
+   it and it needed a hand-update procedure.
+3. **Traefik** enables its Kubernetes Gateway provider and turns the Ingress provider off. The chart creates one
+   `GatewayClass` (`traefik`) and one `Gateway` (`traefik-gateway`, in the `traefik` namespace) with a single HTTP listener on
+   its `web` entry point (container port 8000, behind NodePort 30080) that accepts routes from every namespace. The Gateway's
+   status address is set to `localhost`, the same device the Ingress setup needed, because a NodePort service has no
+   load-balancer address to copy.
+4. **Each hostname is an `HTTPRoute`** in the namespace of the service it routes to (`boutique`, `argocd`, `headlamp`;
+   `grafana` later), attached to the shared Gateway by `parentRefs`. A route's backend is in its own namespace, so no
+   `ReferenceGrant` is needed (that object is for a route whose backend is in another namespace). This is the
+   namespace-ownership split the API is designed for: the platform owns the Gateway, application teams own their routes.
 5. **A guide, `docs/guides/gateway-api.md`**, written with the change: the roles (infrastructure provider, cluster
    operator, application developer), the resources and how they relate, a request traced from the browser through the
    ALB, Traefik and an `HTTPRoute`, and the traps.
