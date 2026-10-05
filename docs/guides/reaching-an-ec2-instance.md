@@ -20,9 +20,9 @@ you audit trails that SSH keys do not. SSH remains common for tools that need it
 
 ## How it works here
 
-The foundation root builds one instance, the **workstation** (Amazon Linux 2023), from
-[`modules/ec2-instance`](../../infra/modules/ec2-instance/main.tf); the `up` task should print the commands to reach it
-([`docs/mac-migration.md`](../mac-migration.md)).
+The optional **extras** root builds one instance, the **workstation** (Ubuntu 24.04 on arm64, see "Watch out for"), from
+[`modules/ec2-instance`](../../infra/modules/ec2-instance/main.tf). It exists only after `mise run up --extras`, which also starts
+floci-dash and prints the commands to reach it. The default environment is lean and has neither.
 
 **1. The console terminal.** Open http://localhost:9877, go to EC2, open the instance, and use the Terminal tab.
 floci-dash runs `docker exec -it <container> /bin/bash` inside the instance's container over the Docker socket. On
@@ -31,16 +31,16 @@ real AWS the equivalent is the console's "Connect" button.
 **2. SSH from your own terminal.**
 
 ```bash
-ssh -i ~/.ssh/floci-dev -p <port> -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@127.0.0.1
+ssh -i .ssh/floci-dev -p <port> -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@127.0.0.1
 ```
 
 The port comes from `docker port floci-ec2-<instance-id> 22`. What happens behind it:
-1. The `up` task creates a dedicated key `~/.ssh/floci-dev` once, and OpenTofu imports only the **public** half as an EC2
+1. `up --extras` creates a dedicated key `.ssh/floci-dev` in the repository (gitignored, never `~/.ssh`) once, and OpenTofu imports only the **public** half as an EC2
    key pair. The private half never leaves your machine.
 2. The instance is launched with that key pair's name. Floci copies the public key into `/root/.ssh/authorized_keys`
    inside the container at boot.
 3. Floci's images are minimal containers with no SSH server (real AMIs ship one), so the instance's **user data**, a
-   script that runs once at first boot, installs and starts `sshd`. This is what user data is for.
+   script that runs once at first boot, installs (with `apt`) and starts `sshd`. This is what user data is for.
 4. Floci maps the container's port 22 to a host port between 2200 and 2299.
 
 **3. SSM Run Command.**
@@ -69,6 +69,15 @@ aws --profile floci ssm get-command-invocation --command-id <CommandId> --instan
 
 ## Watch out for
 
+- **On an arm64 Mac the instance image must be arm64.** Floci's Amazon Linux 2023 image is x86_64 only; run under QEMU emulation, OpenSSH's
+  sandbox needs the kernel's seccomp filter, which QEMU's user mode does not provide, so `sshd` logs `prctl(PR_SET_SECCOMP): Invalid
+  argument` and drops every connection right after the key exchange (SSH looked half-working: the TCP port accepted, then
+  `Connection closed`). The workstation therefore uses Floci's `ami-ubuntu2404-arm64` and a Graviton instance type. *Found 2026-10-05 by
+  running a one-off debug `sshd` inside the instance, not by guessing.* On real AWS you would use Amazon Linux 2023 arm64.
+- **Floci's instance images are minimal.** `uptime` is not installed, so an SSM command that uses it reports `Failed`; use one the image has,
+  such as `uname -m`. The failure was the command, not SSM.
+- **The first boot takes a while.** User data installs `sshd` after the instance reports running; the port accepts connections before `sshd`
+  is ready. Wait for `/var/log/user-data.log` to finish, or retry.
 - **Floci publishes the SSH port on every network interface, not just this machine.** A listener check shows
   `*:2201` (macOS: `lsof -nP -iTCP:2201 -sTCP:LISTEN`). Login needs your key, so this is not an open door, but it is a
   listening port on your network, and the same is true of any port a security group opens (Floci publishes those on

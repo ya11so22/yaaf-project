@@ -11,17 +11,17 @@ real AWS: every provider uses Floci's endpoint and dummy keys (see the [cost gui
 ```
 infra/
 ├── environments/dev/
-│   ├── compose.yaml    Floci and floci-dash (the AWS-console-style dashboard), pinned by digest, loopback only
+│   ├── compose.yaml    Floci, and floci-dash (the AWS-console-style dashboard, optional), pinned by digest, loopback only
 │   ├── bootstrap/      1st root: the S3 bucket that holds the other roots' state (its own state is a local file)
-│   ├── foundation/     2nd root: VPC, EKS, ECR, IAM, the ingress ALB, the portal website (state in S3)
-│   └── cluster/        3rd root: Argo CD and the Applications it reconciles from git (state in S3)
+│   ├── foundation/     2nd root: VPC, EKS, IAM, the ingress ALB, the portal website (state in S3)
+│   ├── cluster/        3rd root: Argo CD, a project and the root Application; the rest is in deploy/apps (state in S3)
+│   └── extras/         optional 4th root, `up --extras` only: a workstation to log in to (state in S3)
 └── modules/
     ├── vpc/            VPC, public and private subnets over 2 AZs, internet gateway, one shared NAT gateway
     ├── eks-cluster/    EKS control plane, managed node group, cluster and node IAM roles
-    ├── ecr/            one repository per app service, lifecycle policy, immutable tags
-    ├── github-oidc/    GitHub OIDC provider and three least-privilege roles (ADR-0006)
+    ├── github-oidc/    GitHub OIDC provider and two least-privilege roles, plan and apply (ADR-0006)
     ├── alb-ingress/    an ALB forwarding to the ingress controller's NodePort
-    ├── ec2-instance/   an instance with a security group, SSM instance profile and IMDSv2 only (the workstation)
+    ├── ec2-instance/   an instance with a security group, SSM instance profile and IMDSv2 only (the workstation, in the extras root)
     ├── static-site/    a private S3 bucket behind CloudFront with origin access control
     └── argocd/         Argo CD from its Helm chart, and its Applications
 ```
@@ -40,7 +40,8 @@ The environment is operated by four mise tasks (ADR-0025). Run them from the rep
 
 | Task | What it does |
 |---|---|
-| `mise run up` | Starts the project's VM (`yaaf`) if it is stopped, then Floci, the three OpenTofu roots in order, the AWS profile and kubeconfig, a cluster repair if Floci left k3s dead, and Argo CD; then checks every URL. Idempotent. `--revision <branch>` tries a branch; `--plan-only` plans instead |
+| `mise run up` | Starts the project's VM (`yaaf`) if it is stopped, then Floci, the three OpenTofu roots in order (bootstrap, foundation, cluster), the AWS profile and kubeconfig, a cluster repair if Floci left k3s dead, and Argo CD; then checks every URL. Idempotent. `--revision <branch>` tries a branch; `--plan-only` plans instead |
+| `mise run up --extras` | The same, plus floci-dash and the `extras` root: a workstation to log in to, with its SSH key kept in `.ssh/` (gitignored) |
 | `mise run down` | Stops Floci and the cluster gracefully, then the `yaaf` VM. Keeps all data |
 | `mise run reset` | Deletes the `yaaf` VM and the local state files, after asking. Clean start |
 | `mise run check` | The fast checks (`scripts/check`) |
@@ -49,7 +50,7 @@ The project runs in its **own** Colima VM, named `yaaf`, and never touches any o
 Colima, the AWS CLI and `kubectl` at the project (`COLIMA_PROFILE`, `DOCKER_CONTEXT`, and `.aws/` and `.kube/` in the
 repository), so commands run here cannot reach other containers, your own `~/.aws` or `~/.kube`, or real AWS. What the tasks do,
 in order, and the Floci quirks they work around, is in [`docs/mac-migration.md`](../docs/mac-migration.md). The manual
-sequence, from inside `mise exec --`, is the same three roots in turn:
+sequence, from inside `mise exec --`, is the same roots in turn:
 
 ```bash
 docker compose -f infra/environments/dev/compose.yaml up -d --wait
@@ -70,14 +71,14 @@ Headlamp as an empty page).
 | URL | What |
 |---|---|
 | `http://<id>.cloudfront.localhost:4566/` | The portal: a static site in S3 behind CloudFront, linking to everything below: `http://$(tofu -chdir=infra/environments/dev/foundation output -raw portal_domain_name):4566/`. |
-| http://localhost:9877 | floci-dash, a dashboard modelled on the AWS Management Console |
+| http://localhost:9877 | floci-dash, a dashboard modelled on the AWS Management Console (only with `up --extras`) |
 | http://argocd.localhost:18080 | Argo CD. User `admin`; the password is in the `argocd-initial-admin-secret` secret |
 | http://headlamp.localhost:18080 | Headlamp, a read-only view of the cluster, no login |
 | http://shop.localhost:18080 | The Online Boutique, through the ALB and Traefik |
 | http://localhost:4566 | Floci's AWS API endpoint |
 
-And an EC2 **workstation** to log in to, three ways ([guide](../docs/guides/reaching-an-ec2-instance.md)): the terminal on
-floci-dash's EC2 page, `ssh -i ~/.ssh/floci-dev -p <port> root@127.0.0.1`, and `aws ssm send-command`. Floci publishes the SSH port
+With `up --extras`, an EC2 **workstation** to log in to, three ways ([guide](../docs/guides/reaching-an-ec2-instance.md)): the terminal on
+floci-dash's EC2 page, `ssh -i .ssh/floci-dev -p <port> root@127.0.0.1`, and `aws ssm send-command`. Floci publishes the SSH port
 on all network interfaces; see the guide.
 
 Browsers and `curl` resolve `*.localhost` names to loopback themselves.
@@ -126,14 +127,15 @@ Floci proves that tested SDK and IaC scenarios work, not that AWS behaves the sa
 - **Tags:** Floci drops tags on CloudFront distributions at creation and cannot read tags on IAM instance profiles, so the
   provider sees drift; the code works around each, with a comment
   ([upstream findings](../docs/research/2026-09-24-floci-upstream-findings.md)).
-- **Restarts:** Floci restores the cluster only when the EKS API is first called, and after an abrupt stop the k3s
-  container can die on a stale IP while Floci still reports the cluster `ACTIVE`. That is why the `up` task checks the
-  cluster itself and repairs it.
+- **Restarts:** Floci restores the cluster only when the EKS API is first called. After an abrupt stop the k3s container can die
+  on a stale IP while Floci still reports the cluster `ACTIVE`; and when Floci recreates the container, the new node registers under a
+  new name and the old Node object stays `NotReady` forever. That is why the `up` task checks the cluster itself (API answering and
+  one Ready node), removes ghost nodes, and rebuilds a cluster that is really dead.
 - **State and resources together:** the OpenTofu state is in Floci's S3, so losing Floci's data loses the state
   with it. The next `up` rebuilds from code, which is the point.
 
 ## CI
 
-`.github/workflows/infra.yml` checks formatting, validates all three roots, plans the foundation (on a local
+`.github/workflows/infra.yml` checks formatting, validates all four roots, plans the foundation (on a local
 backend, no Floci needed), and smoke-tests on a fresh Floci: bootstrap, apply the foundation on its S3 backend,
-require a no-changes re-plan, destroy.
+require a no-changes re-plan, apply the extras root and require it to be idempotent too, destroy both.

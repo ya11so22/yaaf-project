@@ -1,5 +1,6 @@
-# The second dev root (ADR-0022): the account-level infrastructure on the local AWS. Network, EKS, registry, IAM,
-# the ingress load balancer and a static website. What runs inside the cluster is the cluster root's job.
+# The second dev root (ADR-0022): the account-level infrastructure on the local AWS. Network, EKS, IAM, the ingress load
+# balancer and a static website. What runs inside the cluster is the cluster root's job; the optional learning extras (a
+# workstation to log in to) are the extras root's.
 provider "aws" {
   region = var.region
 
@@ -18,7 +19,6 @@ provider "aws" {
   endpoints {
     cloudfront = var.floci_endpoint
     ec2        = var.floci_endpoint
-    ecr        = var.floci_endpoint
     eks        = var.floci_endpoint
     elbv2      = var.floci_endpoint
     iam        = var.floci_endpoint
@@ -54,36 +54,13 @@ module "eks" {
   kubernetes_version = var.kubernetes_version
 }
 
-module "ecr" {
-  source = "../../../modules/ecr"
-
-  name_prefix = var.project
-  repositories = [
-    "adservice",
-    "cartservice",
-    "checkoutservice",
-    "currencyservice",
-    "emailservice",
-    "frontend",
-    "loadgenerator",
-    "paymentservice",
-    "productcatalogservice",
-    "recommendationservice",
-    "shippingservice",
-    "shoppingassistantservice",
-  ]
-
-  force_delete = true
-}
-
 # The roles GitHub Actions would assume on real AWS (ADR-0006). Floci stores them faithfully but does not enforce
 # their trust conditions, so here they prove the code's shape, not its security (ADR-0020 covers the real test).
 module "github_oidc" {
   source = "../../../modules/github-oidc"
 
-  name_prefix         = var.project
-  github_repository   = var.github_repository
-  ecr_repository_arns = values(module.ecr.repository_arns)
+  name_prefix       = var.project
+  github_repository = var.github_repository
 }
 
 # Floci's EKS authenticator rejects the public test/test key pair and needs a real IAM key, so kubectl (and the
@@ -131,35 +108,4 @@ module "portal" {
       })
     }
   }
-}
-
-# A key pair from the public key the `up` task generates (~/.ssh/floci-dev). Only the public half ever reaches OpenTofu.
-# Empty (for example in CI): no key pair, and the instance is reachable only through SSM or the console terminal.
-resource "aws_key_pair" "dev" {
-  count = var.ssh_public_key == "" ? 0 : 1
-
-  key_name   = "${local.name}-dev"
-  public_key = var.ssh_public_key
-}
-
-# A small instance to log in to, three ways: the dashboard's terminal, SSH from your own terminal, and SSM Run Command
-# (docs/guides/reaching-an-ec2-instance.md). Real AMIs ship an SSH server; Floci's are minimal container images, so
-# user data installs one, exactly as it would install anything else on first boot.
-module "workstation" {
-  source = "../../../modules/ec2-instance"
-
-  name      = "${local.name}-workstation"
-  vpc_id    = module.vpc.vpc_id
-  subnet_id = module.vpc.public_subnet_ids[0]
-  key_name  = one(aws_key_pair.dev[*].key_name)
-
-  # Floci publishes the SSH port on the host and does not enforce this range (see infra/README.md); real AWS would.
-  ssh_ingress_cidrs = ["127.0.0.1/32"]
-
-  user_data = <<-EOT
-    #!/bin/bash
-    dnf install -y -q openssh-server > /var/log/user-data.log 2>&1
-    ssh-keygen -A
-    /usr/sbin/sshd
-  EOT
 }

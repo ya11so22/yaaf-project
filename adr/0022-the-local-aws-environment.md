@@ -54,7 +54,7 @@ the way real AWS does. This ADR states the environment as it now is.
 7. **Website hosting, the AWS way:** a private S3 bucket behind a CloudFront distribution with origin access
    control, the pattern AWS recommends for static sites. Floci serves it at `http://<id>.cloudfront.localhost:4566/`.
    The first site is a small portal that links to every local endpoint.
-8. **An EC2 workstation** (`modules/ec2-instance`, Amazon Linux 2023) is created in the foundation root to practise the
+8. **An EC2 workstation** (`modules/ec2-instance`; Amazon Linux 2023 originally, Ubuntu 24.04 arm64 since 2026-10-05, see the amendment) is created in the foundation root to practise the
    three ways into an instance, as AWS offers them: the terminal in floci-dash's EC2 page, SSH from the owner's own
    terminal, and SSM Run Command. the `up` task creates a dedicated key `~/.ssh/floci-dev` once and passes only its public half to
    OpenTofu, which imports it as a key pair; user data installs `sshd` because Floci's instance images have none; the
@@ -110,7 +110,9 @@ Agreed after the architecture review ([research](../docs/research/2026-10-03-arc
 2. **A lean default `up`.** Floci, the state bucket, VPC, EKS, the ALB, Argo CD, the app, Traefik, Headlamp and the
    portal. The EC2 workstation (item 8) and floci-dash (item 3), which bring the SSH key, a second Docker-socket holder
    and the published ports of quirk Q6, move to an opt-in root, `extras`, applied only when asked for.
-3. **Floci's EKS stays**; the repair step in `up` handles the stale-IP failure (quirk Q1).
+3. **Floci's EKS stays**; the repair step in `up` handles a dead cluster (quirk Q1). *Found 2026-10-05:* the commonest Q1 on the Mac is not a dead
+   cluster but a healthy new node beside a stale `NotReady` one, which the old check ("every node Ready") could never accept, so `up` rebuilt
+   working clusters. The check is now "the API answers and one node is Ready", and stale nodes are pruned.
 4. **The ECR module is deleted**: nothing used it, CI pushes to GHCR, and git history keeps it. ECR is described as a
    design in the architecture track. The OIDC roles of ADR-0006 stay.
 5. **Item 4's `cluster` root** now installs Argo CD only and the Applications live in git ([ADR-0026](0026-argo-cd-app-of-apps.md)).
@@ -122,3 +124,16 @@ Agreed after the architecture review ([research](../docs/research/2026-10-03-arc
    qBittorrent, so every `*.localhost:8080` request returned that service's page and the project's listener could not bind.
    Inside Floci the listener stays on 8080 and only the published port differs. The URLs are now
    `http://shop.localhost:18080`, `http://argocd.localhost:18080` and `http://headlamp.localhost:18080`.
+8. **Done 2026-10-05: the lean default and the `extras` root.** The workstation moved to a fourth OpenTofu root, `extras`
+   (state `extras/terraform.tfstate`, reading the network from the foundation's state), and floci-dash to a compose profile; both are
+   started by `up --extras`. The ECR module and the `ecr-push` role are gone ([ADR-0006](0006-github-oidc-role-design.md) amendment).
+   The workstation's SSH key is created in the repository's `.ssh/` (gitignored), not `~/.ssh`. CI applies the extras root in the smoke
+   test and requires it to be idempotent.
+9. **The workstation is Ubuntu 24.04 on arm64** (`ami-ubuntu2404-arm64`, `t4g.micro`). Floci's Amazon Linux 2023 image exists only as
+   x86_64 and on an arm64 Mac runs under QEMU user-mode emulation, whose lack of seccomp support makes OpenSSH's sandbox fail
+   (`prctl(PR_SET_SECCOMP): Invalid argument`, every connection dropped after key exchange). *Verified on Floci:* SSH with the project key
+   logs in as `root` on `aarch64`, and SSM Run Command returns `aarch64`. User data uses `apt` instead of `dnf`.
+10. **Quirk Q6 holds on the Mac, and is now smaller.** Colima's tunnel binds the project's services (`4566`, `18080`, `9877`) to loopback only, but
+   the workstation's SSH port is bound to every interface (`lsof` shows `*:2200`). It exists only after `up --extras`, so the default
+   environment no longer exposes it.
+

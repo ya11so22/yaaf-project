@@ -20,7 +20,7 @@ Once up, everything is on loopback:
 | URL | What |
 |---|---|
 | `http://<id>.cloudfront.localhost:4566/` | The portal: a static site in S3 behind CloudFront, linking to everything else |
-| http://localhost:9877 | An AWS-console-style dashboard for the local AWS (floci-dash) |
+| http://localhost:9877 | An AWS-console-style dashboard for the local AWS (floci-dash), only after `mise run up --extras` |
 | http://argocd.localhost:18080 | Argo CD, reconciling the cluster from git |
 | http://headlamp.localhost:18080 | A read-only view of the EKS cluster |
 | http://shop.localhost:18080 | The app: Online Boutique, through an ALB and Traefik |
@@ -29,15 +29,15 @@ And from a terminal: `aws --profile floci s3 ls`, `kubectl get pods -A`. Details
 
 ## What is here
 
-- **Infrastructure as code** (OpenTofu, [ADR-0005](adr/0005-opentofu-over-terraform.md)) in three layered roots:
-  a state bucket, the account-level infrastructure (VPC, EKS, ECR, IAM, an ALB, a CloudFront site) with state in S3
+- **Infrastructure as code** (OpenTofu, [ADR-0005](adr/0005-opentofu-over-terraform.md)) in layered roots:
+  a state bucket, the account-level infrastructure (VPC, EKS, IAM, an ALB, a CloudFront site) with state in S3
   and native locking, and what runs in the cluster ([ADR-0022](adr/0022-the-local-aws-environment.md)).
 - **CI on GitHub Actions**: path-filtered image builds to GHCR with content-hash tags, a Trivy scan, an
   infrastructure pipeline that plans and smoke-tests on a fresh Floci, and a shared pre-commit gate
   ([ADR-0023](adr/0023-build-and-delivery.md), [ADR-0009](adr/0009-local-pre-gate.md)).
 - **GitOps delivery**: Argo CD deploys from git; a bot pull request bumps image pins after each build; rollback is
   reverting the source change, learned in a [deliberate failure exercise](docs/postmortems/2026-09-21-phase1-bad-emailservice.md).
-- **Least-privilege identity**: GitHub Actions federates into AWS with OIDC and three narrowly trusted roles, no
+- **Least-privilege identity**: GitHub Actions federates into AWS with OIDC and two narrowly trusted roles (plan on pull requests, apply on `main`), no
   stored keys ([ADR-0006](adr/0006-github-oidc-role-design.md)).
 - **The architecture track** (starting): requirements, views, a Well-Architected review with a findings register,
   reliability, cost, migration and security designs ([`docs/architecture/`](docs/architecture/README.md)). Each
@@ -71,7 +71,7 @@ code owner of everything else. One GitHub identity does both, so required review
 | Path | What lives here |
 |---|---|
 | `adr/` | Decisions, written before the work. [Index](adr/README.md) |
-| `infra/` | The local AWS (`environments/dev`: compose file and three OpenTofu roots) and the modules |
+| `infra/` | The local AWS (`environments/dev`: compose file and four OpenTofu roots, one of them optional) and the modules |
 | `deploy/` | What Argo CD deploys: the `dev` overlay with committed image pins, ingress rules, RBAC |
 | `scripts/` | `check` (the pre-commit gate, also run by CI) and `drills/` (on-demand demonstrations) |
 | `.github/` | Workflows and their scripts, with tests |

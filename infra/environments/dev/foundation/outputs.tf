@@ -10,13 +10,8 @@ output "cluster_endpoint" {
   value = module.eks.cluster_endpoint
 }
 
-output "ecr_repository_urls" {
-  value = module.ecr.repository_urls
-}
-
 output "github_oidc_role_arns" {
   value = {
-    ecr_push   = module.github_oidc.ecr_push_role_arn
     tofu_plan  = module.github_oidc.tofu_plan_role_arn
     tofu_apply = module.github_oidc.tofu_apply_role_arn
   }
@@ -41,7 +36,7 @@ output "portal_domain_name" {
   value       = module.portal.distribution_domain_name
 }
 
-output "workstation_instance_id" {
-  description = "The instance to log in to. On Floci its container is floci-ec2-<id>."
-  value       = module.workstation.instance_id
+output "public_subnet_ids" {
+  description = "The public subnets, for the extras root's workstation."
+  value       = module.vpc.public_subnet_ids
 }
