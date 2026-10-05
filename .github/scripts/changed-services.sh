@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Prints a JSON array of {"service","context"} for the app services that need building.
 #   usage: changed-services.sh <base-sha> <head-sha>
-# Builds every service when the base is unusable (new branch, force push) or when this script
-# or the build workflow changed; otherwise only services whose folder under app/src/ changed.
+# Builds every service when the base is unusable (new branch, force push) or when how images are built changed (the build
+# workflows, this script, the tag and architecture scripts); otherwise only services whose folder under app/src/ changed.
+# A change to the way images are built must be tried on images, not only reviewed.
 set -euo pipefail
 
 base="${1:-}"
@@ -29,7 +30,7 @@ else
   # forked are not counted as ours.
   fork_point="$(git merge-base "$base" "$head" 2>/dev/null || echo "$base")"
   changed="$(git diff --name-only "$fork_point" "$head")"
-  if echo "$changed" | grep -qE '^\.github/(workflows/build\.yml|scripts/changed-services\.sh)$'; then
+  if echo "$changed" | grep -qE '^\.github/(workflows/(build|reusable-container-image)\.yml|scripts/(changed-services|content-tag|check-image-arch)\.sh)$'; then
     services="$(all_services)"
   else
     services="$(echo "$changed" | sed -n 's#^app/src/\([^/]*\)/.*#\1#p' | sort -u | while read -r svc; do

@@ -44,7 +44,12 @@ unaffected; for `currencyservice` the reason is visible in its Dockerfile, where
    print(platform.machine())"`, `uname -m`). Distroless and chiseled images (Go, .NET) have no shell, so the check
    exports the image's filesystem (`docker create`, then `docker export`) and runs `file` on its entrypoint binary,
    which printed `ARM aarch64` for the two images tried. A mislabelled image must not be able to ship. (This is also
-   scenario material, ADR-0028.)
+   scenario material, ADR-0028.) **Built as `.github/scripts/check-image-arch.sh`** (2026-10-05): it exports the image's files
+   (it never runs the image, so it needs no shell), requires every ELF executable and shared library to be aarch64, and
+   requires at least one ELF so an empty export cannot pass. *Proven on real images:* `emailservice` built with the vendored
+   defaults (labelled arm64) failed with 114 of 114 files x86-64; the same service with the explicit arguments passed with 114
+   aarch64; the distroless Go image (1 ELF file) and the chiseled .NET image (29) passed. Its unit tests use hand-made ELF headers
+   and run in `check`, with no Docker.
 3. **Every job that runs this project's containers uses an arm runner**: the image build and the pre-merge deploy
    check. Jobs that run no project images stay on `ubuntu-latest`.
 4. **The Rosetta setting in the `yaaf` VM is a bridge**, kept only until the first arm64 images are deployed.

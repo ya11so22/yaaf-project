@@ -3,6 +3,10 @@ name: reusable-container-image
 # Builds, scans and (on main only) publishes one container image, with SLSA provenance and an SBOM (ADR-0024). Called by
 # build.yml once per changed service; a new service needs a folder with a Dockerfile, not a new pipeline.
 #
+# The images are arm64 only (ADR-0027): they are built on a native arm runner, with the two build arguments the vendored
+# Dockerfiles otherwise default to amd64, and a check proves the code inside is really aarch64, not just labelled so. The
+# scanner is the locked `trivy` binary from mise.lock (ADR-0025), not a third-party action.
+#
 #   pull request: build, scan, gate. Never pushes: an image that can reach the cluster is built by main only.
 #   main:         the same, then push by digest, attest provenance and SBOM. An image whose content tag already exists
 #                 is reused, since it was built by main from the same source.
@@ -28,14 +32,10 @@ on:
 
 permissions: {}
 
-env:
-  # Trivy itself is pinned (the action's own default, v0.70.0, has GHSA-mcj4-mphf-j9ff); bump deliberately.
-  TRIVY_VERSION: v0.74.0
-
 jobs:
   image:
     name: ${{ inputs.service }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm # free for public repositories (ADR-0027)
     timeout-minutes: 30
     permissions:
       contents: read
@@ -55,6 +55,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      # Trivy at the version and checksum in mise.lock (ADR-0025).
+      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+        with:
+          install_args: trivy
+          cache: false # this job publishes images: no tool cache that an earlier run could have poisoned (zizmor cache-poisoning)
 
       - id: tag
         run: echo "content=$(bash .github/scripts/content-tag.sh "$CONTEXT")" >> "$GITHUB_OUTPUT"
@@ -80,7 +86,12 @@ jobs:
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: ${{ inputs.context }}
-          platforms: linux/amd64
+          platforms: linux/arm64
+          # The vendored Dockerfiles declare "defaults" of amd64 for these two arguments, and the defaults win over the real
+          # platform: left alone, a Python image is labelled arm64 but holds x86_64 code (ADR-0027).
+          build-args: |
+            BUILDPLATFORM=linux/arm64
+            TARGETARCH=arm64
           load: true
           push: false
           provenance: false
@@ -88,17 +99,14 @@ jobs:
           cache-from: type=gha,scope=${{ inputs.service }}
           cache-to: type=gha,mode=max,scope=${{ inputs.service }}
 
+      # The label is not proof: look at the code inside. Fails the build if any executable or library is not aarch64.
+      - if: steps.existing.outputs.digest == ''
+        run: bash .github/scripts/check-image-arch.sh "$IMAGE:$SHA"
+
       # Report: HIGH and CRITICAL to the Security tab, never failing.
       - if: steps.existing.outputs.digest == ''
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          version: ${{ env.TRIVY_VERSION }}
-          image-ref: ${{ env.IMAGE }}:${{ env.SHA }}
-          format: sarif
-          output: trivy.sarif
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: "0"
+        run: |
+          trivy image --format sarif --output trivy.sarif --severity HIGH,CRITICAL --ignore-unfixed --exit-code 0 "$IMAGE:$SHA"
 
       - if: steps.existing.outputs.digest == '' && env.UPLOAD == 'true' && !cancelled()
         uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
@@ -108,16 +116,8 @@ jobs:
 
       # Gate: any fixable CRITICAL that is not an accepted, unexpired entry in .trivyignore.yaml fails the build.
       - if: steps.existing.outputs.digest == ''
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          version: ${{ env.TRIVY_VERSION }}
-          skip-setup-trivy: true
-          image-ref: ${{ env.IMAGE }}:${{ env.SHA }}
-          format: table
-          severity: CRITICAL
-          ignore-unfixed: true
-          trivyignores: .trivyignore.yaml
-          exit-code: "1"
+        run: |
+          trivy image --format table --severity CRITICAL --ignore-unfixed --ignorefile .trivyignore.yaml --exit-code 1 "$IMAGE:$SHA"
 
       - if: inputs.publish && steps.existing.outputs.digest == ''
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
@@ -131,7 +131,10 @@ jobs:
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: ${{ inputs.context }}
-          platforms: linux/amd64
+          platforms: linux/arm64
+          build-args: |
+            BUILDPLATFORM=linux/arm64
+            TARGETARCH=arm64
           push: true
           # Provenance comes from actions/attest below, stored on GitHub rather than as extra registry manifests.
           provenance: false
@@ -145,14 +148,10 @@ jobs:
           cache-from: type=gha,scope=${{ inputs.service }}
 
       - if: steps.publish.outputs.digest != ''
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          version: ${{ env.TRIVY_VERSION }}
-          skip-setup-trivy: true
-          image-ref: ${{ env.IMAGE }}@${{ steps.publish.outputs.digest }}
-          format: cyclonedx
-          output: sbom.cdx.json
-          exit-code: "0"
+        env:
+          DIGEST: ${{ steps.publish.outputs.digest }}
+        run: |
+          trivy image --format cyclonedx --output sbom.cdx.json "$IMAGE@$DIGEST"
 
       # SLSA build provenance: which workflow, commit and runner produced this digest.
       - if: steps.publish.outputs.digest != ''

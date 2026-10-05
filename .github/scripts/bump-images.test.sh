@@ -16,8 +16,8 @@ ok()   { echo "ok   - $1"; }
 fail() { echo "FAIL - $1"; failures=$((failures + 1)); }
 
 IMAGE_PREFIX=ghcr.io/example/repo bash "$script" "$work"
-pins="$(grep -c 'newTag: content-[0-9a-f]\{12\}$' "$work/kustomization.yaml" || true)"
-if [ "$pins" -eq 12 ]; then ok "all 12 buildable services pinned to content tags"; else fail "expected 12 pins, got $pins"; fi
+pins="$(grep -c 'newTag: content-[0-9a-f]\{12\}-arm64$' "$work/kustomization.yaml" || true)"
+if [ "$pins" -eq 12 ]; then ok "all 12 buildable services pinned to arm64 content tags"; else fail "expected 12 pins, got $pins"; fi
 
 cp "$work/kustomization.yaml" "$work/first.yaml"
 IMAGE_PREFIX=ghcr.io/example/repo bash "$script" "$work"
@@ -33,7 +33,7 @@ cp "$work/first.yaml" "$work/kustomization.yaml"
 DIGEST_RESOLVER="$work/resolver" IMAGE_PREFIX=ghcr.io/example/repo bash "$script" "$work" HEAD --verify
 digests="$(grep -c 'digest: sha256:a\{64\}$' "$work/kustomization.yaml" || true)"
 if [ "$digests" -eq 12 ]; then ok "--verify pins all 12 digests"; else fail "expected 12 digests, got $digests"; fi
-if kubectl kustomize "$work" | grep -q 'image: ghcr.io/example/repo/[a-z]*:content-[0-9a-f]\{12\}@sha256:a\{64\}$'; then
+if kubectl kustomize "$work" | grep -q 'image: ghcr.io/example/repo/[a-z]*:content-[0-9a-f]\{12\}-arm64@sha256:a\{64\}$'; then
   ok "digest pins render as name:tag@digest"
 else
   fail "digest pins render as name:tag@digest"
@@ -54,7 +54,7 @@ if echo "$rendered" | grep 'image:' | grep -q 'loadgenerator'; then fail "load g
 
 # The committed pins must be renderable and point only at our registry (or redis-cart's cache).
 committed="$(kubectl kustomize deploy/dev | grep -o 'image: [^ ]*' | sed 's/image: //' | sort -u)"
-if echo "$committed" | grep -v '^ghcr.io/ya11so22/yaaf-project/[a-z]*:content-[0-9a-f]\{12\}\(@sha256:[0-9a-f]\{64\}\)\?$' | grep -qv '^redis:alpine$'; then
+if echo "$committed" | grep -v '^ghcr.io/ya11so22/yaaf-project/[a-z]*:content-[0-9a-f]\{12\}\(-arm64\)\?\(@sha256:[0-9a-f]\{64\}\)\?$' | grep -qv '^redis:alpine$'; then
   fail "committed pins: unexpected image"
 else
   ok "committed pins render to our registry images only"

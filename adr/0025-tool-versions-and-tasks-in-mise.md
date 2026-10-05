@@ -49,7 +49,7 @@ The Windows operator scripts were also removed; the task interface (`up`, `down`
    (`cygpath`, `MSYS_NO_PATHCONV`) is deleted. `--ci` still treats a missing tool as a failure.
 5. **CI installs from the lockfile** with `jdx/mise-action` pinned to a commit SHA and `mise install --locked`, replacing
    the per-workflow version settings (`tofu_version`, `TRIVY_VERSION`) and `opentofu/setup-opentofu`.
-6. **(Done with the pipeline change, ADR-0027's PR, not with the tasks.) The Trivy scan and the SBOM run the locked `trivy` binary**, not `aquasecurity/trivy-action`. One fewer
+6. **(Done with ADR-0027's pipeline change, 2026-10-05.) The Trivy scan and the SBOM run the locked `trivy` binary**, not `aquasecurity/trivy-action`. One fewer
    third-party action in the trust chain after CVE-2026-33634 (76 of 77 `trivy-action` tags were repointed to a
    credential stealer on 2026-03-19; this repository was not exposed, being pinned by SHA to a later release). The same
    binary runs in the build, the weekly rescan and locally. SARIF still goes to the Security tab through
