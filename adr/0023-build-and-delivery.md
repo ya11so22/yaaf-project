@@ -27,6 +27,7 @@ make Argo CD react faster (0015). The push-based `deploy.yml` stayed behind as a
 1. **Four CI workflows on GitHub Actions,** third-party actions pinned to commit SHAs:
    - `build`: finds the changed services under `app/src`, builds each for amd64, scans with Trivy (report-only),
      and pushes to GHCR with a commit tag and a `content-<hash>` tag (the git tree hash of the service's folder).
+     *(Since 2026-10-05, ADR-0027: arm64 only, and the tag is `content-<hash>-arm64`.)*
    - `infra`: `fmt`, `validate` and `plan`, then a smoke test that applies the dev roots to a fresh Floci, requires a
      no-changes re-plan, and destroys it.
    - `check`: the shared pre-gate script (ADR-0009).
