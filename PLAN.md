@@ -67,12 +67,15 @@ Each stage is one or a few pull requests. Questions marked **?** are asked at th
 
 ### Stage 2: the ephemeral environment
 
-- [ ] One workflow on `ubuntu-24.04-arm`: Floci, the three roots, Argo CD at the commit under test, wait for every
-      Application to be `Synced` and `Healthy`, tear down
-- [ ] Runs on pull requests that touch `deploy/` or `infra/` (a required gate) and after every merge to `main`
-- [ ] The time from nothing to a healthy shop is recorded on every run: the platform's measured recovery time
-- [ ] Proved against a planted fault (a bad manifest that never becomes Healthy)
-- [ ] The runner is asserted to have cgroup v2 and enough disk (14 GB) before the build starts
+- [x] One workflow on `ubuntu-24.04-arm` (`environment.yml`): Floci, the three roots, Argo CD at the commit under test,
+      every Application `Synced` and `Healthy` and the shop and Argo CD answering (`up --strict`), torn down. First run
+      2026-10-08: all five Applications healthy, the shop answering, **207 s from nothing**
+- [x] Runs on pull requests that touch what it builds and after every merge to `main` (continuous verification)
+- [ ] Made a required check, with an always-running gate job (D24): a branch-protection change for the owner
+- [x] The build time is written to the job summary on every run: the platform's measured recovery time
+- [x] Proved against a planted fault: adservice pinned to a digest that does not exist; `online-boutique-dev` stayed
+      `Progressing`, the pod in `ImagePullBackOff`, the job failed with the diagnostics, and teardown still ran
+- [x] The runner is asserted to have cgroup v2 and 8 GB of free disk before the build starts
 - [ ] Floci's IAM enforcement on (`FLOCI_SERVICES_IAM_ENFORCEMENT_ENABLED`), and nothing authenticates with the `test` key
       that bypasses it
 - [ ] OpenTofu's S3 lock proved on Floci against a planted fault: two concurrent applies, the second refused
@@ -236,3 +239,4 @@ One line per merged change. History before 2026-10-03 is at the tag `archive/win
 - 2026-10-08: the delivery loop for agents (D41): review, auto-merge on green, proceed until a question
 - 2026-10-08: stage 1, the cloud workbench: the SessionStart hook, no Colima, the platform rebuilt and the data kept (D39), the extras removed (D40); the hosting research and D42 to D45
 - 2026-10-08: the sandbox lane prepared: `mise run sandbox`, the AWS Agent Toolkit rules, the guide (D46)
+- 2026-10-08: stage 2, the whole environment on an arm64 runner: 207 s from nothing to a healthy shop, proved red against a planted bad image digest
