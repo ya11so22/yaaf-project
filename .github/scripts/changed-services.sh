@@ -29,7 +29,8 @@ else
   # Diff from the merge-base so changes that landed on the base branch after this one
   # forked are not counted as ours.
   fork_point="$(git merge-base "$base" "$head" 2>/dev/null || echo "$base")"
-  changed="$(git diff --name-only "$fork_point" "$head")"
+  # --no-renames: a file moved between services counts for both.
+  changed="$(git diff --no-renames --name-only "$fork_point" "$head")"
   if echo "$changed" | grep -qE '^\.github/(workflows/(build|reusable-container-image)\.yml|scripts/(changed-services|content-tag|check-image-arch)\.sh)$'; then
     services="$(all_services)"
   else

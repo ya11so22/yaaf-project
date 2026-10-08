@@ -6,15 +6,11 @@ name: environment
 # verification, the evidence that stands in for a long-lived production. Its duration is the platform's measured
 # recovery time. arm64 because the images are (PLAN.md D27); cgroup v2, which Kubernetes needs, is checked before
 # anything runs.
+#
+# No workflow-level path filter: the `environment` job at the bottom is a required check and must report on every PR. The
+# rebuild itself runs only when a PR changes what it builds, and always on main and by hand.
 on:
   pull_request:
-    paths:
-      - "deploy/**"
-      - "infra/**"
-      - ".mise/tasks/**"
-      - "mise.toml"
-      - "mise.lock"
-      - ".github/workflows/environment.yml"
   push:
     branches: [main]
   workflow_dispatch:
@@ -26,7 +22,33 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  environment:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      rebuild: ${{ steps.detect.outputs.rebuild }}
+    steps:
+      # main and manual runs always rebuild (continuous verification), so only a pull request needs the history.
+      - if: github.event_name == 'pull_request'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - id: detect
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then echo "rebuild=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          echo "rebuild=$(bash .github/scripts/changed-paths.sh "$BASE" "$GITHUB_SHA" \
+            '^(deploy/|infra/|\.mise/tasks/|mise\.toml$|mise\.lock$|\.github/(workflows/environment\.yml|scripts/changed-paths\.sh)$)')" \
+            >> "$GITHUB_OUTPUT"
+
+  rebuild:
+    needs: changes
+    if: needs.changes.outputs.rebuild == 'true'
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 45
     permissions:
@@ -72,3 +94,19 @@ jobs:
       - name: Tear down
         if: always()
         run: mise run down || true
+
+  # The single required check (PLAN.md D24). Runs even when nothing relevant changed or a job failed.
+  environment:
+    needs: [changes, rebuild]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - env:
+          CHANGES: ${{ needs.changes.result }}
+          REBUILD: ${{ needs.rebuild.result }}
+        run: |
+          echo "changes=$CHANGES rebuild=$REBUILD"
+          [ "$CHANGES" = "success" ] || exit 1
+          [ "$REBUILD" = "success" ] || [ "$REBUILD" = "skipped" ] || exit 1

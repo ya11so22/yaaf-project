@@ -58,6 +58,7 @@ needs() { # tool, name, command...
 needs tofu "tofu fmt" tofu fmt -check -recursive -diff infra
 
 run "change-detection tests" bash .github/scripts/changed-services.test.sh
+run "changed-paths tests" bash .github/scripts/changed-paths.test.sh
 run "content-tag tests" bash .github/scripts/content-tag.test.sh
 run "bump pull request tests" bash .github/scripts/bump-pr.test.sh
 run "sandbox guard tests" bash scripts/sandbox.test.sh

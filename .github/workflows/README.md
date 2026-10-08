@@ -13,7 +13,7 @@ Delivery model (GitOps, content tags, rollback): [D23](../../PLAN.md#d23).
 | `rescan.yml` | | weekly | Re-scans the deployed images (the digests pinned in `deploy/dev`) for vulnerabilities published since they were built. |
 | `scorecard.yml` | | weekly and `main` | OpenSSF Scorecard: the repository's supply-chain practices, scored and published. |
 | `cleanup.yml` | | weekly | Keeps the newest 10 versions of each image on GHCR. |
-| `environment.yml` | | PRs touching `deploy/`, `infra/`, the tasks or tool pins; `main`; by hand | The whole environment from git on an arm64 runner (`mise run up --strict`): Floci, the three roots, Argo CD at the commit under test, every Application Synced and Healthy, the shop and Argo CD answering; torn down. The deploy check and continuous verification ([D31](../../PLAN.md#d31), [D32](../../PLAN.md#d32)); the build time is the platform's measured recovery time. Not yet required. |
+| `environment.yml` | `environment` (once the owner adds it) | every PR (rebuilds only when it touches `deploy/`, `infra/`, the tasks or tool pins); `main`; by hand | The whole environment from git on an arm64 runner (`mise run up --strict`): Floci, the three roots, Argo CD at the commit under test, every Application Synced and Healthy, the shop and Argo CD answering; torn down. The deploy check and continuous verification ([D31](../../PLAN.md#d31), [D32](../../PLAN.md#d32)); the build time is the platform's measured recovery time. The `environment` gate job always reports, so it can be required. |
 | `edge-check.yml` | | by hand | Proves the public edge ([D33](../../PLAN.md#d33), [D38](../../PLAN.md#d38)): a test page through the named Cloudflare tunnel at `check.yaafsome.fyi`, and Cloudflare Access in front of `argocd.` and `grafana.yaafsome.fyi` but not `shop.`. Reads the tunnel token from the `demo` environment; setup in the [tunnel guide](../../docs/guides/cloudflare-tunnel-and-access.md). |
 
 Also in `.github/`: `dependabot.yml` (weekly updates of action SHAs, the compose file's image digests and the OpenTofu
@@ -22,7 +22,8 @@ providers, each with a 7-day cooldown) and `CODEOWNERS`. The accepted-findings b
 
 Verify a published image: `gh attestation verify oci://ghcr.io/ya11so22/yaaf-project/<service>@<digest> --repo ya11so22/yaaf-project`.
 
-The pre-merge deploy check is `environment.yml` (above); making it a required check is the owner's branch-protection call.
+The pre-merge deploy check is `environment.yml` (above). To make it required: Settings, Branches, the rule for `main`, add the
+status check `environment`.
 
 ## Running locally
 
