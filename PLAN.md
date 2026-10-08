@@ -34,9 +34,9 @@ Floci*, or *verified on real AWS*.
 | **App repo** *(stage 3)* | The shop's source, its image builds and tests, the gates for agent PRs. Two teams by domain: **Checkout** (checkout, payment, cart, shipping, currency, email) and **Catalog** (frontend, product catalog, recommendation, ads) | Client 1 |
 | **Platform repo** (this one) | OpenTofu, Argo CD Applications, image pins, scenarios, the architecture track, this plan | Both |
 | **Ephemeral environment** *(stage 2)* | The full stack (Floci, three OpenTofu roots, EKS on k3s, Argo CD, the shop) built from git on a GitHub arm64 runner. One workflow, three uses: a **per-PR deploy check**, **continuous verification** after each merge, and an **on-demand live demo** | Both |
-| **Live demo** *(stage 4)* | The ephemeral environment held open for up to 6 hours, the shop and a read-only Argo CD behind a Cloudflare quick tunnel, the URLs on the repo's Deployments panel | Presenting |
+| **Live demo** *(stage 4)* | The ephemeral environment held open for up to 6 hours and published through a named Cloudflare tunnel: `shop.yaafsome.fyi` open to all, `argocd.` and `grafana.yaafsome.fyi` behind a Cloudflare Access login | Presenting |
 | **Observability** *(stage 5)* | Prometheus and Grafana in the environment: SLOs, burn-rate alerts, the dashboard worth presenting | Both |
-| **Showcase** *(stage 7)* | An always-on static site on Vercel: the story, the decisions, scenario reports, metric snapshots, the live-demo link | Presenting |
+| **Showcase** *(stage 7)* | An always-on static site on Vercel at `yaafsome.fyi`: the story, the decisions, scenario reports, metric snapshots, the live-demo link | Presenting |
 | **Production** | *Designed* for real AWS in the architecture track, never built. The ephemeral environment is the evidence that the design builds and runs | SA |
 
 Watch out: there is no long-lived environment, so GitOps never "keeps a cluster in step for weeks" here. It proves itself
@@ -78,10 +78,15 @@ Each stage is one or a few pull requests. Questions marked **?** are asked at th
 
 ### Stage 4: the live demo
 
+- [x] The domain `yaafsome.fyi`, registered on Cloudflare (2026-10-08)
+- [ ] The edge proved end to end: the owner does the one-time dashboard setup
+      ([guide](docs/guides/cloudflare-tunnel-and-access.md)), then `edge-check` passes (a test page through the tunnel at
+      `check.yaafsome.fyi`; Access in front of `argocd.` and `grafana.`, not `shop.`)
 - [ ] `workflow_dispatch` runs the stage 2 workflow and holds it open; `cloudflared` publishes the shop and Argo CD
-- [ ] A read-only Argo CD account; the admin login is never reachable through the tunnel
+- [ ] A read-only Argo CD account, even behind Access; the admin login is never reachable through the tunnel
 - [ ] The URLs appear on the repo's Deployments panel (environment `demo`); cancelling the run tears it down
-- [ ] Threat model entry for what the tunnel exposes
+- [ ] Threat model entry for what the tunnel and its token expose
+- **?** Keep the Host-header rewrite in the dashboard, or add the public hostnames to the `HTTPRoute`s
 
 ### Stage 5: observability
 
@@ -103,7 +108,7 @@ Each is specified before it is run (`docs/scenarios/<name>/spec.md` and `inject.
 
 ### Stage 7: the showcase
 
-- [ ] A static site on Vercel built from this repository, a preview per pull request, a link to the live demo
+- [ ] A static site on Vercel at `yaafsome.fyi`, built from this repository, a preview per pull request, a link to the live demo
 - **?** Generated from the Markdown here, or a small hand-written site
 
 ### Stage 8: client 1 at scale
@@ -154,11 +159,12 @@ Each is specified before it is run (`docs/scenarios/<name>/spec.md` and `inject.
 | <a id="d30"></a>D30 | Work happens in Claude Code cloud sessions; the Mac and Colima are retired | No single machine to keep alive; anyone can reproduce the project from the public repository |
 | <a id="d31"></a>D31 | Environments are ephemeral, built on GitHub arm64 runners: per-PR check, continuous verification, on-demand demo | Free for a public repository, native arm64, 4 vCPU and 16 GB; the demo is the same thing that gates every merge |
 | <a id="d32"></a>D32 | Production is *designed* for real AWS and never built; continuous verification is the evidence | Zero spend and zero accident risk, stated honestly instead of faking a long-lived production |
-| <a id="d33"></a>D33 | The live demo goes out through a Cloudflare quick tunnel (`*.trycloudflare.com`), with only the shop and a read-only Argo CD | Free with no account or domain. Watch out: anyone with the link can reach it, and Cloudflare Access cannot sit in front of a quick tunnel, so nothing writable is exposed and the URL dies with the run |
+| <a id="d33"></a>D33 | The live demo goes out through a **named** Cloudflare tunnel (`yaaf-demo`) on `yaafsome.fyi`: the shop public, Argo CD and Grafana behind Cloudflare Access (email one-time code). *Amended 2026-10-08:* first a quick tunnel (`*.trycloudflare.com`), replaced once the owner registered the domain | Stable URLs to present, and a login in front of the operator UIs, which a quick tunnel cannot have. Watch out: the tunnel token lets anyone attach to these hostnames; it lives only in the `demo` environment secret |
 | <a id="d34"></a>D34 | Live UIs are the shop, Argo CD and (stage 5) Grafana; floci-dash is opt-in; Headlamp and the portal page are removed | They tell the platform and reliability story; the rest duplicated it or only made sense on a laptop |
 | <a id="d35"></a>D35 | The app moves to its own repository, worked by two agent teams split by domain (Checkout, Catalog) | Least privilege by repository permission instead of a path check; a realistic team boundary |
-| <a id="d36"></a>D36 | The showcase is a static site on Vercel's free tier | Always on at no cost, with a preview per pull request; Vercel does not run the shop, which stays on AWS-shaped infrastructure |
+| <a id="d36"></a>D36 | The showcase is a static site on Vercel's free tier | Always on at no cost, with a preview per pull request, at the apex `yaafsome.fyi` (D38); Vercel does not run the shop, which stays on AWS-shaped infrastructure |
 | <a id="d37"></a>D37 | The project is planned in chat: questions, then one line per decision in this file; no ADRs, journal or separate milestones | The owner's way of working from 2026-10-08; one place to read |
+| <a id="d38"></a>D38 | The domain `yaafsome.fyi` (Cloudflare Registrar and DNS): the apex for the showcase, one level of subdomains for the demo (`shop`, `argocd`, `grafana`, and `check` for the edge test); the tunnel, hostnames and Access rules are set in the Cloudflare dashboard by a written runbook, not in code | One permanent name for everything presented; free certificates cover one subdomain level only; dashboard setup is one secret and no state to keep, where OpenTofu would need an API token and a permanent state store |
 
 ## Log
 
@@ -172,3 +178,4 @@ One line per merged change. History before 2026-10-03 is at the tag `archive/win
 - 2026-10-05: app-of-apps and Gateway API; a merged change reached the live Application in 54 s with no `tofu apply` (PR #37)
 - 2026-10-05: arm64 images; all 12 published with 24 attestations, verified with `gh attestation verify`; the shop works on the arm64 node (PRs #38 to #40)
 - 2026-10-08: the move to cloud sessions; this plan replaces the ADRs, handoff, milestones and journal (stage 0)
+- 2026-10-08: the domain `yaafsome.fyi`; the `edge-check` workflow and the tunnel and Access guide (D33 amended, D38)

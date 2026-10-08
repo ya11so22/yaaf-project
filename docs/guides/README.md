@@ -35,4 +35,5 @@ Every guide uses the same five parts ([template](_template.md)):
 | Content-hash image tags | Immutable tags, why a tree hash, how bumps work | to write (backfill, D23) |
 | The Well-Architected review | Pillars, lenses, a findings register | to write with review v1 |
 | RAG and the assistant replatform | Embeddings, vector search, provider interfaces | to write with Phase 3 |
+| [Publishing with a tunnel and a login](cloudflare-tunnel-and-access.md) | How the demo is reached from the internet with no open port: Cloudflare Tunnel, Access, the one-time setup | written (unverified until `edge-check` passes) |
 | [Gateway API](gateway-api.md) | How traffic gets into the cluster: GatewayClass, Gateway, HTTPRoute, who owns what, and how to read a route's status | written |

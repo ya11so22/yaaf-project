@@ -34,7 +34,9 @@ Terms are added as they are resolved (via `/domain-modeling`), not written specu
   on a runner and thrown away (D31). **Production** is designed, never built (D32).
 - **Continuous verification**: rebuilding the whole environment from git after every merge and requiring it to become
   healthy; the evidence that stands in for a long-lived production (D32).
-- **Live demo**: an ephemeral environment held open and published through a Cloudflare quick tunnel (D33).
+- **Live demo**: an ephemeral environment held open and published through the named Cloudflare tunnel on `yaafsome.fyi` (D33).
+- **Tunnel**: an outbound connection from the runner to Cloudflare that carries visitors' requests in, so nothing listens
+  on the internet. **Access**: Cloudflare's login in front of a hostname, used for the operator UIs (D33, D38).
 - **Root**: one OpenTofu working directory with its own state. dev has three, applied in order: **bootstrap** (the
   state bucket), **foundation** (the account-level infrastructure), **cluster** (what runs inside EKS).
 - **State bucket**: `yaaf-dev-tfstate` on Floci, holding the foundation and cluster state with an S3 lock file.
