@@ -70,9 +70,10 @@ Each stage is one or a few pull requests. Questions marked **?** are asked at th
 - [x] One workflow on `ubuntu-24.04-arm` (`environment.yml`): Floci, the three roots, Argo CD at the commit under test,
       every Application `Synced` and `Healthy` and the shop and Argo CD answering (`up --strict`), torn down. First run
       2026-10-08: all five Applications healthy, the shop answering, **207 s from nothing**
-- [x] Runs on pull requests that touch what it builds and after every merge to `main` (continuous verification)
+- [x] Rebuilds on pull requests that touch what it builds, and after every merge to `main` (continuous verification)
 - [x] An always-running `environment` gate job (D24): it reports on every PR, rebuilding only when the PR touches what it
-      builds
+      builds; path detection is one tested script for both gated workflows (`changed-paths.sh`, renames and a missing base
+      count as a change)
 - [ ] Owner: add `environment` to main's required checks (Settings, Branches)
 - [x] The build time is written to the job summary on every run: the platform's measured recovery time
 - [x] Proved against a planted fault: adservice pinned to a digest that does not exist; `online-boutique-dev` stayed
@@ -242,3 +243,4 @@ One line per merged change. History before 2026-10-03 is at the tag `archive/win
 - 2026-10-08: stage 1, the cloud workbench: the SessionStart hook, no Colima, the platform rebuilt and the data kept (D39), the extras removed (D40); the hosting research and D42 to D45
 - 2026-10-08: the sandbox lane prepared: `mise run sandbox`, the AWS Agent Toolkit rules, the guide (D46)
 - 2026-10-08: stage 2, the whole environment on an arm64 runner: 207 s from nothing to a healthy shop, proved red against a planted bad image digest
+- 2026-10-08: the `environment` gate job, so the rebuild can be a required check; one tested change-detection script
