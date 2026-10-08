@@ -36,17 +36,17 @@ run away), know what production needs (a costed, reviewed design), and can say e
 |---|---|
 | **G1 Safe delivery** for agent-written change | Each gate proved against a planted fault; DORA metrics from GitHub data |
 | **G2 Real AWS, responsibly** | Every claim labelled *designed*, *verified in CI* or *verified on AWS (date)*; sessions logged with their cost |
-| **G3 Cost discipline** | $0 when idle; a monthly ceiling that the guardrails enforce, proved by a planted runaway |
+| **G3 Cost discipline** | No compute when idle, only pennies of storage; a monthly ceiling that the guardrails enforce, proved by a planted runaway |
 | **G4 Reliability you can measure** | SLOs with burn-rate alerts; every AWS session is a recovery drill with a measured RTO and RPO |
 | **G5 Architecture judgement** | A Well-Architected review, a cost model with tiers, a threat model and a PCI DSS mapping, all written and reviewable |
 
 ## Constraints
 
-- **Money.** *Proposed:* about $10 a month in normal use and a **$20 hard ceiling**; **$0 when nothing is being developed
-  or presented**. No single AWS feature gives that (Budgets cannot delete a cluster, and the new spend limit has a $20
+- **Money.** *Proposed:* about $10 a month in normal use and a **$20 hard ceiling**; **pennies a month when nothing is being
+  developed or presented**. No single AWS feature gives that (Budgets cannot delete a cluster, and the new spend limit has a $20
   floor and limited release), so it comes from layers (below). Anything that needs a new paid plan is asked about first.
-- **No long-lived infrastructure.** Every environment is created for a purpose and destroyed after it. The only things
-  that persist are pennies: the state bucket, backups, a few parameters.
+- **No long-lived infrastructure.** Every environment is created for a purpose and destroyed after it. What persists costs
+  pennies a month: the state bucket, backups, a few parameters, short-retention logs.
 - **Agents never hold cloud credentials.** They write code and open pull requests; only GitHub Actions workflows assume AWS
   roles, through OIDC, and only the workflows the roles trust. Spending money always passes a human approval.
 - **Honest evidence.** Every claim is *designed*, *verified in CI* (kind on a GitHub runner) or *verified on AWS (date)*,
@@ -66,8 +66,14 @@ flowchart LR
     P -- every PR --> CI[CI environment: kind on a free arm64 runner]
     P -- approved session --> S[Session workflow]
   end
+  P -- schedule --> RG[Reaper workflow]
+  subgraph AWS management account
+    BU[Budgets: alerts, creation-deny SCP] -- SNS --> L
+  end
   subgraph AWS member account
-    S -- OIDC role --> E[EKS Auto Mode, Graviton Spot, private subnets, fck-nat]
+    S -- OIDC role: session --> E[EKS Auto Mode, Graviton Spot, private subnets, fck-nat]
+    RG -- OIDC role: reaper --> E
+    L[Reaper Lambda on a schedule] -- deletes expired --> E
     E --> D[(Data: managed stores, restored from backup)]
     B[(S3: state + encrypted backups)]
   end
@@ -83,8 +89,8 @@ flowchart LR
 | Cluster | kind, built and thrown away in each run | EKS Auto Mode on Graviton Spot nodes, private subnets, egress through fck-nat |
 | Data | In-cluster stand-ins | The managed stores of the app's AWS variant, restored from the latest backup at start, backed up at teardown |
 | Proves | The delivery system: GitOps convergence, the gates, policies, manifests, the app working, smoke load | AWS behaviour: IAM and Pod Identity, networking, scaling on real nodes, managed data, recovery, cost |
-| Cost | $0 (public repository) | About $0.70 per 3-hour session; about $6 a month at 8 sessions |
-| Lifetime | One workflow run | Time-boxed (default 3 h, at most 6 h), destroyed by the workflow itself, with a reaper as backstop |
+| Cost | $0 (public repository) | About $0.75 per 3-hour session (up to about $1.10 with on-demand fallback and burst CPU), including the 25 minutes of create and destroy; $6–9 a month at 8 sessions |
+| Lifetime | One workflow run | Time-boxed (default 3 h, at most 5 h, so create, wait and destroy fit GitHub's 6-hour job limit), destroyed by the workflow itself, with reapers as backstop |
 
 **Why both.** The research found no evidence that reviewers value "it ran on AWS" over a well-explained local setup, but
 the owner's learning goal needs real AWS behaviour, which no emulator gives (Floci ignores IAM conditions; LocalStack's
@@ -97,7 +103,7 @@ own tests run k3s on GitHub runners); real AWS in short sessions costs cents. Fl
 |---|---|---|
 | **Accounts** | *Proposed:* an AWS Organization created in the owner's existing account (management only, no workloads) with one member account for the project; SCPs on the member account | SCPs bind member accounts, not the management account, so the hard limits need a member account. Production adds accounts per environment and a log archive (designed, as a landing zone) |
 | **Network** | One VPC, two AZs, private subnets for nodes, public subnets for egress only; fck-nat instead of a managed NAT gateway | fck-nat costs about a tenth of a NAT gateway; production uses managed NAT per AZ (designed, with its cost) |
-| **Cluster** | EKS Auto Mode, Kubernetes version pinned, a NodePool limited to Graviton Spot sizes | Auto Mode runs Karpenter, load balancing, EBS CSI and the Pod Identity agent for a fee of under a cent per node-hour, which removes most add-ons a solo engineer would otherwise maintain |
+| **Cluster** | EKS Auto Mode on a standard-support Kubernetes version (`support_type = STANDARD`; extended support costs six times as much); the built-in NodePools disabled and one of our own: arm64, t4g.medium to large with m7g/c7g as fallback, Spot first and on-demand when Spot is short; managed-resource visibility turned on, because since April 2026 Auto Mode hides its instances, volumes and ENIs from `describe` calls by default, and hidden resources still bill (AWS docs, to check in stage 2) | Auto Mode runs Karpenter, load balancing, EBS CSI and the Pod Identity agent for a fee of under a cent per node-hour, which removes most add-ons a solo engineer would otherwise maintain. Watch out: t4g bursts on CPU credits, billed when it exceeds its baseline |
 | **GitOps** | Self-managed Argo CD, installed once by OpenTofu; everything else is an Application in git (the gitops-bridge split: IaC hands cluster metadata to Argo CD, no Helm from OpenTofu); environments as directories (`ci`, `aws`) | Argo CD's own recommended layout; managed Argo CD (an EKS capability) is noted as an option with its price |
 | **Ingress** | Gateway API with Traefik in both environments (D29); the demo is published through the Cloudflare tunnel, so no public load balancer is needed | The same routes in both environments; no inbound exposure. The AWS edge (ALB, ACM, WAF) is designed and proved once in a dedicated session |
 | **Workload identity and secrets** | EKS Pod Identity; External Secrets Operator reading SSM Parameter Store (standard parameters cost nothing) | AWS's recommended workload identity; Secrets Manager with rotation is the production design (it costs $0.40 a secret a month) |
@@ -105,27 +111,36 @@ own tests run k3s on GitHub runners); real AWS in short sessions costs cents. Fl
 | **Images** | Built per team repository, arm64, scanned, attested (SLSA provenance and SBOM), pushed to GHCR, pinned by digest | Free for public images; ECR with pull-through cache is the production design |
 | **Policy** | Kyverno: verify image attestations, Pod Security Standards (restricted), required labels and limits | Admission-time proof that only images this pipeline built can run |
 | **Observability** | kube-prometheus-stack, OpenTelemetry collector, SLOs generated by Sloth with multiwindow burn-rate alerts | Free in the cluster; Managed Prometheus and Grafana are costed in the design |
-| **IaC** | OpenTofu (D5), small modules, state in S3 with native locking in the member account; `tofu test` with mock providers, Trivy and Checkov in CI, Infracost on every PR | The cost of a change is visible before it merges |
+| **IaC** | OpenTofu (D5), small modules, state in S3 with native locking in the member account. Pull requests get **no AWS credentials**: `tofu test` with mock providers, Trivy, Checkov and Infracost (from the code, no plan needed). Real plans run only inside the approved session workflow | A PR can add code that `tofu plan` executes and can read state, which holds secrets; so a plan with real credentials on a PR would hand them to whoever wrote the PR |
 | **Edge and names** | `yaafsome.fyi` on Cloudflare (D38): the showcase at the apex, the demo through the named tunnel with Access in front of Argo CD and Grafana (D33) | Free, and identical whichever environment is behind it |
 | **Agent tooling** | AWS Knowledge MCP in the project's `.mcp.json` (no credentials); the AWS MCP Server only for the owner's own sessions | Agents can read AWS documentation and pricing without being able to touch an account |
 
 ### Cost guardrails, in layers
 
-No single control is enough, so six independent ones. A layer is trusted only after a planted runaway shows it working.
+No single control is enough, so several that fail independently. A layer is trusted only after a planted runaway shows it
+working. Two rules shape all of them: **an SCP only stops new resources** (a running cluster keeps billing until
+something deletes it), and **anything that deletes must still be allowed to delete** when the other layers have fired.
 
 | # | Layer | Stops | Proved by |
 |---|---|---|---|
-| 1 | **SCPs on the member account**: one Region; an instance-type allowlist (small Graviton); deny managed NAT gateways, Savings Plans, Reserved Instances, Marketplace and expensive services; deny leaving the Organization or disabling CloudTrail | The expensive mistakes become impossible | A request for a forbidden instance type is denied |
-| 2 | **Human approval to spend**: the session workflow runs in a GitHub environment that needs the owner's approval, with self-review prevented | No agent can start a session on its own | An agent-triggered session waits for approval |
-| 3 | **Self-destroying sessions**: the workflow applies, waits out its time box, then destroys in an `always()` step, add-ons first (load balancers and ENIs created by controllers otherwise block the VPC's destroy) | The normal case | A session's teardown leaves the account empty |
-| 4 | **Two reapers that do not depend on each other**: a scheduled GitHub workflow every 30 minutes runs `tofu destroy` on any session past its `expires-at` tag, then sweeps with `aws-nuke` (everything but the baseline); and a Lambda on an EventBridge schedule *inside the account* deletes any EKS cluster, load balancer or NAT instance older than its tag allows | A teardown that failed, a runner that died, or GitHub's schedules being delayed or disabled (they stop after 60 days without repository activity) | A session whose destroy step is cancelled is gone within the hour, once with each reaper switched off |
-| 5 | **Budgets**: alerts at $5 and $10; at $15 the budget's SNS topic triggers the in-account Lambda to delete everything but the baseline, and a Budgets action applies a deny-all SCP so nothing new starts | A slow leak the reapers missed | A budget threshold set low empties the account |
-| 6 | **AWS spend limit** at $20, if the account is offered it | The absolute backstop | Configured (or recorded as unavailable) |
+| 1 | **SCPs on the member account** deny *creation* outside an allowlist: one Region; instance types t4g.nano (fck-nat), t4g.medium/large, m7g/c7g.large; the smallest RDS (`rds:DatabaseClass`) and cache (`elasticache:CacheNodeType`) sizes; no managed NAT gateway, Savings Plans, Reserved Instances or Marketplace; no leaving the Organization or stopping CloudTrail. Describe, list and delete are never denied | The expensive mistakes become impossible | A request for a forbidden instance type is denied while a delete still works |
+| 2 | **Human approval to spend**: the session workflow runs in a GitHub environment that needs the owner's approval and deploys only from `main`. Autonomous agents (both teams and the platform's own) run as GitHub Apps without `deployments` or `actions: write`, so none can approve | No agent can start a session | An agent's attempt to approve a session through the API is refused |
+| 3 | **Self-destroying sessions**: back up the data, delete the Argo CD Applications (so load balancers, ENIs and volumes from PVCs go first), then `tofu destroy`, in an `always()` step of the same job | The normal case | A session's teardown leaves nothing tagged behind |
+| 4 | **The reaper workflow**: GitHub, every 30 minutes, with its own `reaper` role (trusted only for the scheduled run on `main`; describe, delete and state read): backs up what it can, then runs `tofu destroy` on any session past its `expires-at` tag; `aws-nuke` sweeps everything but the baseline only when no unexpired session exists | A teardown that failed or a runner that died | A session whose destroy step is cancelled is gone within the hour |
+| 5 | **The reaper Lambda**: inside the member account, on an EventBridge schedule, written separately, deleting anything past its `expires-at` tag from one shared inventory of billable types (EKS, EC2 including fck-nat, EBS volumes, load balancers, Elastic IPs, RDS, ElastiCache, snapshots beyond retention) | GitHub's schedules being delayed or disabled (they stop after 60 days without repository activity), or a bug in layer 4 | The same planted session is gone with layer 4 switched off; a planted orphan volume is found |
+| 6 | **Budgets** (in the management account, where Budgets actions must live): alerts at $5 and $10; at $15 the budget's SNS topic invokes the layer-5 Lambda in "empty the account" mode across accounts, and a Budgets action applies an SCP that denies creation only | A slow leak both reapers missed | A budget threshold set low empties the account while the SCP is attached |
+| 7 | **AWS spend limit** at $20, if the account is offered it | The absolute backstop | Configured (or recorded as unavailable) |
 
-**Worst case.** A forgotten EKS session costs about $5.20 a day. A reaper removes it within the hour. If both reapers
-failed, the $15 budget fires once billing data catches up (hours, up to a day) and empties the account. Watch out: an SCP
-on its own only stops *new* resources; a running cluster keeps billing until something deletes it, which is why the
-deleting layers come first.
+**Worst case.** A forgotten session costs about $6 a day (the session design left running). Layer 4 or 5 removes it within
+the hour. If both failed, the $15 budget fires once billing data catches up (hours, up to a day), and its Lambda can still
+delete because layer 6's SCP denies only creation. Watch out: layers 5 and 6 share one Lambda, so a bug there removes both;
+layer 4 is the independent path, which is why each reaper is proved with the other switched off.
+
+**Idle cost.** Pennies, not zero: the state bucket, backups, a few parameters and short-retention log groups (every log
+group is created with a retention of a few days, and EKS control-plane logging stays off unless a session needs it).
+
+**Residual risk, said plainly.** Interactive Claude Code sessions that the owner supervises act as the owner's GitHub
+identity, which can approve a deployment. `CLAUDE.md` forbids it, and layers 4 to 7 bound the cost if it ever happened.
 
 ### Repositories and teams
 
@@ -166,41 +181,48 @@ Each stage ends with evidence a reviewer can open. Costs are for the stage's own
 - [ ] The app vendored at a pinned commit, with its license; services grouped by team
 - [ ] Images built, scanned and attested per service (the existing pipeline, adapted)
 - [ ] `mise run ci-env`: kind with Argo CD, Traefik, Kyverno and the app, from the git configuration, on the arm64 runner;
-      a required check on every PR; the app answers and a short load run passes
-- [ ] Proved red by a planted fault: a bad image digest, an unsigned image (refused by Kyverno)
+      a required check on every PR; the app answers and a short load run passes. The CI environment runs the pinned
+      images, which `main` built and attested; each team's own CI tests its unmerged changes
+- [ ] Kyverno verifies GitHub attestations at admission (a version that verifies Sigstore bundles, pinned)
+- [ ] Proved red by a planted fault: a bad image digest, a pinned image without an attestation (refused by Kyverno)
 
-### Stage 2: the AWS landing zone *(about $0.10 a month)*
+### Stage 2: the AWS landing zone *(pennies a month)*
 
 - [ ] The owner creates the Organization and the member account (the one manual step, from a written runbook)
 - [ ] `org` root: the SCPs, Budgets with the deny-all action, the spend limit if offered
-- [ ] `account-baseline` root: the GitHub OIDC provider and two roles (`plan`: read-only, any PR; `session`: create and
-      destroy, only from the session workflow's environment), the state bucket with native locking, the backup bucket
-- [ ] Both reapers: the scheduled workflow with the `aws-nuke` configuration (baseline allowlisted), and the in-account
-      Lambda on an EventBridge schedule, which the $15 budget also triggers
-- [ ] Infracost on every PR that touches OpenTofu
-- [ ] Each guardrail layer proved against its planted runaway (the table above)
+- [ ] `account-baseline` root: the GitHub OIDC provider and two roles (`session`: create and destroy, trusted only for the
+      approved session environment on `main`; `reaper`: describe, delete and state read, trusted only for the scheduled run
+      on `main`), the state bucket with native locking, the backup bucket, Auto Mode managed-resource visibility
+- [ ] Read the SCP and Budgets documentation pages themselves before writing them (the research only had summaries)
+- [ ] Both reapers from one inventory of billable resource types: the scheduled workflow with the `aws-nuke`
+      configuration (baseline allowlisted, skipped while a session is live), and the in-account Lambda on an EventBridge
+      schedule, which the $15 budget also invokes
+- [ ] Infracost on every PR that touches OpenTofu (from the code; PRs never get AWS credentials)
+- [ ] Each guardrail layer proved against its planted runaway (the table above), including an agent failing to approve a
+      session and the budget's Lambda deleting while the creation-deny SCP is attached
 
-### Stage 3: the first AWS session *(about $0.70 per session)*
+### Stage 3: the first AWS session *(about $0.65 per session, no data stores yet)*
 
 - [ ] `session` root: the VPC with fck-nat, EKS Auto Mode with a Graviton Spot NodePool, Argo CD bootstrapped with the
       cluster's metadata; the same GitOps configuration as CI with an `aws` overlay
-- [ ] The session workflow: an hours input, the owner's approval, apply, publish through the tunnel, wait, destroy; create
-      and destroy times and the session's cost written to the job summary
+- [ ] The session workflow: an hours input (at most 5), the owner's approval, apply, publish through the tunnel, wait,
+      destroy; create and destroy times and the session's estimated cost written to the job summary
 - [ ] `hardeneks` run against the cluster and its findings recorded
 - [ ] *Verified on AWS:* the shop works on EKS, end to end, and the account is empty afterwards
 
-### Stage 4: data, identity and recovery *(adds about $0.10 per session)*
+### Stage 4: data, identity and recovery *(adds about $0.10, so about $0.75 per session)*
 
 - [ ] The managed stores per the app's AWS variant, smallest sizes, created by the session root
 - [ ] Pod Identity for every service that touches AWS; secrets through External Secrets and Parameter Store
-- [ ] Backup at teardown, restore at start (encrypted, in S3 with a lifecycle rule); a canary record written before the
-      teardown measures RPO, the time to a working shop measures RTO
+- [ ] Backup at teardown and in the reaper, restore at start (encrypted, in S3 with a lifecycle rule; DynamoDB with PITR
+      for its export); a canary record written before the teardown measures RPO, the time to a working shop measures RTO.
+      When a reaper could not back up, the RPO is the last successful backup, and the session log says so
 - [ ] Proved red by a planted corrupt backup
 - **?** The RTO and RPO targets (set in the architecture track)
 
 ### Stage 5: security and supply chain *($0 extra)*
 
-- [ ] Kyverno: attestation verification, Pod Security Standards restricted, resource limits required
+- [ ] Kyverno beyond attestations (stage 1): Pod Security Standards restricted, resource limits required
 - [ ] Network policies per namespace; the threat model (what each identity, token and tunnel can reach)
 - [ ] Scorecard, and the rescans carried over
 
@@ -224,7 +246,8 @@ Each stage ends with evidence a reviewer can open. Costs are for the stage's own
       measured against the SLO on AWS
 - [ ] Chaos Mesh experiments (a dependency down, a node lost); incidents and postmortems (D28)
 - [ ] Platform scenarios: drift reverted by self-heal, lost OpenTofu state, a leaked credential, an over-broad OIDC trust
-- [ ] *Optional:* one AWS FIS experiment, costed beforehand
+- [ ] *Optional:* one AWS FIS experiment, costed beforehand (pod actions only: Auto Mode does not support FIS instance
+      termination or Spot interruption; a lost node is simulated with `kubectl delete node`)
 
 ### Stage 9: the showcase *($0)*
 
@@ -264,7 +287,7 @@ Each stage ends with evidence a reviewer can open. Costs are for the stage's own
 | | Decision | Why |
 |---|---|---|
 | <a id="d5"></a>D5 | OpenTofu, not Terraform | The community-governed fork; same language and providers |
-| <a id="d6"></a>D6 | GitHub Actions reaches AWS only through OIDC, each role trusted on an exact `sub` and `aud`. *Amended 2026-10-08 (proposed):* two roles, `plan` and `session` | No stored keys; a role can be assumed only from the workflow and branch it was made for |
+| <a id="d6"></a>D6 | GitHub Actions reaches AWS only through OIDC, each role trusted on an exact `sub` and `aud`. *Amended 2026-10-08 (proposed):* two roles, `session` (the approved session environment on `main`) and `reaper` (the scheduled run on `main`); pull requests get none | No stored keys; a role can be assumed only from the workflow and branch it was made for |
 | <a id="d9"></a>D9 | One script, `scripts/check`, is the fast gate for the git hook and for CI | One definition of "the checks"; the hook is a convenience, CI is the gate |
 | <a id="d23"></a>D23 | GitOps: Argo CD reconciles from git; pins live in git and are bumped by a GitHub App bot PR with auto-merge; rollback is reverting the source, not the pin | Nothing pushes into the cluster; the bot recomputes pins from source |
 | <a id="d24"></a>D24 | The pipeline standard: `permissions: {}`, actions pinned by SHA, no `pull_request_target` or `workflow_run`, zizmor; PRs never push images; `main` pushes by digest with SLSA provenance and an SBOM; Trivy fails on new fixable criticals; Scorecard; Dependabot with a cooldown; one always-running gate job per required workflow | Researched against GitHub, OpenSSF, SLSA and DORA guidance; each gate proved against a planted fault ([guide](docs/guides/ci-cd-pipeline-standard.md)) |
@@ -281,10 +304,10 @@ Each stage ends with evidence a reviewer can open. Costs are for the stage's own
 | <a id="d41"></a>D41 | Agents run the delivery loop in `CLAUDE.md`: check, draft PR, a cold review, auto-merge gated on required checks; they stop for open questions, money, real AWS, secrets, settings or data deletion | "Never merge red" is a property of the platform, not of the agent's care |
 | <a id="d45"></a>D45 | Live demos are attended and time-boxed, plus a recorded walkthrough | Nothing runs, or bills, when nobody is looking |
 | <a id="d47"></a>D47 | *Proposed:* two environments from one GitOps configuration: kind on a free arm64 runner for every change, ephemeral EKS sessions on real AWS when something needs proving or presenting. Floci is dropped | Real AWS behaviour where it matters, for cents; the delivery system tested on every change for free ([research](docs/research/2026-10-08-rebuild-research.md)) |
-| <a id="d48"></a>D48 | *Proposed:* a monthly ceiling of $20, $0 when idle, enforced by six layers (SCPs, approval to spend, self-destroying sessions, two independent reapers, Budgets that empty the account, the spend limit if offered), each proved by a planted runaway | No single AWS feature caps spend at a few dollars, and an SCP alone never stops what is already running; layers that delete, and fail independently, do |
+| <a id="d48"></a>D48 | *Proposed:* a monthly ceiling of $20, no compute when idle, enforced by seven layers (SCPs that deny creation only, approval to spend, self-destroying sessions, a reaper workflow, a reaper Lambda, Budgets that empty the account, the spend limit if offered), each proved by a planted runaway | No single AWS feature caps spend at a few dollars, and an SCP alone never stops what is already running; layers that delete, and that do not block each other, do |
 | <a id="d49"></a>D49 | *Proposed:* agents never hold AWS credentials; only workflows assume roles, and a session needs the owner's approval | Agents with cloud credentials are the lethal-trifecta risk; the pipeline is the only door |
 | <a id="d50"></a>D50 | *Proposed:* EKS Auto Mode on Graviton Spot, private subnets with fck-nat, Pod Identity, External Secrets with Parameter Store | The least to maintain alone, the cheapest per session, AWS's current recommendations; the production differences are designed and costed |
-| <a id="d51"></a>D51 | *Proposed:* team agents are GitHub Apps installed on their own repository and run through `claude-code-action`; rulesets have no bypass, not even for admins | Routines push as the owner, and an identity that can bypass a rule is not stopped by it |
+| <a id="d51"></a>D51 | *Proposed:* autonomous agents (both teams and the platform's own) are GitHub Apps installed only where they work, run through `claude-code-action`, without `deployments` or `actions: write`; rulesets have no bypass, not even for admins | Routines push as the owner, and an identity that can bypass a rule, or approve a deployment, is not stopped by it |
 
 **Retired with the Floci era** (readable at the archive tag): D20, D21 (the engagement is restated above), D22, D30 to D32,
 D34, D39, D40, D42 to D44, D46.
