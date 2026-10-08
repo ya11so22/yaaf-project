@@ -24,8 +24,9 @@ AWS, never built; rebuilding the environment after every merge is the evidence t
 D32). The ephemeral-runner workflow, the live demo and the showcase site are stages 2, 4 and 7 of the plan.
 
 In a session, `mise run up` builds it and `mise run down` removes it ([`infra/README.md`](infra/README.md)); a
-SessionStart hook installs the locked tools; `up` starts Docker. From a terminal: `aws --profile floci s3 ls`,
-`kubectl get pods -A`.
+SessionStart hook installs the locked tools; `up` starts Docker. From a terminal: `aws --profile floci s3 ls`. A
+session builds the AWS layer only (it has cgroup v1, PLAN.md D44), so `kubectl get pods -A` works where the cluster
+runs: the arm64 runner, or a host with cgroup v2.
 
 ## What is here
 

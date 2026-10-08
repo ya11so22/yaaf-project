@@ -76,10 +76,10 @@ write_profile() {
   local id secret
   id="$(tofu -chdir="$DEV/foundation" output -raw kubectl_access_key_id 2>/dev/null)" || return 1
   secret="$(tofu -chdir="$DEV/foundation" output -raw kubectl_secret_access_key 2>/dev/null)" || return 1
-  aws configure set aws_access_key_id "$id" --profile floci
-  aws configure set aws_secret_access_key "$secret" --profile floci
-  aws configure set region us-east-1 --profile floci
-  aws configure set endpoint_url http://localhost:4566 --profile floci
+  aws configure set aws_access_key_id "$id" --profile floci &&
+    aws configure set aws_secret_access_key "$secret" --profile floci &&
+    aws configure set region us-east-1 --profile floci &&
+    aws configure set endpoint_url http://localhost:4566 --profile floci
 }
 # The profile and the kubeconfig. Re-run on every check: the cluster's host port can change when its container is
 # recreated.
