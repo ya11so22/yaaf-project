@@ -133,6 +133,10 @@ Floci proves that tested SDK and IaC scenarios work, not that AWS behaves the sa
   `ACTIVE` (Q1). With nothing persisted, `up` rebuilds instead of resuming.
 - **State and resources together:** the OpenTofu state is in Floci's S3, so losing Floci's data loses the state
   with it. That is the design here (D39): the next `up` rebuilds from code.
+- **State locking:** works. `use_lockfile = true` makes OpenTofu write a `.tflock` object next to the state with a
+  conditional put, and Floci's S3 refuses the second one, so another run is refused while one holds the lock.
+  `scripts/drills/state-lock.sh` proves it with `plan` (`apply` takes the same lock), with a control run that turns
+  the lock off.
 
 ## CI
 
