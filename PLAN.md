@@ -248,3 +248,4 @@ One line per merged change. History before 2026-10-03 is at the tag `archive/win
 - 2026-10-08: stage 2, the whole environment on an arm64 runner: 207 s from nothing to a healthy shop, proved red against a planted bad image digest
 - 2026-10-08: the `environment` gate job, so the rebuild can be a required check; one tested change-detection script
 - 2026-10-08: OpenTofu's S3 state lock proved on Floci, with a control run (`scripts/drills/state-lock.sh`)
+- 2026-10-08: `up` writes the `floci` AWS profile in a session too, so `aws --profile floci` works as the README says

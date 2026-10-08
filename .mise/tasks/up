@@ -70,17 +70,22 @@ tofu_root() { # root, verb (plan|apply), extra args...
   printf '%s\n' "$out" | grep -E '^(Apply complete|No changes|Plan:)' || true
 }
 
-# The `floci` AWS profile (the kubectl IAM user's key) and the kubeconfig. Floci's EKS auth rejects the dummy `test`
-# keys. Re-run on every check: the cluster's host port can change when its container is recreated.
-KUBE_CONTEXT=""
-update_access() {
+# The `floci` AWS profile: the kubectl IAM user's key, from the foundation root. Floci's EKS auth rejects the dummy `test`
+# keys. Written in both modes, so `aws --profile floci` works in a session too.
+write_profile() {
   local id secret
   id="$(tofu -chdir="$DEV/foundation" output -raw kubectl_access_key_id 2>/dev/null)" || return 1
   secret="$(tofu -chdir="$DEV/foundation" output -raw kubectl_secret_access_key 2>/dev/null)" || return 1
-  aws configure set aws_access_key_id "$id" --profile floci
-  aws configure set aws_secret_access_key "$secret" --profile floci
-  aws configure set region us-east-1 --profile floci
-  aws configure set endpoint_url http://localhost:4566 --profile floci
+  aws configure set aws_access_key_id "$id" --profile floci &&
+    aws configure set aws_secret_access_key "$secret" --profile floci &&
+    aws configure set region us-east-1 --profile floci &&
+    aws configure set endpoint_url http://localhost:4566 --profile floci
+}
+# The profile and the kubeconfig. Re-run on every check: the cluster's host port can change when its container is
+# recreated.
+KUBE_CONTEXT=""
+update_access() {
+  write_profile || return 1
   KUBE_CONTEXT="$(aws eks describe-cluster --name "$CLUSTER" --profile floci --query cluster.arn --output text)" || return 1
   aws eks update-kubeconfig --name "$CLUSTER" --profile floci >/dev/null
 }
@@ -167,6 +172,7 @@ for attempt in 1 2; do
   step "Applying foundation"
   tofu_root foundation apply
   if [ "$AWS_ONLY" = "true" ]; then
+    write_profile || die "could not write the floci AWS profile from the foundation outputs"
     step "Done in ${SECONDS}s: the AWS layer is up (Floci on http://localhost:4566). The cluster layer runs on the arm64 runner."
     exit 0
   fi
