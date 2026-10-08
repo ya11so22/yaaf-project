@@ -31,7 +31,7 @@ Floci*, or *verified on real AWS*.
 
 | Piece | What | Serves |
 |---|---|---|
-| **Workbench** | Claude Code cloud sessions: design, code, pull requests. A SessionStart hook installs the locked tools and starts Docker. No long-lived machine | Development |
+| **Workbench** | Claude Code cloud sessions: design, code, pull requests. A SessionStart hook installs the locked tools; `up` starts Docker. No long-lived machine | Development |
 | **App repo** *(stage 3)* | The shop's source, its image builds and tests, the gates for agent PRs. Two teams by domain: **Checkout** (checkout, payment, cart, shipping, currency, email) and **Catalog** (frontend, product catalog, recommendation, ads) | Client 1 |
 | **Platform repo** (this one) | OpenTofu, Argo CD Applications, image pins, scenarios, the architecture track, this plan | Both |
 | **Ephemeral environment** *(stage 2)* | The full stack (Floci, three OpenTofu roots, EKS on k3s, Argo CD, the shop) built from git on a GitHub arm64 runner. One workflow, three uses: a **per-PR deploy check**, **continuous verification** after each merge, and an **on-demand live demo** | Both |
@@ -54,8 +54,8 @@ Each stage is one or a few pull requests. Questions marked **?** are asked at th
 
 ### Stage 1: the cloud workbench
 
-- [x] SessionStart hook: installs mise and `mise install --locked`, starts `dockerd`, enables the git hook (6 s from a
-      clean state)
+- [x] SessionStart hook: installs mise (pinned) and `mise install --locked`, enables the git hook (6 s from a clean
+      state); `up` starts Docker
 - [x] `mise.toml` and the tasks lose Colima; tasks are `up`, `down` and `check`
 - [x] Nothing persists (D39): Floci in memory only; `up` rebuilds anything stale; the k3s repair and `reset` removed
 - [x] Removed (D40): the EC2 workstation, the S3 + CloudFront portal, floci-dash, Headlamp. The IAM drill stays a script

@@ -19,10 +19,11 @@ if [ -z "${K8S_VERSION:-}" ]; then
   exit 1
 fi
 
-# As a pre-commit hook, git exports the identity of the commit in progress, and an environment variable beats the
-# `git -c user.name=...` the tests' throwaway repositories rely on (the bump test then saw the outer author). No check
-# needs them. GIT_INDEX_FILE stays: the staged secret scan must read the index being committed.
-unset GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_AUTHOR_DATE GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL GIT_COMMITTER_DATE
+# As a pre-commit hook, git exports the identity and the index of the commit in progress, and an environment variable
+# beats what the tests' throwaway repositories set for themselves (the bump test saw the outer author). The tests must not
+# see them. The index path is kept aside for the staged secret scan, which must read the index being committed.
+hook_index="${GIT_INDEX_FILE:-}"
+unset GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_AUTHOR_DATE GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL GIT_COMMITTER_DATE GIT_INDEX_FILE
 
 failed=0
 
@@ -94,7 +95,7 @@ needs actionlint "actionlint" actionlint -color=false
 if $ci; then
   needs gitleaks "gitleaks (full history)" gitleaks git . --no-banner --redact
 else
-  needs gitleaks "gitleaks (staged changes)" gitleaks git . --pre-commit --staged --no-banner --redact
+  needs gitleaks "gitleaks (staged changes)" env ${hook_index:+GIT_INDEX_FILE="$hook_index"} gitleaks git . --pre-commit --staged --no-banner --redact
 fi
 
 if [ "$failed" -ne 0 ]; then

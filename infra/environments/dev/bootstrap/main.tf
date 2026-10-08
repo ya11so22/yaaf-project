@@ -24,7 +24,7 @@ resource "aws_s3_bucket" "state" {
   bucket = "${var.project}-dev-tfstate"
 
   # State is the one thing that must not be deleted by a typo. A full reset deletes Floci's data instead
-  # (the `reset` task, infra/README.md).
+  # (`mise run down`, infra/README.md).
   lifecycle {
     prevent_destroy = true
   }

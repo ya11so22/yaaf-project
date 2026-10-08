@@ -32,7 +32,7 @@ after the one before it.
 
 It runs wherever there is a Docker engine and [mise](https://mise.jdx.dev): a Claude Code cloud session (the project's
 workbench, PLAN.md D30) or a CI runner. In a cloud session the SessionStart hook (`.claude/hooks/session-start.sh`)
-installs mise and every tool at the versions locked in [`mise.lock`](../mise.lock), and starts Docker. The cluster wants
+installs mise and every tool at the versions locked in [`mise.lock`](../mise.lock); `up` starts Docker. The cluster wants
 about 8 GB of memory.
 
 Three mise tasks, run from the repository root:

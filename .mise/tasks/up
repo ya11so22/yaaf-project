@@ -25,10 +25,8 @@ wait_until() { # description, timeout seconds, command...
   done
 }
 
-mkdir -p .aws .kube
-
-# A cloud session or a CI runner has Docker installed; in a session the daemon may not be running yet (the SessionStart
-# hook starts it, and a restarted worker stops it).
+# A cloud session or a CI runner has Docker installed; in a session the daemon is not running until something starts it
+# (and a restarted worker stops it again).
 ensure_docker() {
   docker info >/dev/null 2>&1 && return 0
   if command -v dockerd >/dev/null 2>&1 && [ "$(id -u)" = 0 ]; then
@@ -40,7 +38,11 @@ ensure_docker() {
 
 # Healthy: Floci is running and answers. Anything else that exists (a stopped Floci, cluster containers or state files
 # from an earlier run) is stale, because Floci keeps nothing: re-applying on top of it would fight leftovers.
-floci_healthy() { [ "$(docker inspect -f '{{.State.Running}}' floci 2>/dev/null)" = "true" ] && curl -sf -m 5 http://localhost:4566/_floci/health >/dev/null; }
+floci_running() { [ "$(docker inspect -f '{{.State.Running}}' floci 2>/dev/null)" = "true" ]; }
+floci_answers() { curl -sf -m 5 http://localhost:4566/_floci/health >/dev/null; }
+# Compose recreates the container when its configuration or image changes (a Dependabot digest bump, an edit to
+# compose.yaml), and a recreated Floci is an empty one, so the container id is compared across `compose up`.
+floci_id() { docker inspect -f '{{.Id}}' floci 2>/dev/null || true; }
 leftovers() {
   docker inspect floci >/dev/null 2>&1 || [ -n "$(docker ps -aq --filter label=floci=true)" ] ||
     [ -f "$DEV/bootstrap/terraform.tfstate" ]
@@ -97,6 +99,7 @@ check_url() { # label, host, expected text
 }
 
 start_floci() {
+  mkdir -p .aws .kube
   step "Starting Floci, waiting for its health check"
   docker compose -f "$COMPOSE" up -d --wait --remove-orphans
 }
@@ -105,17 +108,32 @@ ensure_docker
 # Kubernetes 1.35+ refuses to run on cgroup v1 hosts. A Claude Code cloud session is one (and also blocks pod networking
 # and image pulls inside k3s), so there the session builds and checks the AWS layer, and the cluster is proven on the
 # arm64 runner instead (PLAN.md D44). `mise run check` still validates every manifest offline.
-if [ "$(stat -fc %T /sys/fs/cgroup 2>/dev/null)" != "cgroup2fs" ]; then
+# Asked of the Docker engine that will run k3s, not of the machine running this script.
+if [ "$(docker info -f '{{.CgroupVersion}}' 2>/dev/null)" != "2" ]; then
   [ "$AWS_ONLY" = "true" ] || step "This host has cgroup v1, where Kubernetes cannot run: building the AWS layer only"
   AWS_ONLY=true
 fi
 SECONDS=0
-if floci_healthy; then
-  step "Floci is running: re-applying in place"
+stale=""
+if floci_running; then
+  # A busy Floci (starting k3s, under load) can be slow to answer; one slow reply must not cost the environment.
+  wait_until "Floci to answer" 60 floci_answers || stale="Floci is running but does not answer"
 elif leftovers; then
-  rebuild_from_nothing "Floci is not running, so its AWS is gone"
+  stale="Floci is not running, so its AWS is gone"
 fi
+if [ -n "$stale" ]; then
+  [ "$PLAN_ONLY" != "true" ] || die "$stale. --plan-only never removes anything: run plain \`up\` to rebuild"
+  rebuild_from_nothing "$stale"
+elif floci_running; then
+  step "Floci is running: re-applying in place"
+fi
+before="$(floci_id)"
 start_floci
+if [ -n "$before" ] && [ "$(floci_id)" != "$before" ]; then
+  [ "$PLAN_ONLY" != "true" ] || die "compose recreated Floci (its configuration or image changed), so it is empty: run plain \`up\` to rebuild"
+  rebuild_from_nothing "compose recreated Floci because its configuration or image changed, so its AWS is gone"
+  start_floci
+fi
 
 if [ "$PLAN_ONLY" = "true" ]; then
   step "Plan only: bootstrap"; tofu_root bootstrap plan

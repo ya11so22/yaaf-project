@@ -6,14 +6,16 @@ cd "$MISE_PROJECT_ROOT"
 CLUSTER="yaaf-dev"
 DEV="infra/environments/dev"
 
-if docker info >/dev/null 2>&1; then
-  # The containers Floci started itself (the cluster, its registry) first: they hold the floci-net network open.
-  ids="$(docker ps -aq --filter label=floci=true)"
-  [ -z "$ids" ] || docker rm -f $ids >/dev/null
-  docker compose -f "$DEV/compose.yaml" down -v --remove-orphans
-  # The cluster's datastore volume carries no floci=true label (quirk Q2), so it goes by name.
-  docker volume rm -f "floci-eks-$CLUSTER" >/dev/null 2>&1 || true
-fi
+# Without the engine nothing below can be removed, and deleting only the state files would leave containers that the
+# next `up` cannot account for. Say so instead of half-succeeding.
+docker info >/dev/null 2>&1 || { echo "Docker is not running, so nothing was removed. Start it (\`mise run up\` does) and run down again." >&2; exit 1; }
+# The containers Floci started itself (the cluster, its registry) first: they hold the floci-net network open.
+ids="$(docker ps -aq --filter label=floci=true)"
+[ -z "$ids" ] || docker rm -f $ids >/dev/null
+docker compose -f "$DEV/compose.yaml" down -v --remove-orphans
+# The cluster's datastore volume carries no floci=true label (quirk Q2), so it goes by name; floci_floci-data is the
+# data volume of the persistent setup before D39, no longer declared in compose.yaml, so `down -v` would miss it.
+docker volume rm -f "floci-eks-$CLUSTER" floci_floci-data >/dev/null 2>&1 || true
 # The bootstrap root's state is a local file (the bucket cannot hold its own creator's state). Left behind, the next
 # `up` would believe a bucket exists in a Floci that no longer has it.
 rm -f "$DEV/bootstrap/terraform.tfstate" "$DEV/bootstrap/terraform.tfstate.backup"
