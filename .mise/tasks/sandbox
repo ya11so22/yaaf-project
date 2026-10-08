@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+#MISE description="Sign in to a borrowed AWS sandbox (never the owner's account) and set up the AWS Agent Toolkit"
+#USAGE flag "--account <id>" help="The 12-digit ID of the sandbox account, as shown by the first run. Nothing past sign-in happens without it"
+# The real-AWS evidence lane (PLAN.md D43, D46; docs/guides/real-aws-sandbox.md). Run it after opening a vendor sandbox,
+# e.g. the AWS Builder Center sandbox. Credentials last 12 hours and are never stored in the repository.
+set -euo pipefail
+cd "$MISE_PROJECT_ROOT"
+
+# Real AWS lives in its own files (~/.aws), never in the repository's .aws/, which mise points at Floci (PLAN.md D25). A
+# Floci command can then never reach the sandbox, and nothing here ever reads Floci's keys.
+unset AWS_CONFIG_FILE AWS_SHARED_CREDENTIALS_FILE AWS_PROFILE AWS_ENDPOINT_URL
+PROFILE="yaaf-sandbox"
+REGION="us-east-1" # the Agent Toolkit service runs only in us-east-1
+EXPECTED="${usage_account:-}"
+
+step() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*"; }
+account() { aws sts get-caller-identity --profile "$PROFILE" --query Account --output text 2>/dev/null; }
+
+aws configure set region "$REGION" --profile "$PROFILE"
+if ! signed_in="$(account)"; then
+  step "Signing in. Open the URL below on any device, sign in to the SANDBOX account (never your own), paste the code."
+  aws login --remote --region "$REGION" --profile "$PROFILE"
+  signed_in="$(account)"
+fi
+aws sts get-caller-identity --profile "$PROFILE" --output table
+
+# The guard: a human reads the account ID and states it is the sandbox. Signing in to the owner's account by mistake
+# then stops here, before an agent gets any tools for it.
+if [ -z "$EXPECTED" ]; then
+  step "Signed in to account $signed_in. If, and only if, that is the sandbox, run: mise run sandbox --account $signed_in"
+  exit 0
+fi
+[ "$EXPECTED" = "$signed_in" ] || { step "REFUSED: signed in to $signed_in, but --account says $EXPECTED"; exit 1; }
+
+step "Setting up the AWS Agent Toolkit (skills and the AWS MCP server)"
+aws configure agent-toolkit --yes --region "$REGION" --profile "$PROFILE"
+step "Skills available:"
+aws agent-toolkit list-available-skills --region "$REGION" --profile "$PROFILE" --query 'skills[].name' --output text |
+  tr '\t' '\n' | sed 's/^/  /'
+step "Done. The AWS MCP server must use this profile: set AWS_MCP_PROXY_PROFILES=$PROFILE in its config (see the guide)."

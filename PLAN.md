@@ -150,6 +150,8 @@ Each is specified before it is run (`docs/scenarios/<name>/spec.md` and `inject.
 
 Real AWS without ever touching the owner's account: vendor sandbox accounts that are wiped afterwards and bill nobody.
 
+- [x] Ready: `mise run sandbox` signs in with `aws login --remote`, stops at an account-ID guard, then sets up the AWS
+      Agent Toolkit; the AWS rules are in `CLAUDE.md` under markers ([guide](docs/guides/real-aws-sandbox.md))
 - [ ] A spike in the free AWS Builder Center sandbox (8 hours, once a week, from selected workshops): can we get CLI
       credentials, create an IAM OIDC provider, an EKS cluster and an RDS instance? Recorded either way
 - [ ] If it can: one run of the foundation root against real AWS, recorded as *verified on real AWS (sandbox, date)*
@@ -213,6 +215,7 @@ Real AWS without ever touching the owner's account: vendor sandbox accounts that
 | <a id="d43"></a>D43 | Floci stays the foundation, for every PR, merge and demo. Real-AWS evidence comes only from borrowed vendor sandboxes (the free AWS Builder Center sandbox first), recorded as *verified on real AWS (sandbox, date)* | Floci is the only free emulator that runs EKS, RDS, ElastiCache and IAM enforcement; LocalStack's free plan excludes them. The owner's account has no hard spending cap (AWS's 2026 spend limits are for new sign-ups only), so it stays out (D20) |
 | <a id="d44"></a>D44 | In a cloud session, `up` builds the AWS layer only (automatically on a cgroup v1 host, or with `--aws-only`) and `check` validates the manifests offline; the cluster, Argo CD and the shop are proved on the arm64 runner | Kubernetes 1.35+ refuses cgroup v1, and the session also blocks pod networking and image pulls inside k3s; forcing it relies on a fallback due to be removed in 1.38 |
 | <a id="d45"></a>D45 | Live demos are attended and time-boxed runs (up to 6 h), plus a recorded walkthrough on the showcase; jobs are never looped to look always-on | No free host runs the arm64 shop all the time without a billable account, and GitHub's terms allow Actions for building and testing, not hosting |
+| <a id="d46"></a>D46 | Agents reach real AWS only through the `yaaf-sandbox` profile in `~/.aws`, signed in by hand with `aws login --remote` (12-hour console credentials, no stored keys) to a borrowed sandbox, past a guard where a person confirms the account ID. The AWS Agent Toolkit (skills and the AWS MCP server) is set up after that; AWS's agent rules sit in `CLAUDE.md` under markers, below the project's own | Real-AWS evidence (D43) without long-lived credentials, without the owner's account, and with emulator and real credentials in separate files by construction |
 
 ## Log
 
@@ -229,3 +232,4 @@ One line per merged change. History before 2026-10-03 is at the tag `archive/win
 - 2026-10-08: the domain `yaafsome.fyi`; the `edge-check` workflow and the tunnel and Access guide (D33 amended, D38)
 - 2026-10-08: the delivery loop for agents (D41): review, auto-merge on green, proceed until a question
 - 2026-10-08: stage 1, the cloud workbench: the SessionStart hook, no Colima, the platform rebuilt and the data kept (D39), the extras removed (D40); the hosting research and D42 to D45
+- 2026-10-08: the sandbox lane prepared: `mise run sandbox`, the AWS Agent Toolkit rules, the guide (D46)
