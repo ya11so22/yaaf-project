@@ -2,6 +2,7 @@
 #MISE description="Build the local AWS from git: Floci, the three OpenTofu roots, kubeconfig, Argo CD. Re-applies a healthy environment; rebuilds a stale one"
 #USAGE flag "--revision <rev>" default="main" help="Git revision Argo CD tracks. A branch name tries a change before it is merged"
 #USAGE flag "--plan-only" help="Start Floci, then plan instead of apply"
+#USAGE flag "--strict" help="Fail, not warn, when an application is not Synced and Healthy or an endpoint does not answer (CI)"
 #USAGE flag "--aws-only" help="Stop after the AWS layer (bootstrap and foundation). Automatic where Kubernetes cannot run"
 # What this does, in order, and why: infra/README.md, PLAN.md D22 and D39. Nothing persists, so anything that is not a
 # running, healthy Floci is wiped and built again from git.
@@ -11,12 +12,16 @@ cd "$MISE_PROJECT_ROOT"
 REVISION="${usage_revision:-main}"
 PLAN_ONLY="${usage_plan_only:-false}"
 AWS_ONLY="${usage_aws_only:-false}"
+STRICT="${usage_strict:-false}"
+DOWN=0
 CLUSTER="yaaf-dev"
 DEV="infra/environments/dev"
 COMPOSE="$DEV/compose.yaml"
 
 step() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*"; }
 die() { step "FAILED: $*"; exit 1; }
+# Under --strict (CI) a shortfall fails the run; otherwise it is reported and the run goes on.
+fail_or_warn() { [ "$STRICT" != "true" ] || die "$*"; step "WARNING: $*"; }
 wait_until() { # description, timeout seconds, command...
   local what="$1" end=$((SECONDS + $2)); shift 2
   until "$@" >/dev/null 2>&1; do
@@ -53,7 +58,14 @@ tofu_root() { # root, verb (plan|apply), extra args...
   local dir="$DEV/$1" verb="$2" out; shift 2
   local flags=(-input=false -no-color)
   [ "$verb" != "apply" ] || flags+=(-auto-approve)
-  tofu -chdir="$dir" init -input=false -no-color -reconfigure >/dev/null || die "tofu init ($dir)"
+  # init downloads providers from GitHub releases, which fail now and then (a 500 on a checksum file, 2026-10-08): a
+  # network fault must not fail the deploy check, so it gets three tries.
+  local try
+  for try in 1 2 3; do
+    tofu -chdir="$dir" init -input=false -no-color -reconfigure >/dev/null && break
+    [ "$try" -lt 3 ] || die "tofu init ($dir), three tries"
+    step "tofu init ($dir) failed, retrying in $((try * 10)) s"; sleep $((try * 10))
+  done
   if ! out="$(tofu -chdir="$dir" "$verb" "${flags[@]}" "$@" 2>&1)"; then printf '%s\n' "$out"; die "tofu $verb ($dir)"; fi
   printf '%s\n' "$out" | grep -E '^(Apply complete|No changes|Plan:)' || true
 }
@@ -94,7 +106,7 @@ url_has() { # url, host header, expected text
 }
 check_url() { # label, host, expected text
   local state="DOWN"
-  if wait_until "$1" 240 url_has "http://127.0.0.1:${INGRESS_PORT}/" "$2" "$3"; then state="OK  "; fi
+  if wait_until "$1" 240 url_has "http://127.0.0.1:${INGRESS_PORT}/" "$2" "$3"; then state="OK  "; else DOWN=$((DOWN + 1)); fi
   printf '  %s  %-10s http://%s:%s\n' "$state" "$1" "$2" "$INGRESS_PORT"
 }
 
@@ -110,6 +122,8 @@ ensure_docker
 # arm64 runner instead (PLAN.md D44). `mise run check` still validates every manifest offline.
 # Asked of the Docker engine that will run k3s, not of the machine running this script.
 if [ "$(docker info -f '{{.CgroupVersion}}' 2>/dev/null)" != "2" ]; then
+  # Under --strict the whole stack is the point: building half of it and passing would be a false green.
+  [ "$STRICT" != "true" ] || die "the Docker engine does not report cgroup v2, so Kubernetes cannot run here"
   [ "$AWS_ONLY" = "true" ] || step "This host has cgroup v1, where Kubernetes cannot run: building the AWS layer only"
   AWS_ONLY=true
 fi
@@ -168,7 +182,7 @@ step "Applying cluster (Argo CD, tracking '$REVISION')"
 tofu_root cluster apply -var "target_revision=$REVISION" -var "kubeconfig_context=$KUBE_CONTEXT" -var "kubeconfig_path=$KUBECONFIG"
 
 step "Waiting for the Argo CD applications to be Synced and Healthy"
-wait_until "the applications" 300 argo_ready || step "WARNING: not every application is Synced and Healthy (revision '$REVISION')"
+wait_until "the applications" 300 argo_ready || fail_or_warn "not every application is Synced and Healthy (revision '$REVISION')"
 kubectl --context "$KUBE_CONTEXT" -n argocd get applications
 
 echo; step "Checking the endpoints"
@@ -177,4 +191,5 @@ check_url "Shop" "shop.localhost" "Online Boutique"
 echo
 echo "Argo CD login: admin, password: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
 echo "AWS CLI:       aws --profile floci s3 ls     (the project's own profile; mise points the CLI at .aws/)"
+[ "$DOWN" -eq 0 ] || fail_or_warn "$DOWN endpoint(s) did not answer"
 step "Done in ${SECONDS}s."

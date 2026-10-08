@@ -1,0 +1,74 @@
+name: environment
+
+# The whole environment, built from git on a fresh arm64 runner (PLAN.md D31, D32): Floci, the three OpenTofu roots, Argo CD
+# tracking the commit under test, and every Application Synced and Healthy with the shop and Argo CD answering; then torn
+# down. On pull requests that change what it builds, it is the deploy check; after every merge to main it is continuous
+# verification, the evidence that stands in for a long-lived production. Its duration is the platform's measured
+# recovery time. arm64 because the images are (PLAN.md D27); cgroup v2, which Kubernetes needs, is checked before
+# anything runs.
+on:
+  pull_request:
+    paths:
+      - "deploy/**"
+      - "infra/**"
+      - ".mise/tasks/**"
+      - "mise.toml"
+      - "mise.lock"
+      - ".github/workflows/environment.yml"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: environment-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  environment:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      # The commit Argo CD will track, not GitHub's merge ref, so OpenTofu and Argo CD build from the same tree.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      # Kubernetes 1.35+ refuses cgroup v1, and 11 images plus k3s need room on the runner's 14 GB disk.
+      - name: Preflight (cgroup v2, disk)
+        run: |
+          fs="$(stat -fc %T /sys/fs/cgroup)"; free_gb="$(df -BG --output=avail / | tail -1 | tr -dc 0-9)"
+          echo "cgroup filesystem: $fs; free disk: ${free_gb} GB"
+          [ "$fs" = "cgroup2fs" ] || { echo "::error::this runner has cgroup v1; Kubernetes cannot run here"; exit 1; }
+          [ "$free_gb" -ge 8 ] || { echo "::error::only ${free_gb} GB free; the environment needs about 8"; exit 1; }
+
+      # Every tool at the version and checksum in mise.lock (PLAN.md D25). `mise run` installs any missing tool itself,
+      # so limiting this step saves nothing (seen 2026-10-08: about a second).
+      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+
+      # Argo CD pulls this commit from GitHub, so a pull request is checked as it would deploy. The images are the pinned
+      # ones in deploy/dev (pull requests never push images, PLAN.md D24).
+      - name: Build the environment from nothing
+        env:
+          REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          start=$SECONDS
+          mise run up --revision "$REVISION" --strict
+          echo "### Environment built from git in $((SECONDS - start)) s" >> "$GITHUB_STEP_SUMMARY"
+          echo "Revision \`$REVISION\`: every Application Synced and Healthy; the shop and Argo CD answered." >> "$GITHUB_STEP_SUMMARY"
+
+      # Also on a timeout, which cancels the job: that is when the cluster state matters most.
+      - name: What the cluster looked like
+        if: failure() || cancelled()
+        run: |
+          kubectl get applications -n argocd -o wide || true
+          kubectl get pods -A || true
+          kubectl get events -A --sort-by=.lastTimestamp | tail -n 40 || true
+
+      - name: Tear down
+        if: always()
+        run: mise run down || true
