@@ -1,6 +1,6 @@
 name: scorecard
 
-# OpenSSF Scorecard (ADR-0024): scores the repository's supply-chain practices (pinned dependencies, token permissions,
+# OpenSSF Scorecard (PLAN.md D24): scores the repository's supply-chain practices (pinned dependencies, token permissions,
 # dangerous workflows, branch protection, SAST, and more) and publishes the result to the public Scorecard API.
 # Publishing requires this exact shape: no workflow-level write permissions, env or defaults, and only approved actions.
 on:

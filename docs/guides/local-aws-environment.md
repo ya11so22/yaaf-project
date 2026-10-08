@@ -1,6 +1,6 @@
 # Guide: The local AWS environment
 
-**Related:** [ADR-0022](../../adr/0022-the-local-aws-environment.md), [`infra/README.md`](../../infra/README.md)
+**Related:** [D22](../../PLAN.md#d22), [`infra/README.md`](../../infra/README.md)
 **Evidence:** verified on Floci (built from nothing, re-applied with no changes, every endpoint checked, 2026-09-24)
 
 ## The idea
@@ -19,7 +19,7 @@ Docker Desktop
 └── floci-dash   an AWS-console-style dashboard on 127.0.0.1:9877
 ```
 
-OpenTofu builds on it in three **roots**, each with its own state, applied in order by the `up` task ([`docs/mac-migration.md`](../mac-migration.md)):
+OpenTofu builds on it in three **roots**, each with its own state, applied in order by the `up` task ([`infra/README.md`](../../infra/README.md)):
 
 1. **bootstrap** creates one S3 bucket, `yaaf-dev-tfstate`: versioned, encrypted, public access blocked, and
    protected from deletion. Its own state is a local file, because a bucket cannot store the state of the code that

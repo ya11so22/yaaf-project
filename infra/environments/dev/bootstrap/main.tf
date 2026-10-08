@@ -1,4 +1,4 @@
-# The first of the three dev roots (ADR-0022): the S3 bucket that holds the OpenTofu state of the other two.
+# The first of the three dev roots (PLAN.md D22): the S3 bucket that holds the OpenTofu state of the other two.
 # Its own state is a local file, because a bucket cannot hold the state of the code that creates it. This is
 # the same "bootstrap" step real teams run once per AWS account.
 provider "aws" {
@@ -24,7 +24,7 @@ resource "aws_s3_bucket" "state" {
   bucket = "${var.project}-dev-tfstate"
 
   # State is the one thing that must not be deleted by a typo. A full reset deletes Floci's data instead
-  # (the `reset` task, docs/mac-migration.md).
+  # (the `reset` task, infra/README.md).
   lifecycle {
     prevent_destroy = true
   }

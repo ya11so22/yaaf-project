@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# A drill, not a gate: shows what IAM does and does not enforce on the local AWS (Floci), so the claims in ADR-0006 and
-# ADR-0020 rest on evidence you can re-run. Read docs/guides/iam-policies-and-trust.md first. Needs the dev environment
+# A drill, not a gate: shows what IAM does and does not enforce on the local AWS (Floci), so the claims in PLAN.md D6 and
+# PLAN.md D20 rest on evidence you can re-run. Read docs/guides/iam-policies-and-trust.md first. Needs the dev environment
 # up (the `up` task), Docker, the AWS CLI and Python. Leaves nothing behind.
 #
 #   1. A Floci with IAM enforcement ON (a throwaway on port 4577, not your environment): identity policies and

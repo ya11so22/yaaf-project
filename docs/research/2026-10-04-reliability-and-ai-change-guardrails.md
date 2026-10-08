@@ -1,6 +1,6 @@
 # Research: reliability at low cost, and guardrails for AI-written change (October 2026)
 
-**Date:** 2026-10-04. **Feeds:** the Phase 1 close-out (CI guardrails), the scenario library ([ADR-0028](../../adr/0028-scenario-library.md)),
+**Date:** 2026-10-04. **Feeds:** the Phase 1 close-out (CI guardrails), the scenario library ([D28](../../PLAN.md#d28)),
 Phase 2 and the architecture track. An ADR for the guardrails is written before they are built. **Evidence labels:** *primary*
 (the standards body or vendor documentation), *vendor research* (a vendor's own study, with a commercial interest),
 *survey* (self-reported), *inference* (this project's reasoning, not a sourced finding).
@@ -75,7 +75,7 @@ repository. Claims that failed verification are listed in section 4 so they are 
   controls.
 - **It has already happened twice.** The Phase 1 failure exercise: a broken `emailservice` passed every check because "no
   check starts the service before merge" ([postmortem](../postmortems/2026-09-21-phase1-bad-emailservice.md)). On 2026-10-03,
-  Python images labelled arm64 held `x86_64` Python ([ADR-0027](../../adr/0027-arm64-only-app-images.md)). Both are fragile
+  Python images labelled arm64 held `x86_64` Python ([D27](../../PLAN.md#d27)). Both are fragile
   changes that CI accepted.
 - **The app is polyglot and vendored** (Go, C#, Java, Node, Python, Google's code), so per-language architecture rules,
   coverage gates and mutation testing cost a lot and guard code that is not the project's own.
@@ -95,7 +95,7 @@ Language-agnostic, cheap, each proven against a planted fault before it is trust
    measured threat.
 4. **A pull-request size limit** for agent PRs: small batches, made mechanical.
 5. **SAST** (Semgrep or CodeQL) on `app/src` changes: report first, then a gate on new high findings, the same ratchet as the
-   Trivy gate (ADR-0024).
+   Trivy gate (D24).
 
 Not built: AI-authorship labels as a control (trivially bypassed; the gates apply to every change), per-language
 architecture rules, mutation testing, coverage gates.

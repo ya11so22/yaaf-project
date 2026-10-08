@@ -1,6 +1,6 @@
 name: build
 
-# Builds the app services whose folder changed, and on main publishes them and opens the pin bump (ADR-0023, ADR-0024).
+# Builds the app services whose folder changed, and on main publishes them and opens the pin bump (PLAN.md D23, PLAN.md D24).
 #   pull request: build, scan and gate each changed service; nothing is pushed.
 #   main:         the same, then push by digest with provenance and an SBOM, then open (or update) the bot's pull
 #                 request that pins the new digests in deploy/dev, which Argo CD deploys once it merges.

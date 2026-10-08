@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The project's fast checks (ADR-0009, ADR-0025). One script, used by the pre-commit hook, `mise run check` and CI, so
+# The project's fast checks (PLAN.md D9, PLAN.md D25). One script, used by the pre-commit hook, `mise run check` and CI, so
 # the three cannot drift. The tools are the locked versions from mise.toml (no Docker needed).
 #
 #   scripts/check         staged-changes secret scan; a missing tool is reported as SKIP
@@ -74,7 +74,7 @@ else
   unavailable "manifest schemas" "kubectl not installed"
 fi
 
-# Workflow security (ADR-0024). Online in CI when a token is present, which adds the audits that ask GitHub (impostor
+# Workflow security (PLAN.md D24). Online in CI when a token is present, which adds the audits that ask GitHub (impostor
 # commits, actions with known vulnerabilities); offline otherwise.
 zizmor_check() {
   if $ci && [ -n "${GH_TOKEN:-}" ]; then

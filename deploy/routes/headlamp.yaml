@@ -1,4 +1,4 @@
-# The cluster dashboard at http://headlamp.localhost:18080 (ADR-0029). See argocd.yaml for how routes attach to the Gateway.
+# The cluster dashboard at http://headlamp.localhost:18080 (PLAN.md D29). See argocd.yaml for how routes attach to the Gateway.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:

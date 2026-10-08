@@ -4,7 +4,7 @@
 been filed; each item says where it should go. Searches of the upstream issue trackers on 2026-09-24 found no existing
 report for any of them (keyword search only, so a differently worded issue could exist).
 
-Serves the standing goal of one piece of external validation ([milestones](../milestones.md)).
+Serves the standing goal of one piece of external validation ([the plan](../../PLAN.md)).
 
 ## Floci (github.com/floci-io/floci): file as public issues
 

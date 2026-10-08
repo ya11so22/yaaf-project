@@ -1,4 +1,4 @@
-# The third dev root (ADR-0022, ADR-0026): Argo CD inside the EKS cluster that ../foundation creates, and nothing else.
+# The third dev root (PLAN.md D22, PLAN.md D26): Argo CD inside the EKS cluster that ../foundation creates, and nothing else.
 # Every other thing the cluster runs is an Application file in deploy/apps, delivered by pull request. A separate root because
 # the Helm provider needs a cluster that already exists to connect to; ../foundation must be applied first and the kubeconfig
 # written (the `up` task does both, in order).

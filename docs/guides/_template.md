@@ -1,6 +1,6 @@
 # Guide: {topic}
 
-**Related:** {ADR links, journal entries, code paths}
+**Related:** {plan decisions (`PLAN.md` D<n>), code paths}
 **Evidence:** {designed | verified on Floci | verified on real AWS}
 
 ## The idea
@@ -13,7 +13,7 @@ What this project did, step by step, with links to the code. Enough that someone
 
 ## Why this way
 
-The main alternatives and the trade-off, in a few lines. Link the ADR for the full reasoning.
+The main alternatives and the trade-off, in a few lines.
 
 ## Watch out for
 

@@ -1,4 +1,4 @@
-# Keeps pinned dependencies current (ADR-0024). Every action here is pinned to a commit SHA and every image to a digest;
+# Keeps pinned dependencies current (PLAN.md D24). Every action here is pinned to a commit SHA and every image to a digest;
 # without an update tool those pins only age. Dependabot updates the SHA and its version comment together.
 #
 # The 7-day cooldown is a supply-chain control: a release is adopted only after it has been public for a week, which is

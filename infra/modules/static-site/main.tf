@@ -1,4 +1,4 @@
-# A static website the way AWS recommends it (ADR-0022): a private S3 bucket that only CloudFront can read, through
+# A static website the way AWS recommends it (PLAN.md D22): a private S3 bucket that only CloudFront can read, through
 # origin access control (OAC). Nobody reaches the bucket directly; every request goes through the distribution.
 resource "aws_s3_bucket" "site" {
   bucket        = var.bucket_name

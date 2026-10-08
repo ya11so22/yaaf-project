@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fails unless an image really holds arm64 code (ADR-0027). The image's label is not proof: an image built on an amd64 base and
+# Fails unless an image really holds arm64 code (PLAN.md D27). The image's label is not proof: an image built on an amd64 base and
 # labelled arm64 passes `docker image inspect`, and runs only under emulation. This looks at the code itself: every ELF
 # executable and shared library in the image must be aarch64, and there must be at least one (an empty export proves nothing).
 #

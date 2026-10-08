@@ -1,7 +1,7 @@
 name: cleanup
 
 # GHCR has no lifecycle policy (unlike the ECR module), so keep only the newest 10 versions of each service image
-# (ADR-0023). Attestations are kept on GitHub, not in the registry, so they are not pruned here. Verified 2026-09-20 by a
+# (PLAN.md D23). Attestations are kept on GitHub, not in the registry, so they are not pruned here. Verified 2026-09-20 by a
 # manual run: the package-name format `yaaf-project/<service>` is accepted and the built-in token may manage the
 # packages. Deletion itself is untested until a package exceeds 10 versions.
 on:

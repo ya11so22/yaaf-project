@@ -1,6 +1,6 @@
 # Guide: Staying at $0 on AWS
 
-**Related:** [ADR-0020](../../adr/0020-zero-spend-real-aws-lane.md) (proposed), ADR-0012,
+**Related:** [D20](../../PLAN.md#d20) (proposed), D22,
 [research](../research/2026-09-24-sa-market-and-project-reality-check.md)
 **Evidence:** designed (the lane is not built yet)
 
@@ -35,7 +35,7 @@ without spending it is itself architect work.
 3. **Create a zero-spend budget.** Billing → Budgets → Create → "Use a template" → "Zero spend budget". It emails
    you when spend passes $0.01. Treat it as a smoke alarm, not a fire door.
 4. **Create a limited identity for the project**, allowed IAM and STS only, with a permissions boundary (the lane
-   in ADR-0020). Never give the project an administrator identity.
+   in D20). Never give the project an administrator identity.
 
 ## Why this way
 

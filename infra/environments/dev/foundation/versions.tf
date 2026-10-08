@@ -8,7 +8,7 @@ terraform {
     }
   }
 
-  # State lives in the bucket the bootstrap root creates, on Floci (ADR-0022). use_lockfile is OpenTofu's native S3
+  # State lives in the bucket the bootstrap root creates, on Floci (PLAN.md D22). use_lockfile is OpenTofu's native S3
   # locking: a .tflock object next to the state, so two applies cannot run at once. No DynamoDB table is needed.
   # CI replaces this block with a local backend through an override file (.github/workflows/infra.yml).
   backend "s3" {

@@ -1,4 +1,4 @@
-# The second dev root (ADR-0022): the account-level infrastructure on the local AWS. Network, EKS, registry, IAM,
+# The second dev root (PLAN.md D22): the account-level infrastructure on the local AWS. Network, EKS, registry, IAM,
 # the ingress load balancer and a static website. What runs inside the cluster is the cluster root's job.
 provider "aws" {
   region = var.region
@@ -76,8 +76,8 @@ module "ecr" {
   force_delete = true
 }
 
-# The roles GitHub Actions would assume on real AWS (ADR-0006). Floci stores them faithfully but does not enforce
-# their trust conditions, so here they prove the code's shape, not its security (ADR-0020 covers the real test).
+# The roles GitHub Actions would assume on real AWS (PLAN.md D6). Floci stores them faithfully but does not enforce
+# their trust conditions, so here they prove the code's shape, not its security (PLAN.md D20 covers the real test).
 module "github_oidc" {
   source = "../../../modules/github-oidc"
 

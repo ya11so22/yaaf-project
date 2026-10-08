@@ -1,7 +1,7 @@
 # Research: the SA job market, and whether this project is on the right track
 
 **Date:** 2026-09-24. **Status:** research and a proposal. Nothing here is decided yet; the decisions it asks
-for become ADR-0018 onward once the owner answers them.
+for become D21 onward once the owner answers them.
 **Evidence labels used below:** *primary* (AWS pages or the posting itself), *secondary* (blogs, aggregators;
 treat their numbers as rough), *inference* (my reasoning from the above).
 
@@ -78,7 +78,7 @@ generative AI 1 to 2 of 8.
   publishing AWS content. This project's write-ups are that content.
 - **Floci is the right tool for the inner loop, not for proof.** It is free, with no account (LocalStack now needs
   an account and token and is free only for non-commercial use, *secondary*). But it does not enforce IAM trust
-  conditions, gives one node, health checks are cosmetic, and the restart problems in ADR-0014 cost real time.
+  conditions, gives one node, health checks are cosmetic, and the restart problems in D22 cost real time.
   Industry uses emulators the same way: fast local tests, with real cloud for the claims that matter.
 
 ## 4. Is the project on the right track?
@@ -156,9 +156,9 @@ single account cannot show it).
 ### Answers (2026-09-24)
 
 1. No planned spend and no risk of accidental spend. The capped-budget idea in section 3 is withdrawn; see the
-   zero-spend lane in [ADR-0020](../../adr/0020-zero-spend-real-aws-lane.md) (proposed).
-2. Payments retailer: ADR-0018.
-3. Scope cut and replatform accepted: ADR-0019.
+   zero-spend lane in [D20](../../PLAN.md#d20) (proposed).
+2. Payments retailer: D21.
+3. Scope cut and replatform accepted: D21.
 4. The certification is later and out of scope. The project also becomes a learning course, with guides in
    [`docs/guides/`](../guides/README.md).
 

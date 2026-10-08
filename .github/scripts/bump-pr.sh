@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bumps the dev image pins and opens (or updates) the pull request for them (ADR-0013).
+# Bumps the dev image pins and opens (or updates) the pull request for them (PLAN.md D23).
 #   usage: bump-pr.sh
 # Env: BOT_NAME, BOT_EMAIL   commit identity (the GitHub App's bot user)
 #      GH_TOKEN              the App's installation token (needed unless DRY_RUN is set)
@@ -45,7 +45,7 @@ number="$(gh pr list --head "$branch" --state open --json number --jq '.[0].numb
 if [ -z "$number" ]; then
   url="$(gh pr create --base main --head "$branch" \
     --title "Bump dev image pins" \
-    --body "Automated by the bump-images workflow (ADR-0013). Argo CD deploys the pins on merge. To roll back, revert the source change that caused the problem: pins are derived from the source, so reverting only this PR is undone by the next bump.")"
+    --body "Automated by the bump-images workflow (PLAN.md D23). Argo CD deploys the pins on merge. To roll back, revert the source change that caused the problem: pins are derived from the source, so reverting only this PR is undone by the next bump.")"
   number="${url##*/}"
   echo "Opened $url"
 else

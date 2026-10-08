@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prints the content-hash image tag for a build context (ADR-0011, ADR-0027).
+# Prints the content-hash image tag for a build context (PLAN.md D23, PLAN.md D27).
 #   usage: content-tag.sh <context-dir> [rev]
 # The tag is the git tree hash of the directory plus the architecture, so it changes only when the files the image is
 # built from change, or the architecture does. Unchanged services keep their tag across commits, which lets a deploy resolve

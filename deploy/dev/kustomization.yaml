@@ -1,4 +1,4 @@
-# The dev environment: Online Boutique's own base, without the load generator (ADR-0023).
+# The dev environment: Online Boutique's own base, without the load generator (PLAN.md D23).
 # The image pins below are committed and written by .github/scripts/bump-images.sh; Argo CD deploys what is
 # here. Pins are derived from the source, so a rollback is reverting the source change, not the pin.
 apiVersion: kustomize.config.k8s.io/v1beta1

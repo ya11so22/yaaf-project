@@ -1,6 +1,6 @@
 name: rescan
 
-# Weekly: scan the images that are deployed, by the digests pinned in deploy/dev (ADR-0024). New CVEs are published after
+# Weekly: scan the images that are deployed, by the digests pinned in deploy/dev (PLAN.md D24). New CVEs are published after
 # an image is built, so a scan at build time alone goes stale. Results replace the build-time results for each service in
 # the Security tab (same category), so the tab always describes what runs. Report-only: the fix is a rebuild, which the
 # build gate then checks.
@@ -35,7 +35,7 @@ jobs:
   scan:
     needs: pins
     name: scan (${{ matrix.service }})
-    runs-on: ubuntu-24.04-arm # the images are arm64 (ADR-0027); an amd64 runner cannot scan them without naming a platform
+    runs-on: ubuntu-24.04-arm # the images are arm64 (PLAN.md D27); an amd64 runner cannot scan them without naming a platform
     timeout-minutes: 15
     permissions:
       contents: read
@@ -49,7 +49,7 @@ jobs:
         with:
           persist-credentials: false
 
-      # The same Trivy as the build gate: the version and checksum in mise.lock (ADR-0025), so the two cannot disagree.
+      # The same Trivy as the build gate: the version and checksum in mise.lock (PLAN.md D25), so the two cannot disagree.
       - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
         with:
           install_args: trivy
