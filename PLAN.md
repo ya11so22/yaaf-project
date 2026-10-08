@@ -165,6 +165,7 @@ Each is specified before it is run (`docs/scenarios/<name>/spec.md` and `inject.
 | <a id="d36"></a>D36 | The showcase is a static site on Vercel's free tier | Always on at no cost, with a preview per pull request, at the apex `yaafsome.fyi` (D38); Vercel does not run the shop, which stays on AWS-shaped infrastructure |
 | <a id="d37"></a>D37 | The project is planned in chat: questions, then one line per decision in this file; no ADRs, journal or separate milestones | The owner's way of working from 2026-10-08; one place to read |
 | <a id="d38"></a>D38 | The domain `yaafsome.fyi` (Cloudflare Registrar and DNS): the apex for the showcase, one level of subdomains for the demo (`shop`, `argocd`, `grafana`, and `check` for the edge test); the tunnel, hostnames and Access rules are set in the Cloudflare dashboard by a written runbook, not in code | One permanent name for everything presented; free certificates cover one subdomain level only; dashboard setup is one secret and no state to keep, where OpenTofu would need an API token and a permanent state store |
+| <a id="d41"></a>D41 | Agents run the delivery loop in `CLAUDE.md`: check, draft PR, a separate cold review, then auto-merge (squash) gated on the required checks, then the plan updated and the next item started; they stop for open questions, decision changes, money, real AWS, secrets, settings or data deletion | The owner works by planning in chat, not by pressing merge; GitHub's auto-merge makes "never merge red" a property of the platform rather than of the agent's care |
 
 ## Log
 
@@ -179,3 +180,4 @@ One line per merged change. History before 2026-10-03 is at the tag `archive/win
 - 2026-10-05: arm64 images; all 12 published with 24 attestations, verified with `gh attestation verify`; the shop works on the arm64 node (PRs #38 to #40)
 - 2026-10-08: the move to cloud sessions; this plan replaces the ADRs, handoff, milestones and journal (stage 0)
 - 2026-10-08: the domain `yaafsome.fyi`; the `edge-check` workflow and the tunnel and Access guide (D33 amended, D38)
+- 2026-10-08: the delivery loop for agents (D41): review, auto-merge on green, proceed until a question

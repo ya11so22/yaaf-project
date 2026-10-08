@@ -27,6 +27,27 @@ The single source of working rules for this repository, for people and agents. S
 - Open a PR early; **squash-merge**; the branch is deleted on merge. Commit and PR titles are short and imperative.
 - `bot/bump-images` is the only long-running branch: the pins bot reuses it for its one open PR, which auto-merges.
 - Old history lives at tags (`archive/windows-era`), not in old branches. Delete merged branches.
+- In a Claude Code cloud session, work on the session's assigned branch instead of a `<type>/<slug>` one. Once its PR is
+  merged, restart that branch from the new `main` before the next change; never add commits to merged history.
+
+## The delivery loop (agents)
+
+Agents drive their own pull requests from first commit to merge, then carry on with the plan. For each change:
+
+1. **Build** on a branch from `main`; run `mise run check` (and anything else the change can be proved with) before
+   every push.
+2. **Open the PR** as a draft, and subscribe to its activity so CI results and comments arrive on their own.
+3. **Review** with a separate pass that reads the diff cold (the `code-review` skill against the PR), never the author's
+   own memory of it. Fix every blocking finding and push; answer optional ones on the PR in one line.
+4. **Merge** by marking the PR ready and enabling **auto-merge (squash)**. GitHub then merges only when every required
+   check (`check`, `build`, `infra`) is green, so a red PR cannot land even by mistake. A red check is fixed, not waited
+   out; a failure that is not the PR's own is explained once on the PR.
+5. **Record**: tick the stage's checklist in `PLAN.md` and add the log line (in the PR itself where possible).
+6. **Proceed** to the next item in the current stage.
+
+**Stop and ask the owner** instead of proceeding when the plan has an open question (**?**) for the next item, a change
+would contradict a decision in `PLAN.md`, or anything involves money, a card, real AWS, secrets, repository settings
+or permissions, or deleting data. Merging needs no approval otherwise; the owner can revert anything on `main`.
 
 ## Working model (simulated team)
 
