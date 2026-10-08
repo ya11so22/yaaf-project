@@ -81,9 +81,10 @@ Each stage is one or a few pull requests. Questions marked **?** are asked at th
 - [x] The runner is asserted to have cgroup v2 and 8 GB of free disk before the build starts
 - [ ] Floci's IAM enforcement on (`FLOCI_SERVICES_IAM_ENFORCEMENT_ENABLED`), and nothing authenticates with the `test` key
       that bypasses it
-- [x] OpenTofu's S3 lock proved on Floci (`scripts/drills/state-lock.sh`, 2026-10-08): while one `plan` holds the lock
-      a second is refused with "Error acquiring the state lock"; the control, the same race with the lock off, is not
-      refused. Plans, not applies: both take the same lock, and a plan changes nothing
+- [x] OpenTofu's S3 lock proved on Floci (`scripts/drills/state-lock.sh`, 2026-10-08): while `tofu console` holds the
+      lock, a `plan` is refused with "Error acquiring the state lock"; the control, the same plan with its lock off, is
+      not refused; the lock is released afterwards; a stale lock is refused up front. Plans, not applies: both take the
+      same lock, and a plan changes nothing
 - [ ] Claims labelled honestly: the ALB carries traffic on Floci (the shop worked through it on 2026-10-05) but its
       health checks do nothing; Floci's ElastiCache is Valkey
 
