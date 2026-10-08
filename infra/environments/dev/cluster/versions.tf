@@ -8,7 +8,7 @@ terraform {
     }
   }
 
-  # Same bucket as the foundation root, its own key (ADR-0022).
+  # Same bucket as the foundation root, its own key (PLAN.md D22).
   backend "s3" {
     bucket       = "yaaf-dev-tfstate"
     key          = "cluster/terraform.tfstate"

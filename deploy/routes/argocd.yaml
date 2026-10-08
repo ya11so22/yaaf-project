@@ -1,4 +1,4 @@
-# Argo CD's UI and API at http://argocd.localhost:18080 (ADR-0029). Argo CD serves plain HTTP on port 80 because the chart
+# Argo CD's UI and API at http://argocd.localhost:18080 (PLAN.md D29). Argo CD serves plain HTTP on port 80 because the chart
 # sets server.insecure; there is no TLS between Traefik and it locally.
 #
 # A route lives in the namespace of the service it sends traffic to and attaches to the platform's Gateway: the platform team

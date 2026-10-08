@@ -1,6 +1,6 @@
 # Guide: IAM policies, boundaries and trust, and what the local AWS can prove
 
-**Related:** [ADR-0006](../../adr/0006-github-oidc-role-design.md), [ADR-0020](../../adr/0020-zero-spend-real-aws-lane.md),
+**Related:** [D6](../../PLAN.md#d6), [D20](../../PLAN.md#d20),
 [`scripts/drills/iam-trust.sh`](../../scripts/drills/iam-trust.sh)
 **Evidence:** verified on Floci (the drill, 2026-09-24). GitHub's own tokens: not verified on real AWS.
 
@@ -33,7 +33,7 @@ starts a throwaway Floci with it on, beside your environment.
 | A user with no policy lists buckets | **Denied** (enforcement on) |
 | The same user with `AmazonS3ReadOnlyAccess`: list / create a bucket | List **allowed**, create **denied** |
 | A user with `AdministratorAccess` and an S3-read-only **permissions boundary**: read S3 / create an IAM user | Read **allowed**, IAM **denied**. The boundary caps the admin policy |
-| A forged token claiming `repo:evil-org/evil-repo` against the project's real `yaaf-gha-tofu-apply` role, on your normal Floci | **Accepted.** Floci cannot verify GitHub's signature, so it trusts the claims. This is the gap ADR-0006 recorded |
+| A forged token claiming `repo:evil-org/evil-repo` against the project's real `yaaf-gha-tofu-apply` role, on your normal Floci | **Accepted.** Floci cannot verify GitHub's signature, so it trusts the claims. This is the gap D6 recorded |
 | A GitHub token with exactly the right claims, with enforcement on | **Rejected** ("issuer is not trusted"): Floci refuses what it cannot verify |
 | **IRSA**: a token Floci itself signs for the cluster's OIDC issuer, from `demo/allowed` | **Allowed** |
 | The same, from `demo/intruder` | **Denied** by the trust policy's `sub` condition |
@@ -48,7 +48,7 @@ the `sub` this policy expects.
 
 ## Why this way
 
-- **Prove locally what can be proven locally.** ADR-0020 first proposed real AWS for the trust test. The drill shows most
+- **Prove locally what can be proven locally.** D20 first proposed real AWS for the trust test. The drill shows most
   of it does not need real AWS; the remaining question is small and specific.
 - **A throwaway Floci for enforcement**, not your environment: turning enforcement on would change what your normal
   tooling can do (below).

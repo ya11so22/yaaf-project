@@ -1,6 +1,6 @@
 # Guide: The CI/CD pipeline standard, and how to build the next pipeline
 
-**Related:** [ADR-0024](../../adr/0024-ci-cd-pipeline-standard.md), [ADR-0023](../../adr/0023-build-and-delivery.md),
+**Related:** [D24](../../PLAN.md#d24), [D23](../../PLAN.md#d23),
 [research](../research/2026-09-24-ci-cd-pipeline-research.md), [`.github/workflows/`](../../.github/workflows/README.md)
 **Evidence:** checks run locally and gates proven against planted faults (2026-10-01); the workflows themselves are proven
 by their first runs on GitHub.

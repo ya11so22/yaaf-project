@@ -1,5 +1,5 @@
-# The local AWS (ADR-0022): Floci, and an AWS-console-style dashboard for it.
-# Started and stopped by the up/down tasks (docs/mac-migration.md), and used as-is by CI for a fresh Floci per run.
+# The local AWS (PLAN.md D22): Floci, and an AWS-console-style dashboard for it.
+# Started and stopped by the up/down tasks (infra/README.md), and used as-is by CI for a fresh Floci per run.
 # Images are pinned by digest; bump them deliberately.
 name: floci
 
@@ -23,10 +23,11 @@ services:
       # kept in its S3 bucket).
       FLOCI_STORAGE_MODE: persistent
       # Added on Windows, where Docker Desktop could not resolve the default *.localhost registry host names, so ECR uses
-      # localhost:4566/<account>/<region>/<repo> URIs instead. Possibly unneeded on a Mac (docs/mac-migration.md).
+      # localhost:4566/<account>/<region>/<repo> URIs instead. Not yet retested anywhere else; keep it until a
+      # run without it shows ECR pushes still work.
       FLOCI_SERVICES_ECR_URI_STYLE: path
       # Floci does no Kubernetes version mapping: every EKS cluster runs this k3s image, whatever version is asked
-      # for. It comes from mise.toml (K3S_IMAGE), next to the Kubernetes minor it matches (ADR-0025), so run docker
+      # for. It comes from mise.toml (K3S_IMAGE), next to the Kubernetes minor it matches (PLAN.md D25), so run docker
       # compose through mise.
       FLOCI_SERVICES_EKS_DEFAULT_IMAGE: ${K3S_IMAGE:?set by mise.toml; run through mise}
       # The cluster containers Floci starts join this network, so the k3s API server can reach Floci's IAM
@@ -49,7 +50,7 @@ services:
     # The Docker socket powers the in-browser EC2 terminal (a `docker exec` into the instance's container). Its code
     # only targets containers named floci-ec2-<instance-id>, but whoever holds the socket controls Docker on this
     # machine, so this trusts floci-dash at the pinned digest: review its changes before bumping it. Accepted by the
-    # owner on 2026-09-24 to use the dashboard as intended (ADR-0022, and the guide's "Watch out for").
+    # owner on 2026-09-24 to use the dashboard as intended (PLAN.md D22, and the guide's "Watch out for").
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:

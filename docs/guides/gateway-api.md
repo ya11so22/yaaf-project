@@ -1,6 +1,6 @@
 # Guide: Gateway API, how traffic gets into the cluster
 
-**Related:** [ADR-0029](../../adr/0029-gateway-api-for-ingress.md) (the decision), [ADR-0026](../../adr/0026-argo-cd-app-of-apps.md) (how it is deployed),
+**Related:** [D29](../../PLAN.md#d29) (the decision), [D26](../../PLAN.md#d26) (how it is deployed),
 [`deploy/apps/traefik.yaml`](../../deploy/apps/traefik.yaml) (the Gateway), [`deploy/routes/`](../../deploy/routes/argocd.yaml) and
 [`deploy/dev/route.yaml`](../../deploy/dev/route.yaml) (the routes), [the local environment guide](local-aws-environment.md)
 **Evidence:** verified on Floci (every output below is from this cluster on 2026-10-05); the Gateway API facts are from its
@@ -45,7 +45,7 @@ browser  http://shop.localhost:18080
   ──▶ the Service "frontend", port 80, in namespace boutique
 ```
 
-Three things are set up, all by git ([ADR-0026](../../adr/0026-argo-cd-app-of-apps.md)):
+Three things are set up, all by git ([D26](../../PLAN.md#d26)):
 
 1. **The CRDs.** Kubernetes ships none of these types. `deploy/apps/gateway-api-crds.yaml` installs them from Traefik's
    `traefik-crds` chart. They must exist *before* Traefik starts, which is why that Application has an earlier sync wave.
@@ -113,7 +113,7 @@ data path is actually set up. `attachedRoutes=3` is the Gateway counting the rou
   reaches the ALB. Mix them up and the Gateway shows a problem instead of routing. *This project hit the same shape of
   confusion with `8080`: your own software already held it, so every `*.localhost:8080` request returned someone else's page.*
 - **The CRDs must exist first.** A Gateway or route applied before its CRD fails with "no matches for kind". That is why the
-  CRD Application syncs before Traefik, and Traefik before the routes (sync waves, ADR-0026).
+  CRD Application syncs before Traefik, and Traefik before the routes (sync waves, D26).
 - **A Gateway with no address is not Programmed.** A NodePort Service has no load-balancer address for Traefik to copy, so
   the chart's `statusAddress.hostname` is set to `localhost`. *Found by reading the chart before deploying; verified when the
   Gateway came up `Programmed=True`.*

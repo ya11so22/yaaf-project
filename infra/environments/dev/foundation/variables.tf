@@ -29,7 +29,7 @@ variable "ssh_public_key" {
 }
 
 variable "kubernetes_version" {
-  description = "Kubernetes version of the EKS cluster. Set once in mise.toml and passed as TF_VAR_kubernetes_version (ADR-0025)."
+  description = "Kubernetes version of the EKS cluster. Set once in mise.toml and passed as TF_VAR_kubernetes_version (PLAN.md D25)."
   type        = string
 }
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Writes the image pins in a kustomization: every service's content-hash tag on GHCR, and with --verify its digest
-# (ADR-0023, ADR-0024). The pins live in git so Argo CD deploys exactly what is committed.
+# (PLAN.md D23, PLAN.md D24). The pins live in git so Argo CD deploys exactly what is committed.
 #   usage: bump-images.sh <kustomization-dir> [rev] [--verify]
 # rev selects the source revision the tags are computed from (default HEAD). --verify looks each tag up on the registry
 # and pins its digest too (rendered as name:tag@sha256:...), so a pin can never point at an image that was not built,

@@ -1,11 +1,11 @@
 name: reusable-container-image
 
-# Builds, scans and (on main only) publishes one container image, with SLSA provenance and an SBOM (ADR-0024). Called by
+# Builds, scans and (on main only) publishes one container image, with SLSA provenance and an SBOM (PLAN.md D24). Called by
 # build.yml once per changed service; a new service needs a folder with a Dockerfile, not a new pipeline.
 #
-# The images are arm64 only (ADR-0027): they are built on a native arm runner, with the two build arguments the vendored
+# The images are arm64 only (PLAN.md D27): they are built on a native arm runner, with the two build arguments the vendored
 # Dockerfiles otherwise default to amd64, and a check proves the code inside is really aarch64, not just labelled so. The
-# scanner is the locked `trivy` binary from mise.lock (ADR-0025), not a third-party action.
+# scanner is the locked `trivy` binary from mise.lock (PLAN.md D25), not a third-party action.
 #
 #   pull request: build, scan, gate. Never pushes: an image that can reach the cluster is built by main only.
 #   main:         the same, then push by digest, attest provenance and SBOM. An image whose content tag already exists
@@ -35,7 +35,7 @@ permissions: {}
 jobs:
   image:
     name: ${{ inputs.service }}
-    runs-on: ubuntu-24.04-arm # free for public repositories (ADR-0027)
+    runs-on: ubuntu-24.04-arm # free for public repositories (PLAN.md D27)
     timeout-minutes: 30
     permissions:
       contents: read
@@ -56,7 +56,7 @@ jobs:
         with:
           persist-credentials: false
 
-      # Trivy at the version and checksum in mise.lock (ADR-0025).
+      # Trivy at the version and checksum in mise.lock (PLAN.md D25).
       - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
         with:
           install_args: trivy
@@ -88,7 +88,7 @@ jobs:
           context: ${{ inputs.context }}
           platforms: linux/arm64
           # The vendored Dockerfiles declare "defaults" of amd64 for these two arguments, and the defaults win over the real
-          # platform: left alone, a Python image is labelled arm64 but holds x86_64 code (ADR-0027).
+          # platform: left alone, a Python image is labelled arm64 but holds x86_64 code (PLAN.md D27).
           build-args: |
             BUILDPLATFORM=linux/arm64
             TARGETARCH=arm64

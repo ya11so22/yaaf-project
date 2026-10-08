@@ -1,4 +1,4 @@
-# One EC2 instance set up the way AWS recommends for a shell you log in to (ADR-0022): reachable over SSH from a
+# One EC2 instance set up the way AWS recommends for a shell you log in to (PLAN.md D22): reachable over SSH from a
 # narrow source range, and reachable with no open port at all through AWS Systems Manager.
 data "aws_iam_policy_document" "assume" {
   statement {

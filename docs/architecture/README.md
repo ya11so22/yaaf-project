@@ -1,7 +1,7 @@
 # Architecture track
 
-The design side of this project, in AWS's terms ([ADR-0021](../../adr/0021-project-purpose-scenario-and-scope.md)).
-It sits beside the running system and the ADRs: what should be built and why, reviewed against the
+The design side of this project, in AWS's terms ([D21](../../PLAN.md#d21)).
+It sits beside the running system and the plan: what should be built and why, reviewed against the
 [AWS Well-Architected Framework](https://docs.aws.amazon.com/wellarchitected/latest/framework/the-pillars-of-the-framework.html)
 (six pillars: operational excellence, security, reliability, performance efficiency, cost optimization,
 sustainability) and the lenses that apply.
@@ -10,7 +10,7 @@ sustainability) and the lenses that apply.
 
 A **fictional** customer, so the work can show the method as an architect would run it: a mid-size retailer
 that takes card payments, moving its storefront to AWS, written as one engagement from discovery to a second
-review ([ADR-0021](../../adr/0021-project-purpose-scenario-and-scope.md)). PCI DSS is the control frame, used as a
+review ([D21](../../PLAN.md#d21)). PCI DSS is the control frame, used as a
 mapping, never as a claim of compliance. There are availability and RTO/RPO targets, a budget, and a small team. The requirements and assumptions are written down first
 (`00-requirements.md`, not started), and every design choice traces back to one.
 
@@ -22,7 +22,7 @@ Every claim in this track carries one of three labels. Nothing here is presented
 |---|---|
 | **designed** | Reasoned and written down, not built. |
 | **verified on Floci** | Built and run on the local emulator. Floci proves that tested SDK and IaC scenarios work, not that real AWS behaves the same way; its known gaps are listed in `infra/README.md`. |
-| **verified on real AWS** | Run on real AWS. None yet; only free identity services may be used ([ADR-0020](../../adr/0020-zero-spend-real-aws-lane.md), proposed). |
+| **verified on real AWS** | Run on real AWS. None yet; only free identity services may be used ([D20](../../PLAN.md#d20), proposed). |
 
 ## Contents and state
 
@@ -32,7 +32,7 @@ Every claim in this track carries one of three labels. Nothing here is presented
 | `01-views.md` | Context, containers, AWS deployment, delivery flow, data flow, trust boundaries, as diagrams in code | not started |
 | `02-well-architected-review.md` | The review against all six pillars and the Container Build, DevOps and Financial Services Industry lenses, with a findings register (risk level, evidence, where it was verified, remediation and milestone). Review v1 now, v2 after Phase 2 | not started |
 | `03-reliability-and-dr.md` | RTO/RPO tiers (backup and restore, pilot light, warm standby, active-active), multi-AZ and multi-region options, cost per tier, the failure exercises so far | not started |
-| `04-cost-model.md` | Pricing estimates at several sizes, the levers, and what each ADR trade-off costs | not started |
+| `04-cost-model.md` | Pricing estimates at several sizes, the levers, and what each decision's trade-off costs | not started |
 | `05-migration-options.md` | The 7 Rs applied to the scenario, a recommended path and why | not started |
 | `06-security-and-compliance.md` | The threat model, and a control mapping for card-payment handling (a mapping, not a certification) | not started |
 | `07-ai-architecture.md` | Bedrock against self-hosted serving on EKS, a RAG design; the Generative AI lens | not started |
@@ -42,6 +42,6 @@ Every claim in this track carries one of three labels. Nothing here is presented
 
 ## How it connects to the rest
 
-- Decisions live in [`/adr`](../../adr); the review points at them as evidence instead of repeating them.
+- Decisions live in [the plan](../../PLAN.md#decisions); the review points at them as evidence instead of repeating them.
 - The failure exercises live in [`docs/postmortems/`](../postmortems).
-- Progress against phases is in [`docs/milestones.md`](../milestones.md).
+- Progress is tracked in [the plan](../../PLAN.md).

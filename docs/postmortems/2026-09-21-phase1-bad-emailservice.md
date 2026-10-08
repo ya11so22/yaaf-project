@@ -1,7 +1,7 @@
 # 2026-09-21: A broken emailservice through the delivery pipeline (Phase 1 failure exercise)
 
 **Type:** deliberate failure exercise. **Environment:** `dev` (Argo CD on the long-lived local AWS).
-**Related:** ADR-0013, ADR-0011, PRs #17 to #22.
+**Related:** D23, D23, PRs #17 to #22.
 
 ## What broke, and how it was broken on purpose
 
@@ -63,7 +63,7 @@ pod was ever not Ready.
 
 ## What changed as a result
 
-- The rollback rule is now written down where the old text was wrong: ADR-0013 (rollback is reverting the
+- The rollback rule is now written down where the old text was wrong: D23 (rollback is reverting the
   source; a pin revert alone is undone by the next bump), the glossary, README, and the PR body the bump
   workflow writes.
 - Follow-ups, none built yet:

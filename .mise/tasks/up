@@ -2,7 +2,7 @@
 #MISE description="Bring the local AWS up, idempotently: VM, Floci, the three OpenTofu roots, kubeconfig, Argo CD"
 #USAGE flag "--revision <rev>" default="main" help="Git revision Argo CD tracks. A branch name tries a change before it is merged; run plain `up` again after the branch is deleted"
 #USAGE flag "--plan-only" help="Start Floci, then plan instead of apply"
-# What this does, in order, and why: docs/mac-migration.md section 2 and ADR-0022. Bash 3.2 safe (macOS).
+# What this does, in order, and why: infra/README.md and PLAN.md D22. Bash 3.2 safe (macOS).
 set -euo pipefail
 cd "$MISE_PROJECT_ROOT"
 

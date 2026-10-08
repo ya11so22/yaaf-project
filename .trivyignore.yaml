@@ -1,4 +1,4 @@
-# Accepted CRITICAL findings for the build gate (ADR-0024). Each entry is a known, fixable CRITICAL in Google's upstream
+# Accepted CRITICAL findings for the build gate (PLAN.md D24). Each entry is a known, fixable CRITICAL in Google's upstream
 # Online Boutique code, so the gate fails only on NEW criticals. Recorded on 2026-10-01 from a fresh scan of all 12 service
 # images with Trivy v0.74.0 (the version the pipeline pins), not from older Security-tab results.
 # Every entry expires: after its date the build fails again until the finding is fixed (an app-team pull request that

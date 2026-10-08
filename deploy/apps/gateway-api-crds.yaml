@@ -1,4 +1,4 @@
-# The Gateway API CRDs (ADR-0029): the types Gateway, GatewayClass, HTTPRoute and the rest, which Kubernetes does not ship.
+# The Gateway API CRDs (PLAN.md D29): the types Gateway, GatewayClass, HTTPRoute and the rest, which Kubernetes does not ship.
 # From Traefik's own CRD chart, so the Gateway API version is the one Traefik's maintainers pair with their chart (1.18.0
 # ships the v1.5.1 standard channel). Only the Gateway API CRDs: the main Traefik chart installs Traefik's own.
 #

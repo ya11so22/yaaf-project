@@ -5,7 +5,7 @@
 # There is no login screen: every visitor is served as Headlamp's own read-only service account. A token login cannot survive
 # a cluster reset (the new cluster has new signing keys, so every old token stops validating). Headlamp calls this option unsafe
 # because anyone who can reach the UI gets that account's access; here that is read-only without secrets, and the only way in is
-# the loopback-only ALB (ADR-0022). Do not carry this to anything reachable by others.
+# the loopback-only ALB (PLAN.md D22). Do not carry this to anything reachable by others.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

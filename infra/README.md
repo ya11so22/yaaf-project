@@ -1,7 +1,7 @@
 # /infra
 
-The local AWS and everything OpenTofu builds on it ([ADR-0022](../adr/0022-the-local-aws-environment.md)). Original
-work for this project, not part of the vendored `/app`. OpenTofu, not Terraform: [ADR-0005](../adr/0005-opentofu-over-terraform.md).
+The local AWS and everything OpenTofu builds on it ([D22](../PLAN.md#d22)). Original
+work for this project, not part of the vendored `/app`. OpenTofu, not Terraform: [D5](../PLAN.md#d5).
 
 The AWS here is [Floci](https://github.com/floci-io/floci), a free local emulator. Nothing in this folder can reach
 real AWS: every provider uses Floci's endpoint and dummy keys (see the [cost guide](../docs/guides/aws-cost-safety.md)).
@@ -19,7 +19,7 @@ infra/
     ├── vpc/            VPC, public and private subnets over 2 AZs, internet gateway, one shared NAT gateway
     ├── eks-cluster/    EKS control plane, managed node group, cluster and node IAM roles
     ├── ecr/            one repository per app service, lifecycle policy, immutable tags
-    ├── github-oidc/    GitHub OIDC provider and three least-privilege roles (ADR-0006)
+    ├── github-oidc/    GitHub OIDC provider and three least-privilege roles (D6)
     ├── alb-ingress/    an ALB forwarding to the ingress controller's NodePort
     ├── ec2-instance/   an instance with a security group, SSM instance profile and IMDSv2 only (the workstation)
     ├── static-site/    a private S3 bucket behind CloudFront with origin access control
@@ -36,7 +36,7 @@ Colima (or another runtime) on a Mac, and [mise](https://mise.jdx.dev), which in
 [`mise.toml`](../mise.toml) (OpenTofu, `kubectl`, the AWS CLI, and the checkers). About 8 GB of memory for the project's own VM
 while the cluster runs.
 
-The environment is operated by four mise tasks (ADR-0025). Run them from the repository root:
+The environment is operated by four mise tasks (D25). Run them from the repository root:
 
 | Task | What it does |
 |---|---|
@@ -47,8 +47,8 @@ The environment is operated by four mise tasks (ADR-0025). Run them from the rep
 
 The project runs in its **own** Colima VM, named `yaaf`, and never touches any other profile. `mise.toml` points Docker,
 Colima, the AWS CLI and `kubectl` at the project (`COLIMA_PROFILE`, `DOCKER_CONTEXT`, and `.aws/` and `.kube/` in the
-repository), so commands run here cannot reach other containers, your own `~/.aws` or `~/.kube`, or real AWS. What the tasks do,
-in order, and the Floci quirks they work around, is in [`docs/mac-migration.md`](../docs/mac-migration.md). The manual
+repository), so commands run here cannot reach other containers, your own `~/.aws` or `~/.kube`, or real AWS. The Floci quirks they work around
+are [below](#floci-quirks). The manual
 sequence, from inside `mise exec --`, is the same three roots in turn:
 
 ```bash
@@ -61,6 +61,20 @@ tofu -chdir=infra/environments/dev/cluster init && tofu -chdir=infra/environment
 
 To reset, never use the runtime's "purge data" or `docker volume prune`: they delete Floci's data but leave the bootstrap
 state behind. Use the `reset` task.
+
+## Floci quirks
+
+Behaviour of Floci 2.1.0 that the tasks and modules work around.
+
+| | Quirk (Floci 2.1.0) | Handling |
+|---|---|---|
+| Q1 | After an abrupt stop the k3s container comes back on a stale IP and exits, while Floci still reports the cluster `ACTIVE`; OpenTofu sees no drift. Floci also only restores the cluster when the EKS API is first called. | `up` checks the cluster itself and repairs it (`repair_cluster`). |
+| Q2 | The cluster's datastore volume `floci-eks-<name>` carries no `floci=true` label. | `reset` matches it by name. |
+| Q3 | CloudFront drops tags given at creation, so the first re-apply "changes" the distribution; `ListInstanceProfileTags` is unsupported. | First is a known one-apply convergence (CI applies twice); second has `ignore_changes` in `modules/ec2-instance`. A fix for the first is drafted for upstream (`PLAN.md`, backlog). |
+| Q4 | Port 4566 answers HTTP 200 for unknown hosts (an S3 list). | URL checks look for page content. |
+| Q5 | CloudFront viewer requests route only by the generated domain. | `FLOCI_SERVICES_CLOUDFRONT_DOMAIN_SUFFIX=cloudfront.localhost` in `compose.yaml`. |
+| Q6 | EC2 SSH (2200-2299) and security-group ports (30000-30999) are published on all interfaces, and the source CIDR is not enforced. | Check with `ss -ltnp \| grep -E ':22[0-9]{2}'`; on a shared host, block them with the host firewall. Ephemeral runners and cloud sessions accept no inbound traffic. |
+| Q7 | IAM is not enforced by default; IMDSv2-required is not enforced. | Documented; `scripts/drills/iam-trust.sh` shows enforcement mode. |
 
 ## What you can open
 

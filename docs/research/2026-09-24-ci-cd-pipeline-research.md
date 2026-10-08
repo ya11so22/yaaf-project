@@ -1,6 +1,6 @@
 # Research: what a good GitHub Actions CI/CD pipeline looks like (2026)
 
-**Date:** 2026-09-24 to 2026-10-01. **Feeds:** [ADR-0024](../../adr/0024-ci-cd-pipeline-standard.md) and the
+**Date:** 2026-09-24 to 2026-10-01. **Feeds:** [D24](../../PLAN.md#d24) and the
 [pipeline guide](../guides/ci-cd-pipeline-standard.md). **Evidence labels:** *primary* (the vendor or standards body),
 *secondary* (security firms, blogs), *tested* (run in this repository).
 

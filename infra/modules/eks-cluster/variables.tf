@@ -4,7 +4,7 @@ variable "name" {
 }
 
 variable "kubernetes_version" {
-  description = "Kubernetes version for the EKS control plane. No default: the caller passes the one value kept in mise.toml (ADR-0025)."
+  description = "Kubernetes version for the EKS control plane. No default: the caller passes the one value kept in mise.toml (PLAN.md D25)."
   type        = string
 }
 

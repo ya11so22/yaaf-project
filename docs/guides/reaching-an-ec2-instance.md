@@ -1,6 +1,6 @@
 # Guide: Reaching an EC2 instance three ways
 
-**Related:** [ADR-0022](../../adr/0022-the-local-aws-environment.md), [`infra/modules/ec2-instance`](../../infra/modules/ec2-instance/main.tf),
+**Related:** [D22](../../PLAN.md#d22), [`infra/modules/ec2-instance`](../../infra/modules/ec2-instance/main.tf),
 [upstream findings](../research/2026-09-24-floci-upstream-findings.md)
 **Evidence:** verified on Floci (all three paths tested on 2026-09-24). Not verified on real AWS, where the details differ as noted.
 
@@ -22,7 +22,7 @@ you audit trails that SSH keys do not. SSH remains common for tools that need it
 
 The foundation root builds one instance, the **workstation** (Amazon Linux 2023), from
 [`modules/ec2-instance`](../../infra/modules/ec2-instance/main.tf); the `up` task should print the commands to reach it
-([`docs/mac-migration.md`](../mac-migration.md)).
+([`infra/README.md`](../../infra/README.md)).
 
 **1. The console terminal.** Open http://localhost:9877, go to EC2, open the instance, and use the Terminal tab.
 floci-dash runs `docker exec -it <container> /bin/bash` inside the instance's container over the Docker socket. On
@@ -73,7 +73,7 @@ aws --profile floci ssm get-command-invocation --command-id <CommandId> --instan
   `*:2201` (macOS: `lsof -nP -iTCP:2201 -sTCP:LISTEN`). Login needs your key, so this is not an open door, but it is a
   listening port on your network, and the same is true of any port a security group opens (Floci publishes those on
   30000 to 30999). Floci has no setting for the bind address. On a shared network, block those ranges at the host
-  firewall (on Windows this was a `New-NetFirewallRule`; on macOS see [`docs/mac-migration.md`](../mac-migration.md), Q6),
+  firewall (on Windows this was a `New-NetFirewallRule`; see [the Floci quirks](../../infra/README.md#floci-quirks), Q6),
   then check from another device that the port is closed and from this machine that `ssh` still works.
 - **The security group's source range is not enforced.** The module allows SSH from `127.0.0.1/32`; Floci publishes
   the port regardless. On real AWS the group is the firewall, and this range would be enforced. Never leave `0.0.0.0/0`

@@ -1,4 +1,4 @@
-# The workload: Online Boutique and its route, from deploy/dev (ADR-0023). The image pins in deploy/dev are what the bot
+# The workload: Online Boutique and its route, from deploy/dev (PLAN.md D23). The image pins in deploy/dev are what the bot
 # updates; nothing here changes when a service does.
 apiVersion: argoproj.io/v1alpha1
 kind: Application

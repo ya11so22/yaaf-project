@@ -35,7 +35,7 @@ variable "single_nat_gateway" {
   description = <<-EOT
     true: one NAT gateway shared by all private subnets (cheaper, single point of failure,
     used for the local dev environment).
-    false: one NAT gateway per AZ (real HA posture, not used here yet — see ADR-0022 on why
+    false: one NAT gateway per AZ (real HA posture, not used here yet — see PLAN.md D22 on why
     cost/simplicity wins for this project).
   EOT
   type        = bool

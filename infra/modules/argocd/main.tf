@@ -1,4 +1,4 @@
-# Argo CD, installed from the official chart, plus an AppProject and ONE root Application (ADR-0026).
+# Argo CD, installed from the official chart, plus an AppProject and ONE root Application (PLAN.md D26).
 # Everything else Argo CD runs is an Application file in git under deploy/apps/, so the platform is delivered by pull request
 # the same way the workload is. Nothing pushes into the cluster: Argo CD reconciles from git with automated sync, pruning and
 # self-heal.
@@ -26,13 +26,13 @@ resource "helm_release" "argocd" {
 
     configs = {
       # Poll git every 60 seconds (the chart's default is 180) so a merge reaches the cluster within about a
-      # minute, without a webhook (ADR-0023).
+      # minute, without a webhook (PLAN.md D23).
       cm = {
         "timeout.reconciliation" = "60s"
       }
       params = {
         # Plain HTTP inside the cluster: the UI is reached through the loopback-only ingress, which has no TLS
-        # locally (ADR-0022).
+        # locally (PLAN.md D22).
         "server.insecure" = true
       }
     }
@@ -81,7 +81,7 @@ resource "helm_release" "root" {
           targetRevision = var.target_revision
           path           = "deploy/apps"
           # Applications whose source is this repository carry the label yaaf/source=repo. Their targetRevision is set
-          # here to the root's own revision, so `up --revision <branch>` tries a branch end to end (ADR-0026).
+          # here to the root's own revision, so `up --revision <branch>` tries a branch end to end (PLAN.md D26).
           kustomize = {
             patches = [{
               target = {

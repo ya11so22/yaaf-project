@@ -1,0 +1,93 @@
+name: edge-check
+
+# Proves the public edge on yaafsome.fyi end to end before the live demo exists (PLAN.md D33, D38): a test page on the
+# runner is published through the named Cloudflare tunnel at check.yaafsome.fyi, and Cloudflare Access is confirmed to
+# guard the operator hostnames while leaving the shop open. Run by hand; the one-time setup it needs is in
+# docs/guides/cloudflare-tunnel-and-access.md.
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+# One tunnel, one runner at a time: every run holding the token adds a connector to the same tunnel, and Cloudflare
+# spreads requests across connectors, so two runs at once would answer each other's hostnames. The demo workflow
+# (stage 4) joins this group.
+concurrency:
+  group: yaaf-demo-tunnel
+  cancel-in-progress: false
+
+env:
+  # cloudflared 2026.9.3, multi-arch index. Run, not installed, so pinned by digest (PLAN.md D24); Dependabot does not see
+  # images in workflow steps, so bump it by hand, keeping the 7-day cooldown.
+  CLOUDFLARED_IMAGE: cloudflare/cloudflared@sha256:072c067d25ccbe61d46e18f0d0723255f2bb5304f7317caa95b27031520ff92c
+
+jobs:
+  edge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # The tunnel token is an environment secret, so only jobs that name this environment can read it.
+    environment: demo
+    permissions: {}
+    steps:
+      # The page carries this attempt's own id: a re-run, a lingering connector or a cached copy cannot pass for it.
+      - name: Serve a test page on the runner
+        run: |
+          mkdir site
+          echo "yaaf edge check ${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" > site/index.html
+          python3 -m http.server 8080 --bind 127.0.0.1 --directory site >http-server.log 2>&1 &
+          for _ in $(seq 1 10); do
+            curl -fs http://127.0.0.1:8080/ >/dev/null && { echo "test page served locally"; exit 0; }
+            sleep 1
+          done
+          cat http-server.log; echo "::error::the test page server did not start"; exit 1
+
+      - name: Start the tunnel
+        env:
+          # Passed by name (`-e TUNNEL_TOKEN`), so the token never appears in a command line or the process list.
+          TUNNEL_TOKEN: ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
+        run: |
+          [ -n "$TUNNEL_TOKEN" ] || { echo "::error::The demo environment has no CLOUDFLARE_TUNNEL_TOKEN secret (see the guide)"; exit 1; }
+          docker run -d --name cloudflared --network host -e TUNNEL_TOKEN "$CLOUDFLARED_IMAGE" \
+            tunnel --no-autoupdate --metrics 127.0.0.1:20241 run >/dev/null
+          for _ in $(seq 1 30); do
+            curl -fs http://127.0.0.1:20241/ready >/dev/null && { echo "tunnel connected"; exit 0; }
+            sleep 2
+          done
+          echo "::error::the tunnel did not connect within 60 s"; exit 1
+
+      # Content, not status: a page from somewhere else must not pass.
+      - name: The test page answers on its public hostname
+        run: |
+          for _ in $(seq 1 30); do
+            if curl -fs --max-time 10 https://check.yaafsome.fyi/ | grep -qx "yaaf edge check ${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"; then
+              echo "check.yaafsome.fyi serves this run's page"; exit 0
+            fi
+            sleep 4
+          done
+          echo "::error::check.yaafsome.fyi did not serve this run's page"; exit 1
+
+      # Access answers before the request reaches the tunnel, so this holds even though nothing serves these hosts yet.
+      - name: Access guards the operator hostnames and not the shop
+        run: |
+          # Status and redirect target of a bare request. 000 means no answer at all (no DNS record, TLS or timeout),
+          # which must never count as "public".
+          probe() { curl -s -o /dev/null --max-time 10 -w '%{http_code} %{redirect_url}' "https://$1/" || true; }
+          fail=0
+          for host in argocd.yaafsome.fyi grafana.yaafsome.fyi; do
+            read -r code location <<<"$(probe "$host")"
+            if [[ "$location" == *cloudflareaccess.com* ]]; then echo "$host: behind Access"
+            else echo "::error::$host is not behind Access (HTTP $code)"; fail=1; fi
+          done
+          read -r code location <<<"$(probe shop.yaafsome.fyi)"
+          if [ "${code:-000}" = "000" ]; then echo "::error::shop.yaafsome.fyi did not answer"; fail=1
+          elif [[ "$location" == *cloudflareaccess.com* ]]; then echo "::error::shop.yaafsome.fyi is behind Access but should be public"; fail=1
+          else echo "shop.yaafsome.fyi: public, answered HTTP $code"; fi
+          exit "$fail"
+
+      - name: Tunnel log
+        if: always()
+        run: docker logs cloudflared 2>&1 | tail -n 20 || true
+
+      - name: Stop the tunnel
+        if: always()
+        run: docker rm -f cloudflared >/dev/null 2>&1 || true
