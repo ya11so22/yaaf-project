@@ -6,8 +6,9 @@ open, and the decisions made so far. It replaces the ADRs, the handoff, the mile
 
 **How it is used.** Each stage starts with questions in the chat session; the answers become decisions below (one line
 of *what* and one of *why*), the stage's checklist is ticked as pull requests land, and each merged PR adds one line to
-the log. Code comments cite decisions as `PLAN.md D<n>`. Decision numbers are stable and never reused; D5 to D29 keep the
-numbers they had as ADRs, so older references still resolve.
+the log. Code comments cite decisions as `PLAN.md D<n>`. Decision numbers are stable and never reused. D5, D6, D9 and D20 to D29 keep the
+numbers they had as ADRs; citations of the archived ADR-0011 and 0013 now point to D23, 0012 and 0014 to D22, and
+0018 and 0019 to D21, the decisions that absorbed them. Numbers 1 to 19 that are not listed have no row here.
 
 ## What this is
 

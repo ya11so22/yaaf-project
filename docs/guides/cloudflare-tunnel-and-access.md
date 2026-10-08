@@ -46,10 +46,10 @@ the operator hostnames redirect to the Access login while the shop does not.
 
    | Subdomain | Service | HTTP Host Header (under *Additional application settings → HTTP Settings*) |
    |---|---|---|
-   | `check` | `http://localhost:8080` | (leave empty) |
-   | `shop` | `http://localhost:18080` | `shop.localhost` |
-   | `argocd` | `http://localhost:18080` | `argocd.localhost` |
-   | `grafana` | `http://localhost:18080` | `grafana.localhost` |
+   | `check` | `http://127.0.0.1:8080` | (leave empty) |
+   | `shop` | `http://127.0.0.1:18080` | `shop.localhost` |
+   | `argocd` | `http://127.0.0.1:18080` | `argocd.localhost` |
+   | `grafana` | `http://127.0.0.1:18080` | `grafana.localhost` |
 
    The Host header makes the cluster's existing routes match (they route by `*.localhost`, D29), so nothing in
    `deploy/` changes yet. Each row also creates the DNS record for you.
@@ -78,6 +78,11 @@ the operator hostnames redirect to the Access login while the shop does not.
   Access application; `edge-check` fails if Argo CD or Grafana answers without the login, which is the point of it.
 - **A fresh domain takes a while to resolve.** `yaafsome.fyi` was registered on 2026-10-08 and the `.fyi` registry had not
   published it an hour later; until it does, every lookup says "no such domain" (NXDOMAIN). *Hit by this project.*
+- **Use `127.0.0.1`, not `localhost`, as the service address.** The origins listen on IPv4 loopback only; if
+  `localhost` resolves to `::1` first, cloudflared gets connection refused and visitors see a 502.
+- **One tunnel, one runner at a time.** Every run that holds the token adds a connector to the same tunnel, and
+  Cloudflare spreads requests across them, so two runs at once answer each other's hostnames with 502s. The workflows
+  share one concurrency group, `yaaf-demo-tunnel`.
 - **Free Universal SSL covers one level of subdomain** (`shop.yaafsome.fyi`, not `shop.demo.yaafsome.fyi`). That is why
   the hostnames sit directly under the apex.
 

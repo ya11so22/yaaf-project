@@ -9,8 +9,11 @@ on:
 
 permissions: {}
 
+# One tunnel, one runner at a time: every run holding the token adds a connector to the same tunnel, and Cloudflare
+# spreads requests across connectors, so two runs at once would answer each other's hostnames. The demo workflow
+# (stage 4) joins this group.
 concurrency:
-  group: edge-check
+  group: yaaf-demo-tunnel
   cancel-in-progress: false
 
 env:
@@ -26,11 +29,17 @@ jobs:
     environment: demo
     permissions: {}
     steps:
+      # The page carries this attempt's own id: a re-run, a lingering connector or a cached copy cannot pass for it.
       - name: Serve a test page on the runner
         run: |
           mkdir site
-          echo "yaaf edge check, run ${GITHUB_RUN_ID}" > site/index.html
-          python3 -m http.server 8080 --bind 127.0.0.1 --directory site >/dev/null 2>&1 &
+          echo "yaaf edge check ${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" > site/index.html
+          python3 -m http.server 8080 --bind 127.0.0.1 --directory site >http-server.log 2>&1 &
+          for _ in $(seq 1 10); do
+            curl -fs http://127.0.0.1:8080/ >/dev/null && { echo "test page served locally"; exit 0; }
+            sleep 1
+          done
+          cat http-server.log; echo "::error::the test page server did not start"; exit 1
 
       - name: Start the tunnel
         env:
@@ -50,7 +59,7 @@ jobs:
       - name: The test page answers on its public hostname
         run: |
           for _ in $(seq 1 30); do
-            if curl -fs --max-time 10 https://check.yaafsome.fyi/ | grep -q "run ${GITHUB_RUN_ID}"; then
+            if curl -fs --max-time 10 https://check.yaafsome.fyi/ | grep -qx "yaaf edge check ${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"; then
               echo "check.yaafsome.fyi serves this run's page"; exit 0
             fi
             sleep 4
@@ -60,13 +69,19 @@ jobs:
       # Access answers before the request reaches the tunnel, so this holds even though nothing serves these hosts yet.
       - name: Access guards the operator hostnames and not the shop
         run: |
-          gated() { curl -s -o /dev/null --max-time 10 -w '%{redirect_url}' "https://$1/" | grep -q 'cloudflareaccess\.com'; }
+          # Status and redirect target of a bare request. 000 means no answer at all (no DNS record, TLS or timeout),
+          # which must never count as "public".
+          probe() { curl -s -o /dev/null --max-time 10 -w '%{http_code} %{redirect_url}' "https://$1/" || true; }
           fail=0
           for host in argocd.yaafsome.fyi grafana.yaafsome.fyi; do
-            if gated "$host"; then echo "$host: behind Access"; else echo "::error::$host is not behind Access"; fail=1; fi
+            read -r code location <<<"$(probe "$host")"
+            if [[ "$location" == *cloudflareaccess.com* ]]; then echo "$host: behind Access"
+            else echo "::error::$host is not behind Access (HTTP $code)"; fail=1; fi
           done
-          if gated shop.yaafsome.fyi; then echo "::error::shop.yaafsome.fyi is behind Access but should be public"; fail=1
-          else echo "shop.yaafsome.fyi: public"; fi
+          read -r code location <<<"$(probe shop.yaafsome.fyi)"
+          if [ "${code:-000}" = "000" ]; then echo "::error::shop.yaafsome.fyi did not answer"; fail=1
+          elif [[ "$location" == *cloudflareaccess.com* ]]; then echo "::error::shop.yaafsome.fyi is behind Access but should be public"; fail=1
+          else echo "shop.yaafsome.fyi: public, answered HTTP $code"; fi
           exit "$fail"
 
       - name: Tunnel log

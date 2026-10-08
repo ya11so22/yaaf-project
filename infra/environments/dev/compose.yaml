@@ -23,7 +23,8 @@ services:
       # kept in its S3 bucket).
       FLOCI_STORAGE_MODE: persistent
       # Added on Windows, where Docker Desktop could not resolve the default *.localhost registry host names, so ECR uses
-      # localhost:4566/<account>/<region>/<repo> URIs instead. Possibly unneeded on Linux.
+      # localhost:4566/<account>/<region>/<repo> URIs instead. Not yet retested anywhere else; keep it until a
+      # run without it shows ECR pushes still work.
       FLOCI_SERVICES_ECR_URI_STYLE: path
       # Floci does no Kubernetes version mapping: every EKS cluster runs this k3s image, whatever version is asked
       # for. It comes from mise.toml (K3S_IMAGE), next to the Kubernetes minor it matches (PLAN.md D25), so run docker

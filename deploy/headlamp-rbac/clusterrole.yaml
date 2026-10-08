@@ -1,4 +1,4 @@
-# The read-only role Headlamp runs as (PLAN.md D23, decision 8). The built-in "view" role omits nodes and
+# The read-only role Headlamp runs as (PLAN.md D23; in full as ADR-0013 item 8 at c4c44b0). The built-in "view" role omits nodes and
 # every custom resource, so the dashboard reported "forbidden" for them. This grants read access
 # (get, list, watch) to what a cluster dashboard shows, and deliberately not to secrets, pod exec or
 # node proxy: the core group is listed resource by resource, and secrets exist only in the core group.
