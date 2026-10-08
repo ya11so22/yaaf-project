@@ -54,13 +54,14 @@ Each stage is one or a few pull requests. Questions marked **?** are asked at th
 
 ### Stage 1: the cloud workbench
 
-- [ ] SessionStart hook: install mise and `mise install --locked`, start `dockerd` when it is not running
-- [ ] `mise.toml` and the tasks lose Colima (`COLIMA_PROFILE`, `DOCKER_CONTEXT`, the VM start); tasks shrink towards
-      `up` and `check`
-- [ ] floci-dash becomes opt-in (`up --extras`); Headlamp and its RBAC and route removed; the portal page retired
-- [ ] Proved by bringing Floci and the three roots up in a session (the shop needs arm64, so it is proved in stage 2)
-- **?** Does the k3s repair after an abrupt stop (quirk Q1) still earn its place when every environment is fresh?
-- **?** Do the EC2 workstation, the `static-site` module and the IAM drill stay in the default build, move to extras, or go?
+- [x] SessionStart hook: installs mise and `mise install --locked`, starts `dockerd`, enables the git hook (6 s from a
+      clean state)
+- [x] `mise.toml` and the tasks lose Colima; tasks are `up`, `down` and `check`
+- [x] Nothing persists (D39): Floci in memory only; `up` rebuilds anything stale; the k3s repair and `reset` removed
+- [x] Removed (D40): the EC2 workstation, the S3 + CloudFront portal, floci-dash, Headlamp. The IAM drill stays a script
+      and becomes a stage 6 scenario
+- [ ] Proved by bringing Floci and the three roots up in a session, then rebuilding after a simulated worker restart (the
+      shop needs arm64, so it is proved in stage 2)
 
 ### Stage 2: the ephemeral environment
 
@@ -135,7 +136,8 @@ Each is specified before it is run (`docs/scenarios/<name>/spec.md` and `inject.
 
 - The shopping-assistant replatform from Google Cloud (Bedrock designed, PostgreSQL with pgvector built on Floci)
 - The Floci CloudFront tag fix (`docs/research/patches/`): finish the end-to-end proof, then ask before opening it
-  upstream (no `Co-Authored-By` trailers for AI tools there). Lower priority now the portal is retired
+  upstream (no `Co-Authored-By` trailers for AI tools there). Nothing in the project uses CloudFront since D40, so this is only an
+  upstream contribution now
 - Filing the other upstream findings (`docs/research/2026-09-24-floci-upstream-findings.md`)
 - Owner, in the AWS console, whenever convenient: nothing running in any Region, root MFA on, no root keys, a zero-spend
   budget ([guide](docs/guides/aws-cost-safety.md))
@@ -161,11 +163,13 @@ Each is specified before it is run (`docs/scenarios/<name>/spec.md` and `inject.
 | <a id="d31"></a>D31 | Environments are ephemeral, built on GitHub arm64 runners: per-PR check, continuous verification, on-demand demo | Free for a public repository, native arm64, 4 vCPU and 16 GB; the demo is the same thing that gates every merge |
 | <a id="d32"></a>D32 | Production is *designed* for real AWS and never built; continuous verification is the evidence | Zero spend and zero accident risk, stated honestly instead of faking a long-lived production |
 | <a id="d33"></a>D33 | The live demo goes out through a **named** Cloudflare tunnel (`yaaf-demo`) on `yaafsome.fyi`: the shop public, Argo CD and Grafana behind Cloudflare Access (email one-time code). *Amended 2026-10-08:* first a quick tunnel (`*.trycloudflare.com`), replaced once the owner registered the domain | Stable URLs to present, and a login in front of the operator UIs, which a quick tunnel cannot have. Watch out: the tunnel token lets anyone attach to these hostnames; it lives only in the `demo` environment secret |
-| <a id="d34"></a>D34 | Live UIs are the shop, Argo CD and (stage 5) Grafana; floci-dash is opt-in; Headlamp and the portal page are removed | They tell the platform and reliability story; the rest duplicated it or only made sense on a laptop |
+| <a id="d34"></a>D34 | Live UIs are the shop, Argo CD and (stage 5) Grafana; everything else is removed (D40) | They tell the platform and reliability story; the rest duplicated it or only made sense on a laptop |
 | <a id="d35"></a>D35 | The app moves to its own repository, worked by two agent teams split by domain (Checkout, Catalog) | Least privilege by repository permission instead of a path check; a realistic team boundary |
 | <a id="d36"></a>D36 | The showcase is a static site on Vercel's free tier | Always on at no cost, with a preview per pull request, at the apex `yaafsome.fyi` (D38); Vercel does not run the shop, which stays on AWS-shaped infrastructure |
 | <a id="d37"></a>D37 | The project is planned in chat: questions, then one line per decision in this file; no ADRs, journal or separate milestones | The owner's way of working from 2026-10-08; one place to read |
 | <a id="d38"></a>D38 | The domain `yaafsome.fyi` (Cloudflare Registrar and DNS): the apex for the showcase, one level of subdomains for the demo (`shop`, `argocd`, `grafana`, and `check` for the edge test); the tunnel, hostnames and Access rules are set in the Cloudflare dashboard by a written runbook, not in code | One permanent name for everything presented; free certificates cover one subdomain level only; dashboard setup is one secret and no state to keep, where OpenTofu would need an API token and a permanent state store |
+| <a id="d39"></a>D39 | Nothing persists: Floci runs in memory and is never restarted on its own; `up` re-applies a healthy environment and removes and rebuilds anything else; `down` deletes everything; the k3s repair (quirk Q1) and `reset` are gone | Cloud sessions and runners are thrown away anyway, and a restarted session worker is exactly the abrupt stop that broke k3s. Rebuilding from git is simpler than repairing, and its duration is the platform's measured recovery time |
+| <a id="d40"></a>D40 | Removed: the EC2 workstation, the S3 + CloudFront portal (`static-site`), floci-dash and Headlamp. Their guides stay as records; the code is at `c4c44b0` | Nobody can open them from a cloud session, and the stories they told (logging in to EC2, a static site, a console) are not the two clients' story. Fewer parts to keep working |
 | <a id="d41"></a>D41 | Agents run the delivery loop in `CLAUDE.md`: check, draft PR, a separate cold review, then auto-merge (squash) gated on the required checks, then the plan updated and the next item started; they stop for open questions, decision changes, money, real AWS, secrets, settings or data deletion | The owner works by planning in chat, not by pressing merge; GitHub's auto-merge makes "never merge red" a property of the platform rather than of the agent's care |
 
 ## Log
@@ -182,3 +186,4 @@ One line per merged change. History before 2026-10-03 is at the tag `archive/win
 - 2026-10-08: the move to cloud sessions; this plan replaces the ADRs, handoff, milestones and journal (stage 0)
 - 2026-10-08: the domain `yaafsome.fyi`; the `edge-check` workflow and the tunnel and Access guide (D33 amended, D38)
 - 2026-10-08: the delivery loop for agents (D41): review, auto-merge on green, proceed until a question
+- 2026-10-08: stage 1, the cloud workbench: the SessionStart hook, no Colima, nothing persists (D39), the extras removed (D40)

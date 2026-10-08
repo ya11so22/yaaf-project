@@ -27,9 +27,8 @@ Terms are added as they are resolved (via `/domain-modeling`), not written specu
 - **AWS**: the cloud layer (IAM, VPC, S3, CloudFront, ELB, ECR, EKS). Backed by the local **Floci**; nothing billable
   is created on real AWS. Say "AWS" for the layer, and name the thing when it matters: the **EKS cluster**, a
   **workload** in it, or the **emulator** for Floci's own behaviour (D22).
-- **Floci**: the local AWS emulator, started fresh in every session and CI run. By default it does not enforce IAM policies or trust conditions; it has an enforcement mode
+- **Floci**: the local AWS emulator, started fresh in every session and CI run, keeping nothing (D39). By default it does not enforce IAM policies or trust conditions; it has an enforcement mode
   (`docs/guides/iam-policies-and-trust.md`).
-- **floci-dash**: the dashboard for Floci, modelled on the AWS Management Console (D22).
 - **Environment**: what OpenTofu provisions on top of AWS. **dev** is the only one, and it is **ephemeral**: built from git
   on a runner and thrown away (D31). **Production** is designed, never built (D32).
 - **Continuous verification**: rebuilding the whole environment from git after every merge and requiring it to become
@@ -40,11 +39,9 @@ Terms are added as they are resolved (via `/domain-modeling`), not written specu
 - **Root**: one OpenTofu working directory with its own state. dev has three, applied in order: **bootstrap** (the
   state bucket), **foundation** (the account-level infrastructure), **cluster** (what runs inside EKS).
 - **State bucket**: `yaaf-dev-tfstate` on Floci, holding the foundation and cluster state with an S3 lock file.
-- **Workstation**: the EC2 instance the foundation root creates to log in to; reachable through the dashboard terminal, SSH
-  or SSM Run Command (D22).
 - **Scenario**: a failure exercise kept as a folder, `docs/scenarios/<name>/`: a spec written before it is run, a script that
   injects the fault, and a dated report in `docs/postmortems/` for each run (D28).
-- **Portal**: the static website (S3 behind CloudFront) that linked every local endpoint; retired as a front door (D34).
+- **Portal**: the static website (S3 behind CloudFront) that linked every local endpoint; removed with the workstation and floci-dash (D40).
 - **Real AWS**: not used. The rule is that nothing billable is ever created there; the "zero-spend lane" of D20 was
   rejected on 2026-10-03 and anything real waits until the project is complete.
 

@@ -1,4 +1,4 @@
-# The HTTPRoutes for the platform tools (Argo CD and Headlamp), from deploy/routes. The shop's own route is part of deploy/dev.
+# The HTTPRoutes for the platform tools (Argo CD; Grafana in stage 5), from deploy/routes. The shop's own route is part of deploy/dev.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
