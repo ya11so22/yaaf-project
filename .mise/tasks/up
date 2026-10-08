@@ -58,7 +58,14 @@ tofu_root() { # root, verb (plan|apply), extra args...
   local dir="$DEV/$1" verb="$2" out; shift 2
   local flags=(-input=false -no-color)
   [ "$verb" != "apply" ] || flags+=(-auto-approve)
-  tofu -chdir="$dir" init -input=false -no-color -reconfigure >/dev/null || die "tofu init ($dir)"
+  # init downloads providers from GitHub releases, which fail now and then (a 500 on a checksum file, 2026-10-08): a
+  # network fault must not fail the deploy check, so it gets three tries.
+  local try
+  for try in 1 2 3; do
+    tofu -chdir="$dir" init -input=false -no-color -reconfigure >/dev/null && break
+    [ "$try" -lt 3 ] || die "tofu init ($dir), three tries"
+    step "tofu init ($dir) failed, retrying in $((try * 10)) s"; sleep $((try * 10))
+  done
   if ! out="$(tofu -chdir="$dir" "$verb" "${flags[@]}" "$@" 2>&1)"; then printf '%s\n' "$out"; die "tofu $verb ($dir)"; fi
   printf '%s\n' "$out" | grep -E '^(Apply complete|No changes|Plan:)' || true
 }
