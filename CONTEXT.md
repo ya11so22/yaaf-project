@@ -27,7 +27,8 @@ Terms are added as they are resolved (via `/domain-modeling`), not written specu
 - **AWS**: the cloud layer (IAM, VPC, S3, CloudFront, ELB, ECR, EKS). Backed by the local **Floci**; nothing billable
   is created on real AWS. Say "AWS" for the layer, and name the thing when it matters: the **EKS cluster**, a
   **workload** in it, or the **emulator** for Floci's own behaviour (D22).
-- **Floci**: the local AWS emulator, started fresh in every session and CI run, keeping nothing (D39). By default it does not enforce IAM policies or trust conditions; it has an enforcement mode
+- **Floci**: the local AWS emulator, started fresh in every session and CI run and keeping nothing itself; the data that must survive leaves through
+  encrypted backups (D39, D42). By default it does not enforce IAM policies or trust conditions; it has an enforcement mode
   (`docs/guides/iam-policies-and-trust.md`).
 - **Environment**: what OpenTofu provisions on top of AWS. **dev** is the only one, and it is **ephemeral**: built from git
   on a runner and thrown away (D31). **Production** is designed, never built (D32).

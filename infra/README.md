@@ -39,13 +39,20 @@ Three mise tasks, run from the repository root:
 
 | Task | What it does |
 |---|---|
-| `mise run up` | Builds the environment from git: Floci, the three OpenTofu roots in order, the AWS profile and kubeconfig, Argo CD; then checks the shop and Argo CD. On a healthy environment it re-applies in place; anything stale (a Floci that stopped, leftovers from an earlier run) is removed first and built again. If the cluster does not come up, it rebuilds once from nothing. `--revision <branch>` makes Argo CD track a branch; `--plan-only` plans instead |
+| `mise run up` | Builds the environment from git: Floci, the three OpenTofu roots in order, the AWS profile and kubeconfig, Argo CD; then checks the shop and Argo CD (on a host that can run Kubernetes). On a healthy environment it re-applies in place; anything stale (a Floci that stopped, leftovers from an earlier run) is removed first and built again. If the cluster does not come up, it rebuilds once from nothing. `--revision <branch>` makes Argo CD track a branch; `--plan-only` plans instead; `--aws-only` stops after the AWS layer |
 | `mise run down` | Removes everything: Floci, the containers it started, the local bootstrap state, `.aws` and `.kube` |
 | `mise run check` | The fast checks (`scripts/check`) |
 
-**Nothing persists** (PLAN.md D39). Floci keeps its AWS, and the OpenTofu state in its S3 bucket, in memory only, so a
-stopped Floci is a lost environment, and that is fine: everything is code, and `up` measures how long rebuilding takes.
-Watch out: a cloud session's worker can restart under you, which stops Docker and everything in it; just run `up` again.
+**The platform is disposable, the data is not** (PLAN.md D39, D42). Floci keeps its AWS, and the OpenTofu state in its S3
+bucket, in memory only, so a stopped Floci is a lost environment, and that is fine: everything is code, and `up` measures
+how long rebuilding takes. Orders and carts are the exception: they leave the environment as encrypted backups and come
+back on the next `up` (stage 2b of the plan). Watch out: a cloud session's worker can restart under you, which stops
+Docker and everything in it; just run `up` again.
+
+**In a cloud session, `up` builds the AWS layer only** (PLAN.md D44). The session's kernel uses cgroup v1, which
+Kubernetes 1.35+ refuses, so `up` detects it and stops after the foundation root; `mise run check` validates the manifests
+offline, and the cluster, Argo CD and the shop are proved on the arm64 runner. On the session VM: AWS layer from nothing
+in about 3 minutes, a re-run in place in about 30 s.
 
 `mise.toml` points the AWS CLI and `kubectl` at `.aws/` and `.kube/` in the repository, so commands run here cannot reach
 your own `~/.aws` or `~/.kube`, or real AWS. The Floci quirks the tasks work around are [below](#floci-quirks). The manual

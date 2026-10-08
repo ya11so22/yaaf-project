@@ -2,6 +2,7 @@
 #MISE description="Build the local AWS from git: Floci, the three OpenTofu roots, kubeconfig, Argo CD. Re-applies a healthy environment; rebuilds a stale one"
 #USAGE flag "--revision <rev>" default="main" help="Git revision Argo CD tracks. A branch name tries a change before it is merged"
 #USAGE flag "--plan-only" help="Start Floci, then plan instead of apply"
+#USAGE flag "--aws-only" help="Stop after the AWS layer (bootstrap and foundation). Automatic where Kubernetes cannot run"
 # What this does, in order, and why: infra/README.md, PLAN.md D22 and D39. Nothing persists, so anything that is not a
 # running, healthy Floci is wiped and built again from git.
 set -euo pipefail
@@ -9,6 +10,7 @@ cd "$MISE_PROJECT_ROOT"
 
 REVISION="${usage_revision:-main}"
 PLAN_ONLY="${usage_plan_only:-false}"
+AWS_ONLY="${usage_aws_only:-false}"
 CLUSTER="yaaf-dev"
 DEV="infra/environments/dev"
 COMPOSE="$DEV/compose.yaml"
@@ -100,6 +102,13 @@ start_floci() {
 }
 
 ensure_docker
+# Kubernetes 1.35+ refuses to run on cgroup v1 hosts. A Claude Code cloud session is one (and also blocks pod networking
+# and image pulls inside k3s), so there the session builds and checks the AWS layer, and the cluster is proven on the
+# arm64 runner instead (PLAN.md D44). `mise run check` still validates every manifest offline.
+if [ "$(stat -fc %T /sys/fs/cgroup 2>/dev/null)" != "cgroup2fs" ]; then
+  [ "$AWS_ONLY" = "true" ] || step "This host has cgroup v1, where Kubernetes cannot run: building the AWS layer only"
+  AWS_ONLY=true
+fi
 SECONDS=0
 if floci_healthy; then
   step "Floci is running: re-applying in place"
@@ -125,6 +134,10 @@ for attempt in 1 2; do
   tofu_root bootstrap apply
   step "Applying foundation"
   tofu_root foundation apply
+  if [ "$AWS_ONLY" = "true" ]; then
+    step "Done in ${SECONDS}s: the AWS layer is up (Floci on http://localhost:4566). The cluster layer runs on the arm64 runner."
+    exit 0
+  fi
   step "Waiting for the cluster API and nodes"
   if wait_until "the cluster to be Ready" 180 ready_check; then break; fi
   [ "$attempt" -eq 1 ] || { docker logs --tail 25 "floci-eks-$CLUSTER" 2>&1 || true; die "the cluster is not healthy after a rebuild"; }

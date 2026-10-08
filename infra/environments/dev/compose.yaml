@@ -20,7 +20,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       # Nothing is kept: the AWS, and the OpenTofu state in its S3 bucket, live only as long as this container. Every
-      # environment is built from git (PLAN.md D39). `memory` is Floci's default, set here so the choice is visible.
+      # environment is built from git (PLAN.md D39); the data that must survive leaves through encrypted
+      # backups (D42). `memory` is Floci's default, set here so the choice is visible.
       FLOCI_STORAGE_MODE: memory
       # Added on Windows, where Docker Desktop could not resolve the default *.localhost registry host names, so ECR uses
       # localhost:4566/<account>/<region>/<repo> URIs instead. Not yet retested anywhere else; keep it until a

@@ -60,8 +60,10 @@ Each stage is one or a few pull requests. Questions marked **?** are asked at th
 - [x] Nothing persists (D39): Floci in memory only; `up` rebuilds anything stale; the k3s repair and `reset` removed
 - [x] Removed (D40): the EC2 workstation, the S3 + CloudFront portal, floci-dash, Headlamp. The IAM drill stays a script
       and becomes a stage 6 scenario
-- [ ] Proved by bringing Floci and the three roots up in a session, then rebuilding after a simulated worker restart (the
-      shop needs arm64, so it is proved in stage 2)
+- [x] Proved in a session (D44): the AWS layer from nothing in 201 s; re-run in place with no changes in 33 s; after a
+      simulated worker restart (Floci killed), removed and rebuilt from nothing in 111 s. The cluster layer cannot run
+      in a session (cgroup v1), so it is proved on the arm64 runner in stage 2
+- [x] CI's extra "converge" apply removed: with CloudFront gone, a second apply shows no changes
 
 ### Stage 2: the ephemeral environment
 
@@ -70,7 +72,27 @@ Each stage is one or a few pull requests. Questions marked **?** are asked at th
 - [ ] Runs on pull requests that touch `deploy/` or `infra/` (a required gate) and after every merge to `main`
 - [ ] The time from nothing to a healthy shop is recorded on every run: the platform's measured recovery time
 - [ ] Proved against a planted fault (a bad manifest that never becomes Healthy)
+- [ ] The runner is asserted to have cgroup v2 and enough disk (14 GB) before the build starts
+- [ ] Floci's IAM enforcement on (`FLOCI_SERVICES_IAM_ENFORCEMENT_ENABLED`), and nothing authenticates with the `test` key
+      that bypasses it
+- [ ] OpenTofu's S3 lock proved on Floci against a planted fault: two concurrent applies, the second refused
+- [ ] Claims labelled honestly: the ALB carries traffic on Floci (the shop worked through it on 2026-10-05) but its
+      health checks do nothing; Floci's ElastiCache is Valkey
 
+### Stage 2b: durable data (D42)
+
+The platform is rebuilt from git; the data is not, and must survive any rebuild.
+
+- [ ] RDS PostgreSQL (orders) and ElastiCache (carts) created by the foundation root; the cart service points at
+      ElastiCache instead of the in-cluster `redis-cart`
+- [ ] Orders are stored: a change to `checkoutservice` (the Checkout team's first task once stage 3 exists, or done
+      here). No card numbers, only an opaque payment reference; a check that rejects anything shaped like a card number
+      in seed data and backups
+- [ ] Backups: `pg_dump` and the cache's snapshot, `age`-encrypted, pushed to GHCR as OCI artifacts; one taken before
+      every teardown; the key in a GitHub secret plus the owner's offline copy
+- [ ] Restore on `up` from the latest backup, and the drill: a timestamped canary row written before the "disaster", the
+      platform rebuilt, the data restored; RTO and RPO measured from it; a planted corrupt backup must fail loudly
+- **?** The RPO targets for orders and for carts (set in the architecture track's requirements)
 ### Stage 3: split the repositories and the teams
 
 - [ ] A new app repository holds `app/`, the image builds, the scan and the attestations; this repository keeps the pins
@@ -87,6 +109,8 @@ Each stage is one or a few pull requests. Questions marked **?** are asked at th
 - [ ] `workflow_dispatch` runs the stage 2 workflow and holds it open; `cloudflared` publishes the shop and Argo CD
 - [ ] A read-only Argo CD account, even behind Access; the admin login is never reachable through the tunnel
 - [ ] The URLs appear on the repo's Deployments panel (environment `demo`); cancelling the run tears it down
+- [ ] Demos are attended and time-boxed (D45): started when presenting, never looped to look always-on; a recorded
+      walkthrough on the showcase for everyone else
 - [ ] Threat model entry for what the tunnel and its token expose
 - **?** Keep the Host-header rewrite in the dashboard, or add the public hostnames to the `HTTPRoute`s
 
@@ -104,7 +128,8 @@ Each is specified before it is run (`docs/scenarios/<name>/spec.md` and `inject.
 - [ ] A traffic spike absorbed by a HorizontalPodAutoscaler, measured against the SLO
 - [ ] A failing dependency (redis-cart down) seen as SLO burn, then an incident and a postmortem
 - [ ] Abuse: bot traffic and rate limiting at the Gateway, framed against PCI DSS
-- [ ] Disaster recovery: rebuild from nothing (RTO from stage 2's timing); data loss for the cart in Redis (RPO)
+- [ ] Disaster recovery: the stage 2b drill as a scenario: rebuild from nothing (RTO), restore orders and carts from the
+      latest backup (RPO), with the canary as the measure
 - [ ] Platform scenarios carried over: configuration drift reverted by self-heal, stuck or lost OpenTofu state, a leaked
       credential, an action tag rewritten in the supply chain, overbroad OIDC trust, a mislabelled image
 
@@ -120,6 +145,17 @@ Each is specified before it is run (`docs/scenarios/<name>/spec.md` and `inject.
 - [ ] Claude Routines as the two teams, working issues labelled `ready-for-agent`
 - [ ] DORA metrics from GitHub data, shown in the showcase
 - [ ] Canary rollouts with automated analysis (Argo Rollouts and Prometheus) as the last line against a bad change
+
+### Real-AWS evidence, borrowed (D43)
+
+Real AWS without ever touching the owner's account: vendor sandbox accounts that are wiped afterwards and bill nobody.
+
+- [ ] A spike in the free AWS Builder Center sandbox (8 hours, once a week, from selected workshops): can we get CLI
+      credentials, create an IAM OIDC provider, an EKS cluster and an RDS instance? Recorded either way
+- [ ] If it can: one run of the foundation root against real AWS, recorded as *verified on real AWS (sandbox, date)*
+      with logs and proof of teardown
+- **?** If the free sandbox falls short, whether to pay for a sandbox subscription (KodeKloud, Pluralsight: a card, but
+      never on AWS)
 
 ### The architecture track (runs alongside, in `docs/architecture/`)
 
@@ -139,6 +175,8 @@ Each is specified before it is run (`docs/scenarios/<name>/spec.md` and `inject.
   upstream (no `Co-Authored-By` trailers for AI tools there). Nothing in the project uses CloudFront since D40, so this is only an
   upstream contribution now
 - Filing the other upstream findings (`docs/research/2026-09-24-floci-upstream-findings.md`)
+- Revisit D20 (an IAM-only lane on the owner's account) once the project is complete; nothing found in 2026 changes it
+- Oracle Cloud always-on is closed: its Always Free Arm allowance was halved on 2026-06-15, and it needs a card
 - Owner, in the AWS console, whenever convenient: nothing running in any Region, root MFA on, no root keys, a zero-spend
   budget ([guide](docs/guides/aws-cost-safety.md))
 
@@ -168,9 +206,13 @@ Each is specified before it is run (`docs/scenarios/<name>/spec.md` and `inject.
 | <a id="d36"></a>D36 | The showcase is a static site on Vercel's free tier | Always on at no cost, with a preview per pull request, at the apex `yaafsome.fyi` (D38); Vercel does not run the shop, which stays on AWS-shaped infrastructure |
 | <a id="d37"></a>D37 | The project is planned in chat: questions, then one line per decision in this file; no ADRs, journal or separate milestones | The owner's way of working from 2026-10-08; one place to read |
 | <a id="d38"></a>D38 | The domain `yaafsome.fyi` (Cloudflare Registrar and DNS): the apex for the showcase, one level of subdomains for the demo (`shop`, `argocd`, `grafana`, and `check` for the edge test); the tunnel, hostnames and Access rules are set in the Cloudflare dashboard by a written runbook, not in code | One permanent name for everything presented; free certificates cover one subdomain level only; dashboard setup is one secret and no state to keep, where OpenTofu would need an API token and a permanent state store |
-| <a id="d39"></a>D39 | Nothing persists: Floci runs in memory and is never restarted on its own; `up` re-applies a healthy environment and removes and rebuilds anything else; `down` deletes everything; the k3s repair (quirk Q1) and `reset` are gone | Cloud sessions and runners are thrown away anyway, and a restarted session worker is exactly the abrupt stop that broke k3s. Rebuilding from git is simpler than repairing, and its duration is the platform's measured recovery time |
+| <a id="d39"></a>D39 | The platform is disposable, the data is not. Floci runs in memory and is never restarted on its own; `up` re-applies a healthy environment and removes and rebuilds anything else; `down` deletes everything; the k3s repair and `reset` are gone. Orders and carts survive through backups kept outside the environment (D42). *Amended 2026-10-08:* first written as "nothing persists" | Rebuilding the platform from git is simpler than repairing it and its duration is the measured recovery time; a company that loses its customers' orders in a disaster does not survive it, so the data gets its own lifecycle |
 | <a id="d40"></a>D40 | Removed: the EC2 workstation, the S3 + CloudFront portal (`static-site`), floci-dash and Headlamp. Their guides stay as records; the code is at `c4c44b0` | Nobody can open them from a cloud session, and the stories they told (logging in to EC2, a static site, a console) are not the two clients' story. Fewer parts to keep working |
 | <a id="d41"></a>D41 | Agents run the delivery loop in `CLAUDE.md`: check, draft PR, a separate cold review, then auto-merge (squash) gated on the required checks, then the plan updated and the next item started; they stop for open questions, decision changes, money, real AWS, secrets, settings or data deletion | The owner works by planning in chat, not by pressing merge; GitHub's auto-merge makes "never merge red" a property of the platform rather than of the agent's care |
+| <a id="d42"></a>D42 | The shop keeps real data: orders in RDS PostgreSQL and carts in ElastiCache, both on Floci and created by the foundation root; never card numbers. Backups are `age`-encrypted dumps on GHCR (OCI artifacts), taken before every teardown and restored by `up`; a canary drill measures RTO and RPO | Managed data services with their own lifecycle are the AWS pattern, and the drill turns "we have backups" into a number. GitHub cannot bill without a card; R2 needs one, can bill and lacks versioning and Object Lock ([research](docs/research/2026-10-08-hosting-alternatives.md)) |
+| <a id="d43"></a>D43 | Floci stays the foundation, for every PR, merge and demo. Real-AWS evidence comes only from borrowed vendor sandboxes (the free AWS Builder Center sandbox first), recorded as *verified on real AWS (sandbox, date)* | Floci is the only free emulator that runs EKS, RDS, ElastiCache and IAM enforcement; LocalStack's free plan excludes them. The owner's account has no hard spending cap (AWS's 2026 spend limits are for new sign-ups only), so it stays out (D20) |
+| <a id="d44"></a>D44 | In a cloud session, `up` builds the AWS layer only (automatically on a cgroup v1 host, or with `--aws-only`) and `check` validates the manifests offline; the cluster, Argo CD and the shop are proved on the arm64 runner | Kubernetes 1.35+ refuses cgroup v1, and the session also blocks pod networking and image pulls inside k3s; forcing it relies on a fallback due to be removed in 1.38 |
+| <a id="d45"></a>D45 | Live demos are attended and time-boxed runs (up to 6 h), plus a recorded walkthrough on the showcase; jobs are never looped to look always-on | No free host runs the arm64 shop all the time without a billable account, and GitHub's terms allow Actions for building and testing, not hosting |
 
 ## Log
 
@@ -186,4 +228,4 @@ One line per merged change. History before 2026-10-03 is at the tag `archive/win
 - 2026-10-08: the move to cloud sessions; this plan replaces the ADRs, handoff, milestones and journal (stage 0)
 - 2026-10-08: the domain `yaafsome.fyi`; the `edge-check` workflow and the tunnel and Access guide (D33 amended, D38)
 - 2026-10-08: the delivery loop for agents (D41): review, auto-merge on green, proceed until a question
-- 2026-10-08: stage 1, the cloud workbench: the SessionStart hook, no Colima, nothing persists (D39), the extras removed (D40)
+- 2026-10-08: stage 1, the cloud workbench: the SessionStart hook, no Colima, the platform rebuilt and the data kept (D39), the extras removed (D40); the hosting research and D42 to D45
