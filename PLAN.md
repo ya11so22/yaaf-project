@@ -71,7 +71,9 @@ Each stage is one or a few pull requests. Questions marked **?** are asked at th
       every Application `Synced` and `Healthy` and the shop and Argo CD answering (`up --strict`), torn down. First run
       2026-10-08: all five Applications healthy, the shop answering, **207 s from nothing**
 - [x] Runs on pull requests that touch what it builds and after every merge to `main` (continuous verification)
-- [ ] Made a required check, with an always-running gate job (D24): a branch-protection change for the owner
+- [x] An always-running `environment` gate job (D24): it reports on every PR, rebuilding only when the PR touches what it
+      builds
+- [ ] Owner: add `environment` to main's required checks (Settings, Branches)
 - [x] The build time is written to the job summary on every run: the platform's measured recovery time
 - [x] Proved against a planted fault: adservice pinned to a digest that does not exist; `online-boutique-dev` stayed
       `Progressing`, the pod in `ImagePullBackOff`, the job failed with the diagnostics, and teardown still ran
