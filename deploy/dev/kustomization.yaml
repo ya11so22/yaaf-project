@@ -30,7 +30,7 @@ images:
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/adservice
     newName: ghcr.io/ya11so22/yaaf-project/adservice
     newTag: content-2b278d0390f3-arm64
-    digest: sha256:dcef76983b278e685bcab3d260e525d87d42b77fe31e33f681804abeae59b713
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/cartservice
     newName: ghcr.io/ya11so22/yaaf-project/cartservice
     newTag: content-5accb8fc294f-arm64
