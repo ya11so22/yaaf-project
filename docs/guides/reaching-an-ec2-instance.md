@@ -1,8 +1,11 @@
 # Guide: Reaching an EC2 instance three ways
 
-**Related:** [D22](../../PLAN.md#d22), [`infra/modules/ec2-instance`](../../infra/modules/ec2-instance/main.tf),
+**Related:** [D22](../../PLAN.md#d22), [`infra/modules/ec2-instance`](https://github.com/ya11so22/yaaf-project/tree/c4c44b0/infra/modules/ec2-instance/main.tf),
 [upstream findings](../research/2026-09-24-floci-upstream-findings.md)
 **Evidence:** verified on Floci (all three paths tested on 2026-09-24). Not verified on real AWS, where the details differ as noted.
+
+> **Historical since 2026-10-08 (D40).** The workstation and floci-dash were removed when the project moved to ephemeral
+> cloud environments; the code is at [`c4c44b0`](https://github.com/ya11so22/yaaf-project/tree/c4c44b0/infra/modules/ec2-instance). The guide stays for what it teaches.
 
 ## The idea
 

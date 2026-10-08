@@ -25,9 +25,9 @@ Every guide uses the same five parts ([template](_template.md)):
 | Guide | Topic | Status |
 |---|---|---|
 | [Staying at $0 on AWS](aws-cost-safety.md) | Why AWS has no spending cap, what a zero-spend lane is, the account checks | written |
-| [The local AWS environment](local-aws-environment.md) | Floci, the three OpenTofu roots, state in S3 with locking, the CloudFront portal, emulator traps | written |
+| [The local AWS environment](local-aws-environment.md) | Floci, the three OpenTofu roots, state in S3 with locking, the CloudFront portal (removed), emulator traps | written; partly historical |
 | [Kubernetes probes](kubernetes-probes.md) | Startup, liveness and readiness, through a service that restarted forever | written |
-| [Reaching an EC2 instance](reaching-an-ec2-instance.md) | SSH, SSM Run Command and the console terminal; key pairs, user data, security groups, instance profiles | written |
+| [Reaching an EC2 instance](reaching-an-ec2-instance.md) | SSH, SSM Run Command and the console terminal; key pairs, user data, security groups, instance profiles | historical (the workstation was removed) |
 | [IAM policies, boundaries and trust](iam-policies-and-trust.md) | Identity policy vs boundary vs trust policy; what Floci enforces, with a drill | written |
 | [The CI/CD pipeline standard](ci-cd-pipeline-standard.md) | What a good GitHub Actions pipeline does, the checklist for new ones, provenance, the scan ratchet | written |
 | GitHub OIDC to AWS | Federated identity, trust conditions, why no long-lived keys | to write (backfill, D6) |

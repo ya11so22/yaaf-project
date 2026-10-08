@@ -35,13 +35,3 @@ output "kubectl_secret_access_key" {
 output "ingress_dns_name" {
   value = module.ingress.dns_name
 }
-
-output "portal_domain_name" {
-  description = "The portal's CloudFront domain. On Floci it is <ID>.cloudfront.localhost, served on port 4566."
-  value       = module.portal.distribution_domain_name
-}
-
-output "workstation_instance_id" {
-  description = "The instance to log in to. On Floci its container is floci-ec2-<id>."
-  value       = module.workstation.instance_id
-}

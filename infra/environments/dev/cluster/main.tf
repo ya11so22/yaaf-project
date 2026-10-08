@@ -19,6 +19,5 @@ module "argocd" {
   source_repos = [
     "https://github.com/ya11so22/yaaf-project.git",
     "https://traefik.github.io/charts",
-    "https://kubernetes-sigs.github.io/headlamp/",
   ]
 }

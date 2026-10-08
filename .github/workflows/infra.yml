@@ -201,14 +201,6 @@ jobs:
         working-directory: ${{ env.ENV_DIR }}
         run: tofu apply -input=false -auto-approve
 
-      # Floci's CloudFront drops the tags given in CreateDistributionWithTags (checked 2026-09-24 with the AWS CLI
-      # against Floci 2.1.0), so the first re-apply adds the provider's default tags and re-evaluates the bucket
-      # policy that references the distribution. One converging apply absorbs that emulator bug; the re-plan below
-      # still fails on any real drift. Remove this step once Floci keeps creation tags.
-      - name: Converge (Floci CloudFront tags)
-        working-directory: ${{ env.ENV_DIR }}
-        run: tofu apply -input=false -auto-approve
-
       # Exit code 2 means the plan still has changes: the config is not idempotent.
       - name: Re-plan must show no changes
         working-directory: ${{ env.ENV_DIR }}

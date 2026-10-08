@@ -1,17 +1,23 @@
 #!/usr/bin/env bash
-#MISE description="Stop everything gracefully and keep all data, then stop the project VM to give its memory back"
-# Graceful on purpose: an abrupt stop is what leaves Floci's k3s cluster broken (quirk Q1).
+#MISE description="Remove the local AWS and everything it started: Floci, the cluster, the local state file, .aws and .kube"
+# Nothing persists (PLAN.md D39), so there is nothing to keep and nothing to confirm. `up` builds it all again from git.
 set -euo pipefail
 cd "$MISE_PROJECT_ROOT"
-PROFILE="${COLIMA_PROFILE:-yaaf}"
-[ "$PROFILE" != "default" ] || { echo "refusing to touch the default Colima profile; this project uses its own VM" >&2; exit 1; }
+CLUSTER="yaaf-dev"
+DEV="infra/environments/dev"
 
-if colima status "$PROFILE" >/dev/null 2>&1; then
-  docker compose -f infra/environments/dev/compose.yaml stop
-  ids="$(docker ps -q --filter label=floci=true)"   # the cluster and registry containers Floci started itself
-  [ -z "$ids" ] || docker stop $ids >/dev/null
-  colima stop "$PROFILE"
-  echo "Stopped. Data is kept: run \`mise run up\` to continue where you left off."
-else
-  echo "The $PROFILE VM is not running; nothing to stop."
-fi
+# Without the engine nothing below can be removed, and deleting only the state files would leave containers that the
+# next `up` cannot account for. Say so instead of half-succeeding.
+docker info >/dev/null 2>&1 || { echo "Docker is not running, so nothing was removed. Start it (\`mise run up\` does) and run down again." >&2; exit 1; }
+# The containers Floci started itself (the cluster, its registry) first: they hold the floci-net network open.
+ids="$(docker ps -aq --filter label=floci=true)"
+[ -z "$ids" ] || docker rm -f $ids >/dev/null
+docker compose -f "$DEV/compose.yaml" down -v --remove-orphans
+# The cluster's datastore volume carries no floci=true label (quirk Q2), so it goes by name; floci_floci-data is the
+# data volume of the persistent setup before D39, no longer declared in compose.yaml, so `down -v` would miss it.
+docker volume rm -f "floci-eks-$CLUSTER" floci_floci-data >/dev/null 2>&1 || true
+# The bootstrap root's state is a local file (the bucket cannot hold its own creator's state). Left behind, the next
+# `up` would believe a bucket exists in a Floci that no longer has it.
+rm -f "$DEV/bootstrap/terraform.tfstate" "$DEV/bootstrap/terraform.tfstate.backup"
+rm -rf .aws .kube
+echo "Removed. \`mise run up\` builds everything again from git."

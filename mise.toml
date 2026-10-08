@@ -16,20 +16,14 @@ trivy = "0.75.0"
 # The Kubernetes minor EKS offers, and the k3s image Floci runs for it (Floci does no version mapping, PLAN.md D22).
 k8s_version = "1.36"
 k3s_image = "rancher/k3s:v1.36.4-k3s1"
-# The host port of the ingress listener (shop, Argo CD, Headlamp). Not 8080: that port belongs to other software on the
-# owner's Mac. Inside Floci the listener stays on 8080; only the published port differs.
+# The host port of the ingress listener (the shop, Argo CD). Inside Floci the listener is on 8080; publishing it as 18080
+# keeps the host's 8080 free, and the demo tunnel points here (docs/guides/cloudflare-tunnel-and-access.md).
 ingress_port = "18080"
 
 [env]
-# The project has its own container VM. These two make every docker and colima command in this repository target it,
-# so a bare `colima stop` or `docker ps` here can never reach the owner's default VM and the services that run in it.
-# On a CI runner (CI is set) Docker is the runner's own, so the context is the default one there.
-COLIMA_PROFILE = "yaaf"
-DOCKER_CONTEXT = "{% if env.CI is defined %}default{% else %}colima-yaaf{% endif %}"
 K3S_IMAGE = "{{ vars.k3s_image }}"
 K8S_VERSION = "{{ vars.k8s_version }}"
 INGRESS_PORT = "{{ vars.ingress_port }}"
-TF_VAR_ingress_port = "{{ vars.ingress_port }}"
 TF_VAR_kubernetes_version = "{{ vars.k8s_version }}"
 # The project's own AWS CLI and kubectl configuration, so its commands never read or change the owner's ~/.aws or
 # ~/.kube, and can never pick up real AWS credentials by accident (the emulator is the only AWS here). The profile is

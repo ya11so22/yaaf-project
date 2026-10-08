@@ -6,6 +6,4 @@ resources:
   - gateway-api-crds.yaml
   - traefik.yaml
   - routes.yaml
-  - headlamp-rbac.yaml
-  - headlamp.yaml
   - shop.yaml

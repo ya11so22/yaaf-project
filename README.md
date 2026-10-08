@@ -23,14 +23,14 @@ git and thrown away**: Floci, three OpenTofu roots, EKS on k3s, Argo CD and the 
 AWS, never built; rebuilding the environment after every merge is the evidence that the design holds (PLAN.md D30 to
 D32). The ephemeral-runner workflow, the live demo and the showcase site are stages 2, 4 and 7 of the plan.
 
-Today the environment is brought up by the `mise` tasks described in [`infra/README.md`](infra/README.md), which still
-assume the Mac's Colima VM until stage 1 of the plan lands. From a terminal: `aws --profile floci s3 ls`,
+In a session, `mise run up` builds it and `mise run down` removes it ([`infra/README.md`](infra/README.md)); a
+SessionStart hook installs the locked tools; `up` starts Docker. From a terminal: `aws --profile floci s3 ls`,
 `kubectl get pods -A`.
 
 ## What is here
 
 - **Infrastructure as code** (OpenTofu) in three layered roots: a state bucket, the account-level infrastructure (VPC,
-  EKS, ECR, IAM, an ALB, a CloudFront site) with state in S3 and native locking, and what runs in the cluster.
+  EKS, ECR, IAM, an ALB) with state in S3 and native locking, and what runs in the cluster.
 - **CI on GitHub Actions** to a written standard: pull requests build and scan but never push; `main` publishes arm64
   images by digest with SLSA provenance and an SBOM; a Trivy gate that fails on new criticals; zizmor, kubeconform,
   Scorecard and Dependabot ([guide](docs/guides/ci-cd-pipeline-standard.md)).

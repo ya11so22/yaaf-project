@@ -21,7 +21,7 @@ updates:
     commit-message:
       prefix: ci
 
-  # Floci and floci-dash, pinned by digest in the local AWS's compose file.
+  # Floci, pinned by digest in the local AWS's compose file.
   - package-ecosystem: docker-compose
     directory: /infra/environments/dev
     schedule:
