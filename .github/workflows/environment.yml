@@ -4,7 +4,8 @@ name: environment
 # tracking the commit under test, and every Application Synced and Healthy with the shop and Argo CD answering; then torn
 # down. On pull requests that change what it builds, it is the deploy check; after every merge to main it is continuous
 # verification, the evidence that stands in for a long-lived production. Its duration is the platform's measured
-# recovery time. arm64 because the images are (D27); cgroup v2, which Kubernetes needs, is checked before anything runs.
+# recovery time. arm64 because the images are (PLAN.md D27); cgroup v2, which Kubernetes needs, is checked before
+# anything runs.
 on:
   pull_request:
     paths:
@@ -31,8 +32,10 @@ jobs:
     permissions:
       contents: read
     steps:
+      # The commit Argo CD will track, not GitHub's merge ref, so OpenTofu and Argo CD build from the same tree.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       # Kubernetes 1.35+ refuses cgroup v1, and 11 images plus k3s need room on the runner's 14 GB disk.
@@ -43,11 +46,13 @@ jobs:
           [ "$fs" = "cgroup2fs" ] || { echo "::error::this runner has cgroup v1; Kubernetes cannot run here"; exit 1; }
           [ "$free_gb" -ge 8 ] || { echo "::error::only ${free_gb} GB free; the environment needs about 8"; exit 1; }
 
-      # Every tool at the version and checksum in mise.lock (PLAN.md D25).
+      # The tools `up` and `down` use, at the version and checksum in mise.lock (PLAN.md D25).
       - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+        with:
+          install_args: opentofu kubectl awscli
 
       # Argo CD pulls this commit from GitHub, so a pull request is checked as it would deploy. The images are the pinned
-      # ones in deploy/dev (pull requests never push images, D24).
+      # ones in deploy/dev (pull requests never push images, PLAN.md D24).
       - name: Build the environment from nothing
         env:
           REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -57,8 +62,9 @@ jobs:
           echo "### Environment built from git in $((SECONDS - start)) s" >> "$GITHUB_STEP_SUMMARY"
           echo "Revision \`$REVISION\`: every Application Synced and Healthy; the shop and Argo CD answered." >> "$GITHUB_STEP_SUMMARY"
 
+      # Also on a timeout, which cancels the job: that is when the cluster state matters most.
       - name: What the cluster looked like
-        if: failure()
+        if: failure() || cancelled()
         run: |
           kubectl get applications -n argocd -o wide || true
           kubectl get pods -A || true

@@ -4,7 +4,7 @@ name: infra
 # starts a fresh Floci, applies the bootstrap root (the state bucket) and then the foundation root on its real S3
 # backend, requires a clean re-plan, and destroys the foundation. Floci proves the code applies; it does not prove
 # IAM trust or other security properties (PLAN.md D6, PLAN.md D20). The cluster root needs a running cluster and Argo CD,
-# so it is validated here and exercised by the planned pre-merge deploy check.
+# so it is validated here and exercised by the deploy check in environment.yml.
 #
 # No workflow-level path filter: the `infra` job at the bottom is the required check and must
 # report even on PRs that touch no infrastructure.
