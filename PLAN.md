@@ -81,7 +81,9 @@ Each stage is one or a few pull requests. Questions marked **?** are asked at th
 - [x] The runner is asserted to have cgroup v2 and 8 GB of free disk before the build starts
 - [ ] Floci's IAM enforcement on (`FLOCI_SERVICES_IAM_ENFORCEMENT_ENABLED`), and nothing authenticates with the `test` key
       that bypasses it
-- [ ] OpenTofu's S3 lock proved on Floci against a planted fault: two concurrent applies, the second refused
+- [x] OpenTofu's S3 lock proved on Floci (`scripts/drills/state-lock.sh`, 2026-10-08): while one `plan` holds the lock
+      a second is refused with "Error acquiring the state lock"; the control, the same race with the lock off, is not
+      refused. Plans, not applies: both take the same lock, and a plan changes nothing
 - [ ] Claims labelled honestly: the ALB carries traffic on Floci (the shop worked through it on 2026-10-05) but its
       health checks do nothing; Floci's ElastiCache is Valkey
 
@@ -244,3 +246,4 @@ One line per merged change. History before 2026-10-03 is at the tag `archive/win
 - 2026-10-08: the sandbox lane prepared: `mise run sandbox`, the AWS Agent Toolkit rules, the guide (D46)
 - 2026-10-08: stage 2, the whole environment on an arm64 runner: 207 s from nothing to a healthy shop, proved red against a planted bad image digest
 - 2026-10-08: the `environment` gate job, so the rebuild can be a required check; one tested change-detection script
+- 2026-10-08: OpenTofu's S3 state lock proved on Floci, with a control run (`scripts/drills/state-lock.sh`)
