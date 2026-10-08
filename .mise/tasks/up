@@ -2,6 +2,7 @@
 #MISE description="Build the local AWS from git: Floci, the three OpenTofu roots, kubeconfig, Argo CD. Re-applies a healthy environment; rebuilds a stale one"
 #USAGE flag "--revision <rev>" default="main" help="Git revision Argo CD tracks. A branch name tries a change before it is merged"
 #USAGE flag "--plan-only" help="Start Floci, then plan instead of apply"
+#USAGE flag "--strict" help="Fail, not warn, when an application is not Synced and Healthy or an endpoint does not answer (CI)"
 #USAGE flag "--aws-only" help="Stop after the AWS layer (bootstrap and foundation). Automatic where Kubernetes cannot run"
 # What this does, in order, and why: infra/README.md, PLAN.md D22 and D39. Nothing persists, so anything that is not a
 # running, healthy Floci is wiped and built again from git.
@@ -11,6 +12,8 @@ cd "$MISE_PROJECT_ROOT"
 REVISION="${usage_revision:-main}"
 PLAN_ONLY="${usage_plan_only:-false}"
 AWS_ONLY="${usage_aws_only:-false}"
+STRICT="${usage_strict:-false}"
+DOWN=0
 CLUSTER="yaaf-dev"
 DEV="infra/environments/dev"
 COMPOSE="$DEV/compose.yaml"
@@ -94,7 +97,7 @@ url_has() { # url, host header, expected text
 }
 check_url() { # label, host, expected text
   local state="DOWN"
-  if wait_until "$1" 240 url_has "http://127.0.0.1:${INGRESS_PORT}/" "$2" "$3"; then state="OK  "; fi
+  if wait_until "$1" 240 url_has "http://127.0.0.1:${INGRESS_PORT}/" "$2" "$3"; then state="OK  "; else DOWN=$((DOWN + 1)); fi
   printf '  %s  %-10s http://%s:%s\n' "$state" "$1" "$2" "$INGRESS_PORT"
 }
 
@@ -168,7 +171,10 @@ step "Applying cluster (Argo CD, tracking '$REVISION')"
 tofu_root cluster apply -var "target_revision=$REVISION" -var "kubeconfig_context=$KUBE_CONTEXT" -var "kubeconfig_path=$KUBECONFIG"
 
 step "Waiting for the Argo CD applications to be Synced and Healthy"
-wait_until "the applications" 300 argo_ready || step "WARNING: not every application is Synced and Healthy (revision '$REVISION')"
+if ! wait_until "the applications" 300 argo_ready; then
+  [ "$STRICT" != "true" ] || { kubectl --context "$KUBE_CONTEXT" -n argocd get applications || true; die "not every application is Synced and Healthy (revision '$REVISION')"; }
+  step "WARNING: not every application is Synced and Healthy (revision '$REVISION')"
+fi
 kubectl --context "$KUBE_CONTEXT" -n argocd get applications
 
 echo; step "Checking the endpoints"
@@ -177,4 +183,5 @@ check_url "Shop" "shop.localhost" "Online Boutique"
 echo
 echo "Argo CD login: admin, password: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
 echo "AWS CLI:       aws --profile floci s3 ls     (the project's own profile; mise points the CLI at .aws/)"
+[ "$STRICT" != "true" ] || [ "$DOWN" -eq 0 ] || die "$DOWN endpoint(s) did not answer"
 step "Done in ${SECONDS}s."
