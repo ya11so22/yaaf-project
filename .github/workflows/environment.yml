@@ -63,7 +63,6 @@ jobs:
       # Kubernetes 1.35+ refuses cgroup v1, and 11 images plus k3s need room on the runner's 14 GB disk.
       - name: Preflight (cgroup v2, disk)
         run: |
-          echo "::error::planted fault: the rebuild fails here, so the environment gate must go red"; exit 1
           fs="$(stat -fc %T /sys/fs/cgroup)"; free_gb="$(df -BG --output=avail / | tail -1 | tr -dc 0-9)"
           echo "cgroup filesystem: $fs; free disk: ${free_gb} GB"
           [ "$fs" = "cgroup2fs" ] || { echo "::error::this runner has cgroup v1; Kubernetes cannot run here"; exit 1; }
