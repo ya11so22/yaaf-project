@@ -4,7 +4,8 @@ The single source of working rules for this repository, for people and agents. S
 
 ## The owner's standing preferences
 
-- **Zero AWS spend, zero accident risk.** Nothing is created on real AWS (D20, D32); billable designs are written down
+- **Zero AWS spend, zero accident risk.** Nothing is ever created on the owner's AWS account (D20, D32); real AWS means
+  only a borrowed vendor sandbox that bills nobody (D43, D46, the AWS rules at the end). Billable designs are written down
   with a Pricing Calculator estimate. The owner's AWS account is old (no new Free Tier credits); never suggest opening a
   second account. Free tiers elsewhere (GitHub Actions for a public repository, Vercel Hobby, Cloudflare quick tunnels)
   are fine; anything that needs a card on file is asked about first.
@@ -84,12 +85,15 @@ Everything is documented well enough to explain later, as part of finishing the 
 These apply only when working in a borrowed real-AWS sandbox through the `yaaf-sandbox` profile (`mise run sandbox`,
 PLAN.md D43 and D46). This project's own rules above take precedence over them, in particular:
 
+- **The account guard is the owner's.** Never pass `--account` to `mise run sandbox` from the task's own output: ask
+  the owner, who reads the ID on the sandbox's own page. If the owner's account is signed in, stop and say so.
+
 - Real AWS means a vendor sandbox that is wiped afterwards and bills nobody. Never the owner's account, and never a
   second account.
 - The infrastructure as code is OpenTofu (D5), not AWS CDK or CloudFormation.
 - Evidence from a sandbox is labelled *verified on real AWS (sandbox, date)*, with logs and proof of teardown.
 
-### AWS Guidance (from aws/agent-toolkit-for-aws, `rules/aws-agent-rules.md`, 2026-10-08)
+### AWS Guidance (adapted from aws/agent-toolkit-for-aws, `rules/aws-agent-rules.md`, 2026-10-08)
 
 - Where these AWS rules conflict with the project's own instructions, the
   project's instructions take precedence.
@@ -102,8 +106,8 @@ PLAN.md D43 and D46). This project's own rules above take precedence over them, 
 - When uncertain about specific AWS details (API parameters, permissions,
   limits, error codes), verify against documentation rather than guessing.
   State uncertainty explicitly if you cannot confirm.
-- When creating infrastructure, prefer infrastructure-as-code (AWS CDK or
-  CloudFormation) over direct CLI commands.
+- When creating infrastructure, prefer infrastructure-as-code (OpenTofu in
+  this project) over direct CLI commands.
 - When working with infrastructure, follow AWS Well-Architected Framework
   principles.
 - Do not use em dashes in AWS resource names or descriptions. Use

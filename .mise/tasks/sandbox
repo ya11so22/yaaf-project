@@ -1,40 +1,56 @@
 #!/usr/bin/env bash
 #MISE description="Sign in to a borrowed AWS sandbox (never the owner's account) and set up the AWS Agent Toolkit"
-#USAGE flag "--account <id>" help="The 12-digit ID of the sandbox account, as shown by the first run. Nothing past sign-in happens without it"
+#USAGE flag "--account <id>" help="The sandbox's 12-digit account ID, typed by the owner from the sandbox's own page. Nothing past sign-in happens without it"
 # The real-AWS evidence lane (PLAN.md D43, D46; docs/guides/real-aws-sandbox.md). Run it after opening a vendor sandbox,
-# e.g. the AWS Builder Center sandbox. Credentials last 12 hours and are never stored in the repository.
+# e.g. the AWS Builder Center sandbox.
+#
+# Two guards before an agent gets AWS tools:
+#   1. YAAF_OWNER_ACCOUNT_ID, if set (the owner sets it in the cloud environment's settings): signing in to that account
+#      is refused outright. This is the technical guard against the one accident that matters.
+#   2. --account: the owner reads the ID on the sandbox's own page and gives it in chat. The script cannot know where an
+#      ID came from, so an agent must never supply it from this script's output (CLAUDE.md, the AWS rules block).
 set -euo pipefail
 cd "$MISE_PROJECT_ROOT"
 
 # Real AWS lives in its own files (~/.aws), never in the repository's .aws/, which mise points at Floci (PLAN.md D25). A
 # Floci command can then never reach the sandbox, and nothing here ever reads Floci's keys.
 unset AWS_CONFIG_FILE AWS_SHARED_CREDENTIALS_FILE AWS_PROFILE AWS_ENDPOINT_URL
+export AWS_PAGER="" # a pager would stall the task on a real terminal
 PROFILE="yaaf-sandbox"
-REGION="us-east-1" # the Agent Toolkit service runs only in us-east-1
+REGION="us-east-1"
 EXPECTED="${usage_account:-}"
+OWNER="${YAAF_OWNER_ACCOUNT_ID:-}"
 
 step() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*"; }
-account() { aws sts get-caller-identity --profile "$PROFILE" --query Account --output text 2>/dev/null; }
+die() { step "REFUSED: $*"; exit 1; }
+account() { aws sts get-caller-identity --profile "$PROFILE" --query Account --output text; }
 
 aws configure set region "$REGION" --profile "$PROFILE"
-if ! signed_in="$(account)"; then
+if [ -z "$EXPECTED" ]; then
+  # A first run always signs in afresh: a cached login (renewable for 90 days) is most likely last week's sandbox.
+  aws logout --profile "$PROFILE" >/dev/null 2>&1 || true
   step "Signing in. Open the URL below on any device, sign in to the SANDBOX account (never your own), paste the code."
-  aws login --remote --region "$REGION" --profile "$PROFILE"
-  signed_in="$(account)"
+  aws login --remote --profile "$PROFILE"
 fi
+signed_in="$(account)" || die "not signed in (the sign-in was cancelled or expired); run the task again without --account"
 aws sts get-caller-identity --profile "$PROFILE" --output table
 
-# The guard: a human reads the account ID and states it is the sandbox. Signing in to the owner's account by mistake
-# then stops here, before an agent gets any tools for it.
+[ -z "$OWNER" ] || [ "$signed_in" != "$OWNER" ] || {
+  aws logout --profile "$PROFILE" >/dev/null 2>&1 || true
+  die "this is the owner's own account ($signed_in), which agents never use (D20, D43). Signed out."
+}
 if [ -z "$EXPECTED" ]; then
-  step "Signed in to account $signed_in. If, and only if, that is the sandbox, run: mise run sandbox --account $signed_in"
+  step "Signed in to account $signed_in. Owner: compare it with the account ID on the sandbox's own page, and only if they"
+  step "match, give it to the agent to continue (mise run sandbox --account <id>)."
   exit 0
 fi
-[ "$EXPECTED" = "$signed_in" ] || { step "REFUSED: signed in to $signed_in, but --account says $EXPECTED"; exit 1; }
+[ "$EXPECTED" = "$signed_in" ] || die "signed in to $signed_in, but --account says $EXPECTED. Run without --account to sign in again."
 
+# The Agent Toolkit service runs only in us-east-1, whatever Region the work uses, so it is named on these two commands.
 step "Setting up the AWS Agent Toolkit (skills and the AWS MCP server)"
-aws configure agent-toolkit --yes --region "$REGION" --profile "$PROFILE"
+aws configure agent-toolkit --yes --region us-east-1 --profile "$PROFILE"
 step "Skills available:"
-aws agent-toolkit list-available-skills --region "$REGION" --profile "$PROFILE" --query 'skills[].name' --output text |
+aws agent-toolkit list-available-skills --region us-east-1 --profile "$PROFILE" --query 'skills[].name' --output text |
   tr '\t' '\n' | sed 's/^/  /'
-step "Done. The AWS MCP server must use this profile: set AWS_MCP_PROXY_PROFILES=$PROFILE in its config (see the guide)."
+step "Done. Point the AWS MCP server at this profile: AWS_MCP_PROXY_PROFILES=$PROFILE in its config (see the guide)."
+step "At the end: tear down, then aws logout --profile $PROFILE."
