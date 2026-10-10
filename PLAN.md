@@ -115,6 +115,20 @@ own tests run k3s on GitHub runners); real AWS in short sessions costs cents. Fl
 | **Edge and names** | `yaafsome.fyi` on Cloudflare (D38): the showcase at the apex, the demo through the named tunnel with Access in front of Argo CD and Grafana (D33) | Free, and identical whichever environment is behind it |
 | **Agent tooling** | AWS Knowledge MCP in the project's `.mcp.json` (no credentials); the AWS MCP Server only for the owner's own sessions | Agents can read AWS documentation and pricing without being able to touch an account |
 
+### Names on `yaafsome.fyi`
+
+The owner's domain is the one name for everything presented (D38). It stays on Cloudflare (registrar and DNS), so no
+Route 53 hosted zone is needed and none is paid for.
+
+| Name | What | How |
+|---|---|---|
+| `yaafsome.fyi` | The showcase site | Vercel, always on, free (D36) |
+| `shop.yaafsome.fyi` | The store, public | The named Cloudflare tunnel into whichever environment is running (D33) |
+| `argocd.yaafsome.fyi`, `grafana.yaafsome.fyi` | Operator UIs | The same tunnel, behind Cloudflare Access (an email one-time code) |
+| `check.yaafsome.fyi` | The edge test page | The `edge-check` workflow |
+| `aws-*@yaafsome.fyi` | Mail for the AWS accounts (management, member) and their alternate contacts | Cloudflare Email Routing (free) forwards each address to the owner's iCloud mailbox, so every account gets its own address on the domain |
+| ACM certificate for `*.yaafsome.fyi` | Only for the one session that proves the AWS edge (ALB, ACM, WAF) | DNS validation record added in Cloudflare |
+
 ### Cost guardrails, in layers
 
 No single control is enough, so several that fail independently. A layer is trusted only after a planted runaway shows it
