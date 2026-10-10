@@ -42,7 +42,7 @@ run away), know what production needs (a costed, reviewed design), and can say e
 
 ## Constraints
 
-- **Money.** *Proposed:* about $10 a month in normal use and a **$20 hard ceiling**; **pennies a month when nothing is being
+- **Money** (D54): about $10 a month in normal use and a **$20 hard ceiling**; **pennies a month when nothing is being
   developed or presented**. No single AWS feature gives that (Budgets cannot delete a cluster, and the new spend limit has a $20
   floor and limited release), so it comes from layers (below). Anything that needs a new paid plan is asked about first.
 - **No long-lived infrastructure.** Every environment is created for a purpose and destroyed after it. What persists costs
@@ -101,7 +101,7 @@ own tests run k3s on GitHub runners); real AWS in short sessions costs cents. Fl
 
 | Layer | Choice | Why (and what production would add, *designed*) |
 |---|---|---|
-| **Accounts** | *Proposed:* an AWS Organization created in the owner's existing account (management only, no workloads) with one member account for the project; SCPs on the member account | SCPs bind member accounts, not the management account, so the hard limits need a member account. Production adds accounts per environment and a log archive (designed, as a landing zone) |
+| **Accounts** | An AWS Organization (D52) created in the owner's existing account (management only, no workloads) with one member account for the project; SCPs on the member account | SCPs bind member accounts, not the management account, so the hard limits need a member account. Production adds accounts per environment and a log archive (designed, as a landing zone) |
 | **Network** | One VPC, two AZs, private subnets for nodes, public subnets for egress only; fck-nat instead of a managed NAT gateway | fck-nat costs about a tenth of a NAT gateway; production uses managed NAT per AZ (designed, with its cost) |
 | **Cluster** | EKS Auto Mode on a standard-support Kubernetes version (`support_type = STANDARD`; extended support costs six times as much); the built-in NodePools disabled and one of our own: arm64, t4g.medium to large with m7g/c7g as fallback, Spot first and on-demand when Spot is short; managed-resource visibility turned on, because since April 2026 Auto Mode hides its instances, volumes and ENIs from `describe` calls by default, and hidden resources still bill (AWS docs, to check in stage 2) | Auto Mode runs Karpenter, load balancing, EBS CSI and the Pod Identity agent for a fee of under a cent per node-hour, which removes most add-ons a solo engineer would otherwise maintain. Watch out: t4g bursts on CPU credits, billed when it exceeds its baseline |
 | **GitOps** | Self-managed Argo CD, installed once by OpenTofu; everything else is an Application in git (the gitops-bridge split: IaC hands cluster metadata to Argo CD, no Helm from OpenTofu); environments as directories (`ci`, `aws`) | Argo CD's own recommended layout; managed Argo CD (an EKS capability) is noted as an option with its price |
@@ -146,9 +146,9 @@ identity, which can approve a deployment. `CLAUDE.md` forbids it, and layers 4 t
 
 | Repository | Owner | Holds |
 |---|---|---|
-| `yaaf-project` (this one; *proposed:* kept and renamed `yaaf-platform`) | The platform engineer (the owner) | OpenTofu, the GitOps configuration and pins, policies, workflows, scenarios, the architecture track, this plan |
-| `yaaf-catalog` *(proposed)* | The Catalog team (agents) | Its services' source, tests, Dockerfiles, its build workflow |
-| `yaaf-checkout` *(proposed)* | The Checkout team (agents) | The same for its services |
+| `yaaf-platform` (this repository, renamed; D53) | The platform engineer (the owner) | OpenTofu, the GitOps configuration and pins, policies, workflows, scenarios, the architecture track, this plan |
+| `yaaf-catalog` | The Catalog team (agents) | Its services' source, tests, Dockerfiles, its build workflow |
+| `yaaf-checkout` | The Checkout team (agents) | The same for its services |
 
 Each team is a GitHub App installed only on its repository, so an agent can change nothing else, and work arrives as issues
 labelled `ready-for-agent`. Team agents run as `claude-code-action` with their App's token, not as Claude Routines, because
@@ -271,16 +271,7 @@ Each stage ends with evidence a reviewer can open. Costs are for the stage's own
   it is the app the EKS Workshop uses, so durable data needs no app changes. Online Boutique has more services and is better
   known, but its managed-datastore options are Google Cloud only. Teams: Catalog (UI, catalog), Checkout (cart, checkout,
   orders).
-- **? The AWS account.** *Recommended:* an Organization in the existing account with one member account for the project
-  (needs a new email address; billing stays on the existing card). This reverses the old rule against a second account,
-  which existed to avoid gaming free-tier credits; a member account is the standard way to fence spend. The alternative,
-  workloads directly in the existing account, loses SCPs as a guardrail.
-- **? The repositories.** *Recommended:* three (platform, catalog, checkout), because a GitHub App can be fenced to a
-  repository but not to a folder in a public one. The simpler alternative is one app repository for both teams, fenced by
-  convention.
-- **? The Region.** *Recommended:* us-east-1, the cheapest and first for new features, unless the owner wants an EU Region.
-- **? The ceiling.** *Proposed:* about $10 a month in normal use, a $20 hard ceiling.
-- **? This repository.** *Recommended:* keep it (history, Scorecard, the domain's links) and rename it; or start a new one.
+- **? The overall plan.** The owner confirms the proposed decisions D47 to D51 as a whole, or changes them.
 
 ## Decisions
 
@@ -308,6 +299,10 @@ Each stage ends with evidence a reviewer can open. Costs are for the stage's own
 | <a id="d49"></a>D49 | *Proposed:* agents never hold AWS credentials; only workflows assume roles, and a session needs the owner's approval | Agents with cloud credentials are the lethal-trifecta risk; the pipeline is the only door |
 | <a id="d50"></a>D50 | *Proposed:* EKS Auto Mode on Graviton Spot, private subnets with fck-nat, Pod Identity, External Secrets with Parameter Store | The least to maintain alone, the cheapest per session, AWS's current recommendations; the production differences are designed and costed |
 | <a id="d51"></a>D51 | *Proposed:* autonomous agents (both teams and the platform's own) are GitHub Apps installed only where they work, run through `claude-code-action`, without `deployments` or `actions: write`; rulesets have no bypass, not even for admins | Routines push as the owner, and an identity that can bypass a rule, or approve a deployment, is not stopped by it |
+
+| <a id="d52"></a>D52 | An AWS Organization in the owner's existing account, which becomes the management account and runs no workloads, with one member account for the project. *Decided 2026-10-10.* Replaces the old rule against a second account | SCPs bind member accounts only, so the hard limits need one; the old rule was about free-tier credits, not about fencing spend |
+| <a id="d53"></a>D53 | Three repositories: this one, renamed `yaaf-platform`, keeps its history; `yaaf-catalog` and `yaaf-checkout` for the teams. *Decided 2026-10-10* | A GitHub App can be fenced to a repository but not to a folder in a public one; the history, Scorecard and links stay |
+| <a id="d54"></a>D54 | us-east-1; about $10 a month in normal use and a $20 hard ceiling. *Decided 2026-10-10* | The cheapest Region and first for new features; the ceiling leaves room for a mistake before the guardrails empty the account |
 
 **Retired with the Floci era** (readable at the archive tag): D20, D21 (the engagement is restated above), D22, D30 to D32,
 D34, D39, D40, D42 to D44, D46.
