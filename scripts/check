@@ -56,6 +56,8 @@ needs() { # tool, name, command...
 }
 
 needs tofu "tofu fmt" tofu fmt -check -recursive -diff infra
+# The account root (infra/account, PLAN.md D55 to D57) is tested offline: mock providers, no AWS calls, no credentials.
+needs tofu "account root tests" bash -c 'cd infra/account && tofu init -input=false -no-color >/dev/null && tofu test -no-color'
 
 run "change-detection tests" bash .github/scripts/changed-services.test.sh
 run "changed-paths tests" bash .github/scripts/changed-paths.test.sh
