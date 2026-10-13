@@ -229,12 +229,19 @@ Each stage ends with evidence a reviewer can open. Costs are for the stage's own
 - [ ] Owner, in AWS Settings: confirm the project Region, the account creation date and the credits left; Cost Explorer on; a
       Budgets alert at half the credits
 - [ ] Owner: the full Agent Toolkit setup (`aws login`, `aws configure agent-toolkit`), later, when a read-only identity exists
-- [ ] A runbook for CloudShell: install the pinned OpenTofu (checksum from `mise.lock`), where state lives, how to log a run
-- [ ] `bootstrap` root applied by the owner from CloudShell; the state bucket and the backup bucket exist
+- [x] The account root, `infra/account/` (2026-10-13): the state bucket, the permissions boundary and the deployer role, with
+      4 offline tests (mock provider, no credentials) in `scripts/check`, each shown to fail on a planted fault; Trivy passes
+      with one accepted, dated finding (the KMS key, $1 a month, reviewed at 2a)
+- [x] The CloudShell runbook, `docs/guides/account-bootstrap-cloudshell.md`, marked *to verify* until it has run
+- [ ] **Owner, the first real apply:** confirm the Region and account ID in AWS Settings, then run the runbook in CloudShell.
+      The agent does not apply. The result (what AWS enforces, the date) is recorded in the guide
+- [ ] The backup bucket (D42), added to the root before the first session that stores data
+- [ ] The first apply's bootstrap state migrated into the bucket it created (`tofu init -migrate-state`), to verify on the real account
 - [ ] A first EKS session run by the owner (on-demand nodes, Pod Identity, Argo CD pulling from git), with its measured create
       and destroy times and its credit cost recorded, and the account empty afterwards
-- [ ] **The gate to stage 2:** check whether unused credits survive the upgrade, then upgrade and activate advanced features
-      before the 6 months or the credits run out, and only once stage 1 is finished and the guardrails are written
+- [ ] **The gate to stage 2:** upgrade and activate advanced features **by 2027-04-01** (D58: the six-month Free period ends
+      2027-04-12, and a 90-day window follows before AWS deletes the account), or earlier if the credits run out, and only once
+      stage 1 is finished and the guardrails are written
 
 ### Stage 2: the AWS landing zone *(needs advanced features; pennies a month)*
 
@@ -324,8 +331,8 @@ Each stage ends with evidence a reviewer can open. Costs are for the stage's own
   known, but its managed-datastore options are Google Cloud only. Teams: Catalog (UI, catalog), Checkout (cart, checkout,
   orders).
 - **? The overall plan.** The owner confirms the proposed decisions D47 to D51 as a whole, or changes them.
-- **? Credits and the upgrade.** Whether unused credits survive the upgrade (the page is silent); the owner can ask AWS Support
-  or read the credit balance after upgrading. Decides whether to use the credits up before the upgrade.
+- **? Credits and the upgrade.** Whether unused credits survive the upgrade (the page is silent). Decides whether to spend the
+  credits down before the upgrade. The six-month deadline is now known (D58), so this no longer blocks anything.
 - **? A read-only identity.** Whether the new experience offers a read-only team-member role, for the supervised Agent Toolkit.
 
 ## Decisions
@@ -362,6 +369,8 @@ Each stage ends with evidence a reviewer can open. Costs are for the stage's own
 | <a id="d55"></a>D55 | Stay on the Free plan, using its credits as the cap, until a stage needs what it denies (GitHub OIDC, Spot, an Organization of our own, Fault Injection Service); then upgrade and activate advanced features, once. *Decided 2026-10-13* | The credits are a stronger cap than any guardrail we could build, and both steps are irreversible, so they wait for a reason |
 | <a id="d56"></a>D56 | Until then OpenTofu applies run **owner-at-keyboard in AWS CloudShell**; a cloud session gets AWS credentials only by the owner's own `aws login`, never stored, for that session's life. *Decided 2026-10-13* | CloudShell is free and already signed in as the owner, so no key exists anywhere; the full Agent Toolkit setup follows when a read-only identity does |
 | <a id="d57"></a>D57 | The AWS Knowledge MCP is wired through the committed `.mcp.json` | Documentation, pricing facts and regional availability for agents with no credentials; it cannot touch an account. *Decided 2026-10-13* |
+| <a id="d58"></a>D58 | The Free-plan clock is fixed: the account opened on 2026-10-12, so the six-month period ends 2027-04-12 and the 90-day upgrade window follows. The upgrade happens by 2027-04-01 at the latest, or earlier if the credits run out. *Decided 2026-10-13 from the owner's answer* | AWS's Free terms end the account at six months or when credits are exhausted, and delete it 90 days later if not upgraded; a date is easier to keep than a trigger |
+| <a id="d59"></a>D59 | The work is hybrid: cloud sessions for code, offline tests and review, with no AWS credentials; applies by the owner from CloudShell until the owner's laptop is declared ready, then from the laptop. The owner declares when the laptop may start applying. *Decided 2026-10-13* | A laptop keeps its credentials in one place the owner controls and can run long applies; the cloud holds none. The research found CloudShell's 12-hour and 20-minute limits make it a fallback, not the main place |
 
 **Retired with the Floci era** (readable at the archive tag): D20, D21 (the engagement is restated above), D22, D30 to D32,
 D34, D39, D40, D42 to D44, D46.
@@ -371,4 +380,5 @@ D34, D39, D40, D42 to D44, D46.
 One line per merged change. Earlier history is at the tags `archive/windows-era` and `archive/floci-era`.
 
 - 2026-10-08: the plan rewritten from scratch for real AWS on a tight budget (proposal; research in `docs/research/2026-10-08-rebuild-research.md`)
-- 2026-10-13: the account is a project in the new AWS experience on the Free plan: D52 amended, D55 to D57, stage 2a; the AWS Knowledge MCP wired (`.mcp.json`)
+- 2026-10-13: the account is a project in the new AWS experience on the Free plan: D52 amended, D55 to D59, stage 2a; the AWS Knowledge MCP wired (`.mcp.json`)
+- 2026-10-13: the account root (`infra/account/`): the state bucket, the permissions boundary and the deployer role, offline-tested; not applied
