@@ -82,9 +82,16 @@ Everything is documented well enough to explain later, as part of finishing the 
 <!-- BEGIN AWS Agent Toolkit rules -->
 ## Real AWS (borrowed sandboxes only)
 
+**Superseded in part (2026-10-13), until stage 0 rewrites this file:** the plan now uses the owner's own AWS account on the
+Free plan (PLAN.md D52, D55, D56). Where the lines below say "never the owner's account" or "borrowed sandboxes only", the
+plan wins; what still holds is that agents hold no AWS credentials except through the owner's own `aws login`, with the owner
+present, and that nothing is created without the owner starting it.
+
 These apply only when working in a borrowed real-AWS sandbox through the `yaaf-sandbox` profile (`mise run sandbox`,
 PLAN.md D43 and D46). This project's own rules above take precedence over them, in particular:
 
+- **The AWS Knowledge MCP is allowed** (`.mcp.json`, PLAN.md D57): documentation only, no credentials. Anything that signs in to
+  AWS is the owner's call and happens only with the owner at the keyboard (PLAN.md D56).
 - **The account guard is the owner's.** Never pass `--account` to `mise run sandbox` from the task's own output: ask
   the owner, who reads the ID on the sandbox's own page. If the owner's account is signed in, stop and say so.
 

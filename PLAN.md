@@ -45,6 +45,8 @@ run away), know what production needs (a costed, reviewed design), and can say e
 - **Money** (D54): about $10 a month in normal use and a **$20 hard ceiling**; **pennies a month when nothing is being
   developed or presented**. No single AWS feature gives that (Budgets cannot delete a cluster, and the new spend limit has a $20
   floor and limited release), so it comes from layers (below). Anything that needs a new paid plan is asked about first.
+  **Until stage 2 the account stays on the Free plan (D55)**: the $100 sign-up credit, plus up to $100 earned, is the cap, and
+  the account is suspended, not billed, when it runs out.
 - **No long-lived infrastructure.** Every environment is created for a purpose and destroyed after it. What persists costs
   pennies a month: the state bucket, backups, a few parameters, short-retention logs.
 - **Agents never hold cloud credentials.** They write code and open pull requests; only GitHub Actions workflows assume AWS
@@ -101,7 +103,7 @@ own tests run k3s on GitHub runners); real AWS in short sessions costs cents. Fl
 
 | Layer | Choice | Why (and what production would add, *designed*) |
 |---|---|---|
-| **Accounts** | An AWS Organization (D52) created in the owner's existing account (management only, no workloads) with one member account for the project; SCPs on the member account | SCPs bind member accounts, not the management account, so the hard limits need a member account. Production adds accounts per environment and a log archive (designed, as a landing zone) |
+| **Accounts** | The owner's account is a *project* in an AWS-managed Organization (D52). At stage 2 the owner upgrades and activates advanced features and then administers that Organization: the project becomes a member account, a new management account holds only billing and the Organization, and our SCPs go on the member account | SCPs bind member accounts, not the management account, so the hard limits need that split. Until then AWS's own managed SCPs apply and cannot be changed ([research](docs/research/2026-10-13-aws-new-experience.md)). Production adds accounts per environment and a log archive (designed, as a landing zone) |
 | **Network** | One VPC, two AZs, private subnets for nodes, public subnets for egress only; fck-nat instead of a managed NAT gateway | fck-nat costs about a tenth of a NAT gateway; production uses managed NAT per AZ (designed, with its cost) |
 | **Cluster** | EKS Auto Mode on a standard-support Kubernetes version (`support_type = STANDARD`; extended support costs six times as much); the built-in NodePools disabled and one of our own: arm64, t4g.medium to large with m7g/c7g as fallback, Spot first and on-demand when Spot is short; managed-resource visibility turned on, because since April 2026 Auto Mode hides its instances, volumes and ENIs from `describe` calls by default, and hidden resources still bill (AWS docs, to check in stage 2) | Auto Mode runs Karpenter, load balancing, EBS CSI and the Pod Identity agent for a fee of under a cent per node-hour, which removes most add-ons a solo engineer would otherwise maintain. Watch out: t4g bursts on CPU credits, billed when it exceeds its baseline |
 | **GitOps** | Self-managed Argo CD, installed once by OpenTofu; everything else is an Application in git (the gitops-bridge split: IaC hands cluster metadata to Argo CD, no Helm from OpenTofu); environments as directories (`ci`, `aws`) | Argo CD's own recommended layout; managed Argo CD (an EKS capability) is noted as an option with its price |
@@ -156,6 +158,27 @@ group is created with a retention of a few days, and EKS control-plane logging s
 **Residual risk, said plainly.** Interactive Claude Code sessions that the owner supervises act as the owner's GitHub
 identity, which can approve a deployment. `CLAUDE.md` forbids it, and layers 4 to 7 bound the cost if it ever happened.
 
+**On the Free plan (until stage 2).** There is no Organization to attach SCPs to, no spend limit and no GitHub OIDC, so layers
+1, 4 and 7 do not exist yet. The cap is the credits themselves, the owner starts and destroys each session by hand (layers 2
+and 3), a Budgets alert warns when half the credits are gone, and nothing is left running between sessions. Stage 2 builds the
+rest before any session is ever started from GitHub.
+
+### When OpenTofu runs
+
+OpenTofu (D5) is usable from the first day, in four steps. What gates each step is the identity it runs as and, for
+GitHub, the OIDC provider, which AWS's managed policy denies until advanced features are activated (D52, D55).
+
+| Phase | What OpenTofu can do | Who runs it, and how | Needs |
+|---|---|---|---|
+| **Now, stage 1** | `fmt`, `validate`, `tofu test` with mock providers, Trivy and Checkov, Infracost; no plan against AWS | GitHub Actions and cloud sessions; **no AWS credentials** | Nothing |
+| **Free plan, stage 2a** | A real `apply` of the bootstrap root (state and backup buckets), then a first EKS session on on-demand nodes | **The owner**, from AWS CloudShell (free, already signed in as the owner, no key stored anywhere); the result is committed as a log | The owner at the keyboard; the Region confirmed; credits as the cap |
+| **Free plan, supervised** | The same, driven by a cloud session | Claude, after the owner signs in with `aws login --remote`, for the session's life | A read-only identity if AWS offers one; otherwise the owner's own, which is why this is last |
+| **After advanced features, stage 2** | Every apply from GitHub Actions: `plan` on pull requests, `apply` in the approved session workflow, the reapers | GitHub, through OIDC roles (`session`, `reaper`) | Paid plan, advanced features, the OIDC provider (D6) |
+
+**Watch out:** what AWS denies on the Free plan, Spot nodes and the OIDC provider, is exactly what the final design uses. The
+interim sessions therefore cost slightly more (on-demand nodes) and cannot be started from GitHub; they prove the code and
+the platform, not the automation.
+
 ### Repositories and teams
 
 | Repository | Owner | Holds |
@@ -200,9 +223,23 @@ Each stage ends with evidence a reviewer can open. Costs are for the stage's own
 - [ ] Kyverno verifies GitHub attestations at admission (a version that verifies Sigstore bundles, pinned)
 - [ ] Proved red by a planted fault: a bad image digest, a pinned image without an attestation (refused by Kyverno)
 
-### Stage 2: the AWS landing zone *(pennies a month)*
+### Stage 2a: the free-plan interim *(paid from the credits; about $1 per session on on-demand nodes)*
 
-- [ ] The owner creates the Organization and the member account (the one manual step, from a written runbook)
+- [x] The AWS Knowledge MCP is wired through `.mcp.json` (docs, pricing facts and regional availability; no credentials)
+- [ ] Owner, in AWS Settings: confirm the project Region, the account creation date and the credits left; Cost Explorer on; a
+      Budgets alert at half the credits
+- [ ] Owner: the full Agent Toolkit setup (`aws login`, `aws configure agent-toolkit`), later, when a read-only identity exists
+- [ ] A runbook for CloudShell: install the pinned OpenTofu (checksum from `mise.lock`), where state lives, how to log a run
+- [ ] `bootstrap` root applied by the owner from CloudShell; the state bucket and the backup bucket exist
+- [ ] A first EKS session run by the owner (on-demand nodes, Pod Identity, Argo CD pulling from git), with its measured create
+      and destroy times and its credit cost recorded, and the account empty afterwards
+- [ ] **The gate to stage 2:** check whether unused credits survive the upgrade, then upgrade and activate advanced features
+      before the 6 months or the credits run out, and only once stage 1 is finished and the guardrails are written
+
+### Stage 2: the AWS landing zone *(needs advanced features; pennies a month)*
+
+- [ ] The owner upgrades the account and activates advanced features (irreversible; from a written runbook), sets the
+      management account's root email (`aws-mgmt@yaafsome.fyi`), and creates the member account
 - [ ] `org` root: the SCPs, Budgets with the deny-all action, the spend limit if offered
 - [ ] `account-baseline` root: the GitHub OIDC provider and two roles (`session`: create and destroy, trusted only for the
       approved session environment on `main`; `reaper`: describe, delete and state read, trusted only for the scheduled run
@@ -287,6 +324,9 @@ Each stage ends with evidence a reviewer can open. Costs are for the stage's own
   known, but its managed-datastore options are Google Cloud only. Teams: Catalog (UI, catalog), Checkout (cart, checkout,
   orders).
 - **? The overall plan.** The owner confirms the proposed decisions D47 to D51 as a whole, or changes them.
+- **? Credits and the upgrade.** Whether unused credits survive the upgrade (the page is silent); the owner can ask AWS Support
+  or read the credit balance after upgrading. Decides whether to use the credits up before the upgrade.
+- **? A read-only identity.** Whether the new experience offers a read-only team-member role, for the supervised Agent Toolkit.
 
 ## Decisions
 
@@ -315,9 +355,13 @@ Each stage ends with evidence a reviewer can open. Costs are for the stage's own
 | <a id="d50"></a>D50 | *Proposed:* EKS Auto Mode on Graviton Spot, private subnets with fck-nat, Pod Identity, External Secrets with Parameter Store | The least to maintain alone, the cheapest per session, AWS's current recommendations; the production differences are designed and costed |
 | <a id="d51"></a>D51 | *Proposed:* autonomous agents (both teams and the platform's own) are GitHub Apps installed only where they work, run through `claude-code-action`, without `deployments` or `actions: write`; rulesets have no bypass, not even for admins | Routines push as the owner, and an identity that can bypass a rule, or approve a deployment, is not stopped by it |
 
-| <a id="d52"></a>D52 | An AWS Organization in the owner's existing account, which becomes the management account and runs no workloads, with one member account for the project. *Decided 2026-10-10.* Replaces the old rule against a second account | SCPs bind member accounts only, so the hard limits need one; the old rule was about free-tier credits, not about fencing spend |
+| <a id="d52"></a>D52 | The hard limits need an Organization with a member account; the owner's account is a project inside an AWS-managed one. *Amended 2026-10-13* (decided 2026-10-10 on a wrong assumption): the owner reaches control by upgrading and activating advanced features at stage 2, which hands over that Organization; a new management account then holds only billing and the Organization. Replaces the old rule against a second account | SCPs bind member accounts only; the new experience does not let us create an Organization of our own, and activation is irreversible, so it waits until it is needed ([research](docs/research/2026-10-13-aws-new-experience.md)) |
 | <a id="d53"></a>D53 | Three repositories: this one, renamed `yaaf-platform`, keeps its history; `yaaf-catalog` and `yaaf-checkout` for the teams. *Decided 2026-10-10* | A GitHub App can be fenced to a repository but not to a folder in a public one; the history, Scorecard and links stay |
-| <a id="d54"></a>D54 | us-east-1; about $10 a month in normal use and a $20 hard ceiling. *Decided 2026-10-10* | The cheapest Region and first for new features; the ceiling leaves room for a mistake before the guardrails empty the account |
+| <a id="d54"></a>D54 | us-east-1; about $10 a month in normal use and a $20 hard ceiling. *Decided 2026-10-10; Region confirmed by the owner 2026-10-13* | The cheapest Region and first for new features; the ceiling leaves room for a mistake before the guardrails empty the account. AWS's docs assign a US contact address `us-east-2`, so the owner confirms the project's Region in AWS Settings before the first apply |
+
+| <a id="d55"></a>D55 | Stay on the Free plan, using its credits as the cap, until a stage needs what it denies (GitHub OIDC, Spot, an Organization of our own, Fault Injection Service); then upgrade and activate advanced features, once. *Decided 2026-10-13* | The credits are a stronger cap than any guardrail we could build, and both steps are irreversible, so they wait for a reason |
+| <a id="d56"></a>D56 | Until then OpenTofu applies run **owner-at-keyboard in AWS CloudShell**; a cloud session gets AWS credentials only by the owner's own `aws login`, never stored, for that session's life. *Decided 2026-10-13* | CloudShell is free and already signed in as the owner, so no key exists anywhere; the full Agent Toolkit setup follows when a read-only identity does |
+| <a id="d57"></a>D57 | The AWS Knowledge MCP is wired through the committed `.mcp.json` | Documentation, pricing facts and regional availability for agents with no credentials; it cannot touch an account. *Decided 2026-10-13* |
 
 **Retired with the Floci era** (readable at the archive tag): D20, D21 (the engagement is restated above), D22, D30 to D32,
 D34, D39, D40, D42 to D44, D46.
@@ -327,3 +371,4 @@ D34, D39, D40, D42 to D44, D46.
 One line per merged change. Earlier history is at the tags `archive/windows-era` and `archive/floci-era`.
 
 - 2026-10-08: the plan rewritten from scratch for real AWS on a tight budget (proposal; research in `docs/research/2026-10-08-rebuild-research.md`)
+- 2026-10-13: the account is a project in the new AWS experience on the Free plan: D52 amended, D55 to D57, stage 2a; the AWS Knowledge MCP wired (`.mcp.json`)
